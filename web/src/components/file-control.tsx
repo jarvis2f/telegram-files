@@ -1,7 +1,14 @@
 import { type DownloadStatus, type TelegramFile } from "@/lib/types";
 import { useFileControl } from "@/hooks/use-file-control";
 import { Button } from "@/components/ui/button";
-import {ArrowDown, FileX, Loader2, Pause, SquareX, StepForward} from "lucide-react";
+import {
+  ArrowDown,
+  FileX,
+  Loader2,
+  Pause,
+  SquareX,
+  StepForward,
+} from "lucide-react";
 import {
   Tooltip,
   TooltipContent,
@@ -17,6 +24,7 @@ interface ActionButtonProps {
   icon: ReactNode;
   onClick: () => void;
   loading: boolean;
+  isMobile?: boolean;
 }
 
 const ActionButton = ({
@@ -24,10 +32,15 @@ const ActionButton = ({
   icon,
   onClick,
   loading,
+  isMobile,
 }: ActionButtonProps) => (
   <Tooltip>
     <TooltipTrigger asChild>
-      <Button variant="ghost" size="xs" onClick={onClick}>
+      <Button
+        variant={isMobile ? "default" : "ghost"}
+        size={isMobile ? "icon" : "xs"}
+        onClick={onClick}
+      >
         {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : icon}
       </Button>
     </TooltipTrigger>
@@ -44,23 +57,32 @@ export default function FileControl({
   isMobile,
 }: {
   file: TelegramFile;
-  downloadSpeed: number;
+  downloadSpeed?: number;
   hovered?: boolean;
   isMobile?: boolean;
 }) {
   const showDownloadInfo =
     !hovered &&
     (file.downloadStatus === "downloading" || file.downloadStatus === "paused");
+  const iconSize = isMobile ? "!h-3 !w-3" : "h-4 w-4";
 
-  const { start, starting, togglePause, togglingPause, cancel, cancelling, remove, removing } =
-    useFileControl(file);
+  const {
+    start,
+    starting,
+    togglePause,
+    togglingPause,
+    cancel,
+    cancelling,
+    remove,
+    removing,
+  } = useFileControl(file);
 
   const statusMapping: Record<DownloadStatus, ActionButtonProps[]> = {
     idle: [
       {
         onClick: () => start(file.id),
         tooltipText: "Start Download",
-        icon: <ArrowDown className="h-4 w-4" />,
+        icon: <ArrowDown className={iconSize} />,
         loading: starting,
       },
     ],
@@ -68,7 +90,7 @@ export default function FileControl({
       {
         onClick: () => start(file.id),
         tooltipText: "Retry",
-        icon: <ArrowDown className="h-4 w-4" />,
+        icon: <ArrowDown className={iconSize} />,
         loading: starting,
       },
     ],
@@ -76,13 +98,13 @@ export default function FileControl({
       {
         onClick: () => togglePause(file.id),
         tooltipText: "Pause",
-        icon: <Pause className="h-4 w-4" />,
+        icon: <Pause className={iconSize} />,
         loading: togglingPause,
       },
       {
         onClick: () => cancel(file.id),
         tooltipText: "Cancel",
-        icon: <SquareX className="h-4 w-4" />,
+        icon: <SquareX className={iconSize} />,
         loading: cancelling,
       },
     ],
@@ -90,13 +112,13 @@ export default function FileControl({
       {
         onClick: () => togglePause(file.id),
         tooltipText: "Resume",
-        icon: <StepForward className="h-4 w-4" />,
+        icon: <StepForward className={iconSize} />,
         loading: togglingPause,
       },
       {
         onClick: () => cancel(file.id),
         tooltipText: "Cancel",
-        icon: <SquareX className="h-4 w-4" />,
+        icon: <SquareX className={iconSize} />,
         loading: cancelling,
       },
     ],
@@ -104,7 +126,7 @@ export default function FileControl({
       {
         onClick: () => remove(file.id),
         tooltipText: "Remove",
-        icon: <FileX className="h-4 w-4" />,
+        icon: <FileX className={iconSize} />,
         loading: removing,
       },
     ],
@@ -113,11 +135,11 @@ export default function FileControl({
   const actionButtons = (
     <div className="w-full">
       <div
-        className="flex w-full items-center justify-end space-x-2 md:justify-around"
+        className="flex w-full items-center justify-end space-x-4 md:justify-around md:space-x-2"
         onClick={(e) => e.preventDefault()}
       >
         {statusMapping[file.downloadStatus].map((btnProps, index) => (
-          <ActionButton key={index} {...btnProps} />
+          <ActionButton key={index} isMobile={isMobile} {...btnProps} />
         ))}
       </div>
     </div>
@@ -141,7 +163,7 @@ export default function FileControl({
               className="absolute w-full"
             >
               <span className="text-nowrap text-xs">
-                {file.downloadStatus === "downloading"
+                {file.downloadStatus === "downloading" && downloadSpeed
                   ? `${prettyBytes(downloadSpeed, { bits: true })}/s`
                   : prettyBytes(file.downloadedSize)}
               </span>

@@ -35,6 +35,7 @@ export type TransferStatus = "idle" | "transferring" | "completed" | "error";
 
 export type TelegramFile = {
   id: number;
+  telegramId: number;
   uniqueId: string;
   messageId: number;
   chatId: number;
@@ -52,6 +53,23 @@ export type TelegramFile = {
   startDate: number;
   completionDate: number;
   transferStatus?: TransferStatus;
+  extra?: PhotoExtra | VideoExtra;
+
+  prev?: TelegramFile;
+  next?: TelegramFile;
+};
+
+export type PhotoExtra = {
+  width: number;
+  height: number;
+  type: string;
+};
+
+export type VideoExtra = {
+  width: number;
+  height: number;
+  duration: number;
+  mimeType: string;
 };
 
 export type TDFile = {
@@ -90,7 +108,6 @@ export type TelegramApiResult = {
 
 export const SettingKeys = [
   "uniqueOnly",
-  "needToLoadImages",
   "imageLoadSize",
   "alwaysHide",
   "showSensitiveContent",

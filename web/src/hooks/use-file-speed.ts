@@ -1,11 +1,12 @@
 import { useWebsocket } from "@/hooks/use-websocket";
-import { useEffect, useState } from "react";
+import {useEffect, useMemo, useState} from "react";
 import { WebSocketMessageType } from "@/lib/websocket-types";
-import type { TDFile } from "@/lib/types";
+import type {TDFile, TelegramFile} from "@/lib/types";
 import { env } from "@/env";
 import { useDebounce } from "use-debounce";
 
-export function useFileSpeed(fileId: number) {
+export function useFileSpeed(file: TelegramFile) {
+  const fileId = file.id;
   const { lastJsonMessage } = useWebsocket();
   const [downloadProgress, setDownloadProgress] = useState(0);
   const [downloadSpeed, setDownloadSpeed] = useState({
@@ -19,10 +20,24 @@ export function useFileSpeed(fileId: number) {
     maxWait: 1000,
   });
 
-  const [debounceProgress] = useDebounce(downloadProgress, 300, {
+  const [debounceProgress] = useDebounce(downloadProgress, 100, {
     leading: true,
     maxWait: 1000,
   });
+
+  const progress = useMemo(() => {
+    const fileDownloadProgress =
+      file.size > 0
+        ? Math.min((file.downloadedSize / file.size) * 100, 100)
+        : 0;
+    if (file.downloadStatus === "downloading") {
+      return debounceProgress > 0 ? debounceProgress : fileDownloadProgress;
+    }
+    if (file.downloadStatus === "paused") {
+      return fileDownloadProgress;
+    }
+    return file.downloadStatus === "completed" ? 100 : 0;
+  }, [file.downloadStatus, file.downloadedSize, file.size, debounceProgress]);
 
   useEffect(() => {
     if (
@@ -99,7 +114,7 @@ export function useFileSpeed(fileId: number) {
   }, []);
 
   return {
-    downloadProgress: debounceProgress,
+    downloadProgress: progress,
     downloadSpeed: debounceSpeed,
   };
 }

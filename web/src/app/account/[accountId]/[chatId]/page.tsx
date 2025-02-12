@@ -1,5 +1,5 @@
 import { Header } from "@/components/header";
-import { FileList } from "@/components/file-list";
+import Files from "@/components/files";
 
 export default async function ChatFilesPage({
   params,
@@ -11,7 +11,7 @@ export default async function ChatFilesPage({
   return (
     <div className="container mx-auto px-4 py-6">
       <Header />
-      <FileList accountId={accountId} chatId={chatId} />
+      <Files accountId={accountId} chatId={chatId} />
     </div>
   );
 }

@@ -1,5 +1,4 @@
 "use client";
-import { FileCard } from "./file-card";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
@@ -13,16 +12,10 @@ import {
 import { type Column } from "@/components/table-column-filter";
 import { cn } from "@/lib/utils";
 import FileNotFount from "@/components/file-not-found";
-import useIsMobile from "@/hooks/use-is-mobile";
 import useSWRMutation from "swr/mutation";
 import { POST } from "@/lib/api";
 import FileRow from "@/components/file-row";
 import { useVirtualizer } from "@tanstack/react-virtual";
-
-interface FileListProps {
-  accountId: string;
-  chatId: string;
-}
 
 const COLUMNS: Column[] = [
   {
@@ -53,10 +46,13 @@ const COLUMNS: Column[] = [
   },
 ];
 
-export function FileList({ accountId, chatId }: FileListProps) {
-  const isMobile = useIsMobile();
+interface FileTableProps {
+  accountId: string;
+  chatId: string;
+}
+
+export function FileTable({ accountId, chatId }: FileTableProps) {
   const [selectedFiles, setSelectedFiles] = useState<Set<number>>(new Set());
-  const observerTarget = useRef(null);
   const tableParentRef = useRef(null);
   const [columns, setColumns] = useState<Column[]>(COLUMNS);
   const [rowHeight, setRowHeight] = useRowHeightLocalStorage(
@@ -124,23 +120,6 @@ export function FileList({ accountId, chatId }: FileListProps) {
     //eslint-disable-next-line
   }, [files.length, handleLoadMore, rowVirtual.getVirtualItems()]);
 
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0]?.isIntersecting) {
-          void handleLoadMore();
-        }
-      },
-      { threshold: 0.1 },
-    );
-
-    if (observerTarget.current) {
-      observer.observe(observerTarget.current);
-    }
-
-    return () => observer.disconnect();
-  }, [handleLoadMore]);
-
   const dynamicClass = useMemo(() => {
     switch (rowHeight) {
       case "s":
@@ -160,41 +139,6 @@ export function FileList({ accountId, chatId }: FileListProps) {
         };
     }
   }, [rowHeight]);
-
-  if (isMobile) {
-    return (
-      <div className="space-y-4">
-        <FileFilters
-          telegramId={accountId}
-          chatId={chatId}
-          filters={filters}
-          onFiltersChange={handleFilterChange}
-          columns={columns}
-          onColumnConfigChange={setColumns}
-          rowHeight={rowHeight}
-          setRowHeight={setRowHeight}
-        />
-        <div className="grid grid-cols-1 gap-4">
-          {files.map((file, index) => (
-            <FileCard
-              key={`${file.id}-${file.uniqueId}-${index}`}
-              file={file}
-            />
-          ))}
-        </div>
-        <div ref={observerTarget} className="h-4">
-          {isLoading && (
-            <div className="flex items-center justify-center">
-              <LoaderPinwheel
-                className="h-8 w-8 animate-spin"
-                style={{ strokeWidth: "0.8px" }}
-              />
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  }
 
   const handleSelectAll = () => {
     if (selectedFiles.size === files.length) {

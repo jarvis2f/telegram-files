@@ -4,7 +4,14 @@ import React from "react";
 import { cn } from "@/lib/utils";
 import { TooltipWrapper } from "@/components/ui/tooltip";
 import { AnimatePresence, motion } from "framer-motion";
-import {CheckCircle2, Clock, Download, FolderSync, Pause, XCircle} from "lucide-react";
+import {
+  CheckCircle2,
+  Clock,
+  Download,
+  FolderSync,
+  Pause,
+  XCircle,
+} from "lucide-react";
 
 export const DOWNLOAD_STATUS = {
   idle: {
@@ -57,7 +64,13 @@ export const TRANSFER_STATUS = {
   },
 };
 
-export default function FileStatus({ file }: { file: TelegramFile }) {
+export default function FileStatus({
+  file,
+  className,
+}: {
+  file: TelegramFile;
+  className?: string;
+}) {
   const badgeVariants = {
     initial: { opacity: 0, scale: 0.9 },
     animate: {
@@ -69,7 +82,9 @@ export default function FileStatus({ file }: { file: TelegramFile }) {
   };
 
   return (
-    <div className="flex items-center justify-center space-x-2">
+    <div
+      className={cn("flex items-center justify-center space-x-2", className)}
+    >
       <AnimatePresence>
         {file.transferStatus === "idle" && (
           <motion.div

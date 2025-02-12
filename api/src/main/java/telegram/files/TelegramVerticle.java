@@ -185,17 +185,10 @@ public class TelegramVerticle extends AbstractVerticle {
                                     Map<Long, TdApi.Message> messageMap = Arrays.stream(m.messages)
                                             .filter(Objects::nonNull)
                                             .collect(Collectors.toMap(message -> message.id, Function.identity()));
-                                    List<FileRecord> fileRecords = r.v1.stream()
-                                            .map(fileRecord -> {
-                                                TdApi.Message message = messageMap.get(fileRecord.messageId());
-                                                FileRecord source = TdApiHelp.getFileHandler(message)
-                                                        .map(fileHandler -> fileHandler.convertFileRecord(telegramRecord.id()))
-                                                        .orElse(null);
-                                                if (source != null) {
-                                                    fileRecord = fileRecord.withSourceField(source.id(), source.downloadedSize());
-                                                }
-                                                return fileRecord;
-                                            })
+                                    List<JsonObject> fileRecords = r.v1.stream()
+                                            .map(fileRecord ->
+                                                    this.withSource(fileRecord, messageMap.get(fileRecord.messageId())))
+                                            .filter(Objects::nonNull)
                                             .toList();
                                     return Tuple.tuple(fileRecords, r.v2, r.v3);
                                 });
@@ -280,64 +273,16 @@ public class TelegramVerticle extends AbstractVerticle {
         });
     }
 
-    public Future<Object> loadPreview(long chatId, long messageId) {
-        return DataVerticle.settingRepository
-                .getByKey(SettingKey.needToLoadImages)
-                .compose(needToLoadImages -> {
-                    if (!(boolean) needToLoadImages) {
-                        return Future.failedFuture("Need to load images is disabled");
+    public Future<Tuple2<String, String>> loadPreview(String uniqueId) {
+        return DataVerticle.fileRepository
+                .getByUniqueId(uniqueId)
+                .compose(fileRecord -> {
+                    if (fileRecord == null || !fileRecord.isDownloadStatus(FileRecord.DownloadStatus.completed)
+                        || !FileUtil.exist(fileRecord.localPath())) {
+                        return Future.failedFuture("File not found or not downloaded");
                     }
-                    return client.execute(new TdApi.GetMessage(chatId, messageId));
-                })
-                .compose(message -> {
-                    TdApiHelp.FileHandler<? extends TdApi.MessageContent> fileHandler = TdApiHelp.getFileHandler(message)
-                            .orElseThrow(() -> new NoStackTraceException("not support message type"));
-
-                    return DataVerticle.settingRepository.getByKey(SettingKey.imageLoadSize)
-                            .map(size -> Tuple.tuple(message, fileHandler.getPreviewFileId(Tuple.tuple(size))));
-                })
-                .compose(tuple -> {
-                    TdApi.Message message = tuple.v1;
-                    TdApi.File file = tuple.v2;
-                    if (file.local != null
-                        && file.local.isDownloadingCompleted
-                        && FileUtil.exist(file.local.path)) {
-                        return Future.succeededFuture(file.local.path);
-                    }
-
-                    return savePreviewFile(message, file)
-                            .compose(r -> {
-                                TdApi.DownloadFile downloadFile = new TdApi.DownloadFile();
-                                downloadFile.fileId = file.id;
-                                downloadFile.priority = 32;
-                                downloadFile.synchronous = true;
-
-                                return client.execute(downloadFile)
-                                        .map(file.id);
-                            });
+                    return Future.succeededFuture(Tuple.tuple(fileRecord.localPath(), fileRecord.mimeType()));
                 });
-    }
-
-    private Future<Void> savePreviewFile(TdApi.Message message, TdApi.File file) {
-        return Future.future(promise -> {
-            if (TdApiHelp.getFileId(message) != file.id) {
-                promise.complete();
-            } else {
-                DataVerticle.fileRepository.getByUniqueId(file.remote.uniqueId)
-                        .onSuccess(fileRecord -> {
-                            if (fileRecord != null) {
-                                promise.complete();
-                            } else {
-                                DataVerticle.fileRepository.create(TdApiHelp.getFileHandler(message)
-                                                .orElseThrow()
-                                                .convertFileRecord(telegramRecord.id()))
-                                        .onSuccess(r -> promise.complete())
-                                        .onFailure(promise::fail);
-                            }
-                        })
-                        .onFailure(promise::fail);
-            }
-        });
     }
 
     public Future<TdApi.File> startDownload(Long chatId, Long messageId, Integer fileId) {
@@ -898,24 +843,9 @@ public class TelegramVerticle extends AbstractVerticle {
                     List<JsonObject> fileObjects = messages.stream()
                             .filter(message -> TdApiHelp.FILE_CONTENT_CONSTRUCTORS.contains(message.content.getConstructor()))
                             .map(message -> {
-                                FileRecord source = TdApiHelp.getFileHandler(message)
-                                        .map(fileHandler -> fileHandler.convertFileRecord(telegramRecord.id()))
-                                        .orElse(null);
-                                if (source == null) {
-                                    return null;
-                                }
-                                FileRecord fileRecord = fileRecords.get(TdApiHelp.getFileUniqueId(message));
-                                if (fileRecord == null) {
-                                    fileRecord = source;
-                                } else {
-                                    fileRecord = fileRecord.withSourceField(source.id(), source.downloadedSize());
-                                }
-
                                 //TODO Processing of the same file under different accounts
 
-                                JsonObject fileObject = JsonObject.mapFrom(fileRecord);
-                                fileObject.put("formatDate", DateUtil.date(fileObject.getLong("date") * 1000).toString());
-                                return fileObject;
+                                return this.withSource(fileRecords.get(TdApiHelp.getFileUniqueId(message)), message);
                             })
                             .filter(Objects::nonNull)
                             .toList();
@@ -925,6 +855,26 @@ public class TelegramVerticle extends AbstractVerticle {
                             .put("size", fileObjects.size())
                             .put("nextFromMessageId", foundChatMessages.nextFromMessageId);
                 });
+    }
+
+    private JsonObject withSource(FileRecord fileRecord, TdApi.Message message) {
+        TdApiHelp.FileHandler<? extends TdApi.MessageContent> fileHandler = TdApiHelp.getFileHandler(message)
+                .orElse(null);
+        if (fileHandler == null) {
+            return null;
+        }
+
+        FileRecord source = fileHandler.convertFileRecord(telegramRecord.id());
+        if (fileRecord == null) {
+            fileRecord = source;
+        } else {
+            fileRecord = fileRecord.withSourceField(source.id(), source.downloadedSize());
+        }
+
+        JsonObject fileObject = JsonObject.mapFrom(fileRecord);
+        fileObject.put("formatDate", DateUtil.date(fileObject.getLong("date") * 1000).toString());
+        fileObject.put("extra", fileHandler.getExtraInfo());
+        return fileObject;
     }
 
     private List<JsonObject> convertRangedSpeedStats(List<StatisticRecord> statisticRecords, int timeRange) {

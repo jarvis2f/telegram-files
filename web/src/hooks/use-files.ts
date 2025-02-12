@@ -154,6 +154,10 @@ export function useFiles(accountId: string, chatId: string) {
         });
       });
     });
+    files.forEach((file, index) => {
+      file.prev = files[index - 1];
+      file.next = files[index + 1];
+    });
     return files;
   }, [pages, latestFilesStatus]);
 

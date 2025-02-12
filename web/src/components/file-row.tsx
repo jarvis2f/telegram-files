@@ -1,25 +1,19 @@
 import { cn } from "@/lib/utils";
 import { type RowHeight } from "@/components/table-row-height-switch";
 import { Checkbox } from "@/components/ui/checkbox";
-import FileProgress from "@/components/file-progress";
-import React, { memo, type ReactNode, useState } from "react";
+import React, { type ReactNode, useState } from "react";
 import { type TelegramFile } from "@/lib/types";
 import SpoiledWrapper from "@/components/spoiled-wrapper";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import PhotoPreview from "@/components/photo-preview";
 import prettyBytes from "pretty-bytes";
 import FileStatus from "@/components/file-status";
 import FileExtra from "@/components/file-extra";
 import FileControl from "@/components/file-control";
 import { FileAudioIcon, FileIcon, ImageIcon, VideoIcon } from "lucide-react";
-import Image from "next/image";
 import { type Column } from "./table-column-filter";
 import { useFileSpeed } from "@/hooks/use-file-speed";
+import FileViewer from "@/components/file-viewer";
+import FileAvatar from "@/components/file-avatar";
+import { Progress } from "@/components/ui/progress";
 
 interface FileRowProps {
   index: number;
@@ -50,7 +44,7 @@ export default function FileRow({
   onCheckedChange,
 }: FileRowProps) {
   const { rowHeight, dynamicClass, columns } = properties;
-  const { downloadProgress, downloadSpeed } = useFileSpeed(file.id);
+  const { downloadProgress, downloadSpeed } = useFileSpeed(file);
   const [hovered, setHovered] = useState(false);
 
   const getFileIcon = (type: TelegramFile["type"]) => {
@@ -86,25 +80,9 @@ export default function FileRow({
         {file.type === "photo" || file.type === "video" ? (
           file.thumbnail ? (
             <SpoiledWrapper hasSensitiveContent={file.hasSensitiveContent}>
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger>
-                    <PhotoColumnImage
-                      thumbnail={file.thumbnail}
-                      name={file.fileName}
-                      wh={dynamicClass.content}
-                    />
-                  </TooltipTrigger>
-                  <TooltipContent asChild>
-                    <PhotoPreview
-                      thumbnail={file.thumbnail}
-                      name={file.fileName}
-                      chatId={file.chatId}
-                      messageId={file.messageId}
-                    />
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
+              <FileViewer file={file}>
+                <FileAvatar file={file} className={dynamicClass.content} />
+              </FileViewer>
             </SpoiledWrapper>
           ) : (
             getFileIcon(file.type)
@@ -165,29 +143,14 @@ export default function FileRow({
           ) : null,
         )}
       </div>
-      <div className="w-full">
-        <FileProgress file={file} downloadProgress={downloadProgress} />
-      </div>
+      {downloadProgress > 0 && downloadProgress !== 100 && (
+        <div className="flex w-full items-end justify-between gap-2">
+          <Progress
+            value={downloadProgress}
+            className="flex-1 rounded-none md:w-32"
+          />
+        </div>
+      )}
     </div>
   );
 }
-
-const PhotoColumnImage = memo(function PhotoColumnImage({
-  thumbnail,
-  name,
-  wh,
-}: {
-  thumbnail: string;
-  name: string;
-  wh: string;
-}) {
-  return (
-    <Image
-      src={`data:image/jpeg;base64,${thumbnail}`}
-      alt={name ?? "File thumbnail"}
-      width={32}
-      height={32}
-      className={cn(wh, "rounded object-cover")}
-    />
-  );
-});

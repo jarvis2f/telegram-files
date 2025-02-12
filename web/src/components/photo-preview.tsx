@@ -1,169 +1,92 @@
 "use client";
 import Image from "next/image";
-import useSWR from "swr";
-import { CloudAlert, Loader } from "lucide-react";
-import { useWebsocket } from "@/hooks/use-websocket";
-import {useEffect, useRef, useState} from "react";
-import { WebSocketMessageType } from "@/lib/websocket-types";
-import { toast } from "@/hooks/use-toast";
-import { useSettings } from "@/hooks/use-settings";
-import { type TDFile } from "@/lib/types";
+import { type TelegramFile } from "@/lib/types";
 import { getApiUrl } from "@/lib/api";
-import useIsMobile from "@/hooks/use-is-mobile";
+import { useEffect, useState } from "react";
+import { ImageOff } from "lucide-react";
+import { cn } from "@/lib/utils";
+
+const ImageErrorFallback = ({
+  className = "",
+  message = "Image loading failed!",
+}) => (
+  <div
+    className={`flex flex-col items-center justify-center rounded bg-gray-100 p-4 ${className}`}
+  >
+    <ImageOff className="mb-2 h-8 w-8 text-gray-400" />
+    <p className="text-sm text-gray-500">{message}</p>
+  </div>
+);
 
 interface PhotoPreviewProps {
-  thumbnail: string;
-  name: string;
-  chatId: number;
-  messageId: number;
+  className?: string;
+  file: TelegramFile;
 }
 
-export default function PhotoPreview({
-  thumbnail,
-  name,
-  chatId,
-  messageId,
-}: PhotoPreviewProps) {
-  const url = `${getApiUrl()}/file/preview?chatId=${chatId}&messageId=${messageId}`;
-  const { settings } = useSettings();
-  const isMobile = useIsMobile();
-  const [isReady, setIsReady] = useState(false);
-  const imageRef = useRef<HTMLImageElement>(null);
-  const [fileStatus, setFileStatus] = useState<{
-    fileId: number | null;
-    readyFileIds: number[];
-  }>({
-    fileId: null,
-    readyFileIds: [],
-  });
-  const { lastJsonMessage } = useWebsocket();
-
-  const { error } = useSWR<void, Error>(
-    settings?.needToLoadImages === "true" ? url : null,
-    (url: string) =>
-      fetch(url, { credentials: "include" }).then(async (res) => {
-        if (!res.ok) {
-          let message = "Failed to fetch, status: " + res.status;
-          try {
-            const { error } = await res.json() as { error: string };
-            if (error) {
-              message = error;
-            }
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-          } catch (e) {
-            // do nothing
-          }
-          toast({
-            title: "Error",
-            description: message,
-            variant: "destructive",
-          });
-          throw new Error(message);
-        }
-        if (res.headers.get("Content-Type") === "application/json") {
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-          const json: { fileId: number } = await res.json();
-          if (json.fileId) {
-            setFileStatus((prev) => ({
-              ...prev,
-              fileId: json.fileId,
-            }));
-          }
-        } else {
-          setIsReady(true);
-        }
-      }),
-    {
-      revalidateOnFocus: false,
-      revalidateOnReconnect: false,
-      revalidateOnMount: true,
-    },
-  );
+export default function PhotoPreview({ className, file }: PhotoPreviewProps) {
+  const [viewportHeight, setViewportHeight] = useState(0);
+  const [error, setError] = useState(false);
+  const src =
+    !file.localPath || file.type === "video"
+      ? `data:image/jpeg;base64,${file.thumbnail}`
+      : `${getApiUrl()}/file/${file.telegramId}/${file.uniqueId}`;
 
   useEffect(() => {
-    if (
-      lastJsonMessage !== null &&
-      lastJsonMessage.type === WebSocketMessageType.FILE_UPDATE
-    ) {
-      const { file } = lastJsonMessage.data as { file: TDFile };
-      if (file.local?.isDownloadingCompleted) {
-        setFileStatus((prev) => ({
-          ...prev,
-          readyFileIds: [...prev.readyFileIds, file.id],
-        }));
-      }
-    }
-  }, [lastJsonMessage]);
+    setViewportHeight(window.innerHeight);
 
-  useEffect(() => {
-    const { fileId, readyFileIds } = fileStatus;
-    if (fileId !== null && readyFileIds.includes(fileId)) {
-      setIsReady(true);
-    }
-  }, [fileStatus]);
+    const handleResize = () => {
+      setViewportHeight(window.innerHeight);
+    };
 
-  const ThumbnailImage = (
-    <div className="rounded-lg border border-gray-300 bg-white p-2 shadow-lg">
-      <Image
-        src={`data:image/jpeg;base64,${thumbnail}`}
-        alt={name ?? "Photo Thumbnail"}
-        width={32}
-        height={32}
-        className="h-[200px] w-full"
-      />
-    </div>
-  );
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
-  if (settings?.needToLoadImages !== "true") {
-    return ThumbnailImage;
+  const handleError = () => {
+    setError(true);
+  };
+
+  if (error) {
+    return <ImageErrorFallback className="h-full min-h-[200px] w-full" />;
   }
 
-  if (!isReady || error) {
+  if (file?.extra?.width && file?.extra?.height && file?.localPath) {
+    const aspectRatio = file.extra.width / file.extra.height;
+    const maxHeight = viewportHeight;
+    const calculatedHeight = Math.min(file.extra.height, maxHeight);
+    const calculatedWidth = calculatedHeight * aspectRatio;
+
     return (
-      <div className="relative rounded-lg border border-gray-300 bg-white p-2 shadow-lg">
-        {ThumbnailImage}
-        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 transform">
-          {error ? (
-            <CloudAlert className="h-8 w-8" />
-          ) : (
-            !isReady && <Loader className="h-8 w-8 animate-spin text-white" />
-          )}
-        </div>
+      <div
+        className={cn("relative", className)}
+        style={{ maxHeight: `${maxHeight}px` }}
+      >
+        <Image
+          src={src}
+          placeholder="blur"
+          unoptimized={true}
+          blurDataURL={`data:image/jpeg;base64,${file.thumbnail}`}
+          alt={file.fileName ?? "Photo"}
+          width={calculatedWidth}
+          height={calculatedHeight}
+          className={cn("h-auto max-h-screen w-auto object-contain")}
+          onError={handleError}
+        />
       </div>
     );
   }
 
-  const toggleFullScreen = () => {
-    if (!isMobile) return;
-    if (!document.fullscreenEnabled) {
-      console.error("Full-screen mode is not supported.");
-      return;
-    }
-    const image = imageRef.current;
-    if (!image) return;
-    if (!document.fullscreenElement) {
-      image.requestFullscreen().catch((err: Error) => {
-        console.error(`Error attempting to enable full-screen mode: ${err.message}`)
-      });
-    } else {
-      if (document.exitFullscreen) {
-        void document.exitFullscreen();
-      }
-    }
-  };
-
   return (
-    <div className="rounded-lg border border-gray-300 bg-white p-2 shadow-lg">
+    <div className={cn("relative h-60 w-60", className)}>
       <Image
-        ref={imageRef}
-        src={url}
+        src={src}
+        placeholder="blur"
         unoptimized={true}
-        blurDataURL={`data:image/jpeg;base64,${thumbnail}`}
-        alt={name ?? "Photo"}
-        width={32}
-        height={32}
-        className="h-[200px] w-full"
-        onClick={toggleFullScreen}
+        blurDataURL={`data:image/jpeg;base64,${file.thumbnail}`}
+        alt={file.fileName ?? "Photo"}
+        fill={true}
+        className="object-contain"
+        onError={handleError}
       />
     </div>
   );

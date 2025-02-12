@@ -51,6 +51,8 @@ public class HttpVerticle extends AbstractVerticle {
 
     private final AutoRecordsHolder autoRecordsHolder = new AutoRecordsHolder();
 
+    private final FileRouteHandler fileRouteHandler = new FileRouteHandler();
+
     private static final String SESSION_COOKIE_NAME = "tf";
 
     @Override
@@ -150,7 +152,7 @@ public class HttpVerticle extends AbstractVerticle {
         router.get("/telegram/:telegramId/ping").handler(this::handleTelegramPing);
         router.get("/telegram/:telegramId/test-network").handler(this::handleTelegramTestNetwork);
 
-        router.get("/file/preview").handler(this::handleFilePreview);
+        router.get("/file/:telegramId/:uniqueId").handler(this::handleFilePreview);
         router.post("/file/start-download").handler(this::handleFileStartDownload);
         router.post("/file/start-download-multiple").handler(this::handleFileStartDownloadMultiple);
         router.post("/file/cancel-download").handler(this::handleFileCancelDownload);
@@ -557,32 +559,26 @@ public class HttpVerticle extends AbstractVerticle {
     }
 
     private void handleFilePreview(RoutingContext ctx) {
-        TelegramVerticle telegramVerticle = getTelegramVerticle(ctx);
-        if (telegramVerticle == null) {
+        Optional<TelegramVerticle> telegramVerticleOptional = getTelegramVerticle(ctx.pathParam("telegramId"));
+        if (telegramVerticleOptional.isEmpty()) {
+            ctx.fail(404);
             return;
         }
-        String chatId = ctx.request().getParam("chatId");
-        String messageId = ctx.request().getParam("messageId");
-        if (StrUtil.isBlank(chatId) || StrUtil.isBlank(messageId)) {
-            ctx.fail(400);
+        TelegramVerticle telegramVerticle = telegramVerticleOptional.get();
+        String uniqueId = ctx.pathParam("uniqueId");
+        if (StrUtil.isBlank(uniqueId)) {
+            ctx.fail(404);
             return;
         }
 
-        telegramVerticle.loadPreview(Convert.toLong(chatId), Convert.toLong(messageId))
-                .onSuccess(fileIdOrPath -> {
-                    if (fileIdOrPath == null) {
-                        ctx.end();
-                        return;
+        telegramVerticle.loadPreview(uniqueId)
+                .onSuccess(tuple -> {
+                    String mimeType = tuple.v2;
+                    if (StrUtil.isBlank(mimeType)) {
+                        mimeType = FileUtil.getMimeType(tuple.v1);
                     }
-                    if (fileIdOrPath instanceof Integer fileId) {
-                        ctx.json(JsonObject.of("fileId", fileId));
-                        return;
-                    }
-                    String path = (String) fileIdOrPath;
 
-                    ctx.response()
-                            .putHeader("Content-Type", FileUtil.getMimeType(path))
-                            .end(Buffer.buffer(FileUtil.readBytes(path)));
+                    fileRouteHandler.handle(ctx, tuple.v1, mimeType);
                 })
                 .onFailure(ctx::fail);
     }

@@ -9,7 +9,6 @@ import java.util.function.Function;
 public enum SettingKey {
     version(Version::new),
     uniqueOnly(Convert::toBool, false),
-    needToLoadImages(Convert::toBool, false),
     imageLoadSize,
     alwaysHide(Convert::toBool, false),
     showSensitiveContent(Convert::toBool, false),

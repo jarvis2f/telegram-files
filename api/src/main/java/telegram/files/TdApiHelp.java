@@ -9,6 +9,7 @@ import cn.hutool.core.convert.TypeConverter;
 import cn.hutool.core.util.ClassUtil;
 import cn.hutool.core.util.ReflectUtil;
 import io.vertx.core.impl.NoStackTraceException;
+import io.vertx.core.json.JsonObject;
 import org.drinkless.tdlib.TdApi;
 import org.jooq.lambda.tuple.Tuple;
 import org.jooq.lambda.tuple.Tuple1;
@@ -192,9 +193,7 @@ public class TdApiHelp {
             case TdApi.MessageDocument.CONSTRUCTOR -> {
                 return Optional.of((T) new DocumentHandler(message));
             }
-            default -> {
-                return Optional.empty();
-            }
+            default -> throw new NoStackTraceException("Unsupported message type: " + message.content.getConstructor());
         }
     }
 
@@ -223,6 +222,10 @@ public class TdApiHelp {
         }
 
         public abstract TdApi.File getFile();
+
+        public JsonObject getExtraInfo() {
+            return JsonObject.of();
+        }
     }
 
     public static class PhotoHandler extends FileHandler<TdApi.MessagePhoto> {
@@ -291,6 +294,14 @@ public class TdApiHelp {
         public TdApi.File getFile() {
             return content.photo.sizes[content.photo.sizes.length - 1].photo;
         }
+
+        @Override
+        public JsonObject getExtraInfo() {
+            TdApi.PhotoSize photo = content.photo.sizes[content.photo.sizes.length - 1];
+            return JsonObject.of("width", photo.width,
+                    "height", photo.height,
+                    "type", photo.type);
+        }
     }
 
     public static class VideoHandler extends FileHandler<TdApi.MessageVideo> {
@@ -351,6 +362,15 @@ public class TdApiHelp {
         @Override
         public TdApi.File getFile() {
             return content.video.video;
+        }
+
+        @Override
+        public JsonObject getExtraInfo() {
+            TdApi.Video video = content.video;
+            return JsonObject.of("width", video.width,
+                    "height", video.height,
+                    "duration", video.duration,
+                    "mimeType", video.mimeType);
         }
     }
 
