@@ -227,6 +227,9 @@ public class AutoDownloadVerticle extends AbstractVerticle {
 
         LocalTime startTime = LocalTime.parse(timeLimited.startTime);
         LocalTime endTime = LocalTime.parse(timeLimited.endTime);
+        if (startTime.equals(LocalTime.MIN) && endTime.equals(LocalTime.MIN)) {
+            return true;
+        }
 
         if (startTime.isAfter(endTime)) {
             return now.isAfter(startTime) || now.isBefore(endTime);
