@@ -1,10 +1,5 @@
 import * as React from "react";
-import {
-  type ChangeEvent,
-  type CSSProperties,
-  useEffect,
-  useState,
-} from "react";
+import { type CSSProperties, useEffect, useState } from "react";
 import { format } from "date-fns";
 import {
   ArrowDownNarrowWide,
@@ -61,9 +56,9 @@ const SearchFilter = ({
 }) => {
   const [localSearch, setLocalSearch] = useState(search);
 
-  const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
-    setLocalSearch(e.target.value);
-    onChange(e.target.value);
+  const handleChange = (value: string) => {
+    setLocalSearch(value);
+    onChange(value);
   };
 
   return (
@@ -73,14 +68,14 @@ const SearchFilter = ({
         <Input
           placeholder="Search with name or caption"
           value={localSearch}
-          onChange={handleChange}
+          onChange={(e) => handleChange(e.target.value)}
         />
         {search && (
           <Button
             variant="ghost"
             size="icon"
             className="absolute right-2 top-1/2 h-6 w-6 -translate-y-1/2 rounded-full text-gray-500 transition-all duration-200 hover:scale-110 hover:bg-gray-100 hover:text-gray-800"
-            onClick={() => setLocalSearch("")}
+            onClick={() => handleChange("")}
           >
             <X className="h-4 w-4" />
           </Button>

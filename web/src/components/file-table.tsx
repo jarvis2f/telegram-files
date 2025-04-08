@@ -76,6 +76,7 @@ export function FileTable({ accountId, chatId }: FileTableProps) {
     handleFilterChange,
     clearFilters,
     isLoading,
+    size,
     files,
     handleLoadMore,
   } = useFilesProps;
@@ -306,7 +307,7 @@ export function FileTable({ accountId, chatId }: FileTableProps) {
               ) : null,
             )}
           </div>
-          {files.length === 0 && isLoading && (
+          {size === 1 && isLoading && (
             <div className="sticky left-1/2 top-0 z-10 flex h-full w-full items-center justify-center bg-accent">
               <LoaderPinwheel
                 className="h-8 w-8 animate-spin"

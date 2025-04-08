@@ -231,6 +231,7 @@ export function useFiles(accountId: string, chatId: string) {
   };
 
   return {
+    size,
     files,
     filters,
     isLoading: debounceLoading,

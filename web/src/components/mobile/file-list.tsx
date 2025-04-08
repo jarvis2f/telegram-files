@@ -10,6 +10,7 @@ import { isEqual } from "lodash";
 import FileFilters from "@/components/file-filters";
 import DraggableElement from "@/components/ui/draggable-element";
 import { useLocalStorage } from "@/hooks/use-local-storage";
+import FileNotFount from "@/components/file-not-found";
 
 interface FileListProps {
   accountId: string;
@@ -32,6 +33,7 @@ export default function FileList({ accountId, chatId }: FileListProps) {
     handleFilterChange,
     clearFilters,
     isLoading,
+    size,
     files,
     hasMore,
     handleLoadMore,
@@ -112,6 +114,15 @@ export default function FileList({ accountId, chatId }: FileListProps) {
           position: "relative",
         }}
       >
+        {size === 1 && isLoading && (
+          <div className="fixed left-0 top-0 flex h-full w-full items-center justify-center">
+            <LoaderPinwheel
+              className="h-8 w-8 animate-spin"
+              style={{ strokeWidth: "0.8px" }}
+            />
+          </div>
+        )}
+        {!isLoading && files.length === 0 && <FileNotFount />}
         {files.length !== 0 &&
           rowVirtual.getVirtualItems().map((virtualRow) => {
             const isLoaderRow = virtualRow.index > files.length - 1;

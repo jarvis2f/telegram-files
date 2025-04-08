@@ -44,7 +44,11 @@ export function MobileHeader() {
   useEffect(() => {
     const handleScroll = () => {
       const currentScrollY = window.scrollY;
-      setHidden(currentScrollY > lastScrollY); // 向下滚动时隐藏
+      if (currentScrollY === 0) {
+        setHidden(false); // 回到顶部时显示
+      } else {
+        setHidden(currentScrollY > lastScrollY); // 向下滚动时隐藏
+      }
       setLastScrollY(currentScrollY);
     };
 
