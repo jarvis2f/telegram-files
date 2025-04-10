@@ -28,6 +28,7 @@ export default function useFileSwitch({
           void handleLoadMore();
         } else {
           toast({
+            variant: "info",
             description: "No more files to load",
           });
         }

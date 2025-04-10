@@ -86,6 +86,7 @@ export default function AutoDownloadDialog() {
     {
       onSuccess: () => {
         toast({
+          variant: "success",
           title: "Auto settings updated!",
         });
         void reload();
@@ -386,6 +387,7 @@ export default function AutoDownloadDialog() {
                       !folderPathRegex.test(rule.transferRule.destination))
                   ) {
                     toast({
+                      variant: "warning",
                       title: "Invalid destination folder",
                       description:
                         "Please enter a valid destination folder path",

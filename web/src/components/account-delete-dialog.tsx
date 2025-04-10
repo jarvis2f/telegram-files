@@ -31,7 +31,7 @@ export default function AccountDeleteDialog({
   const { trigger: triggerDelete, isMutating: isDeleteMutating } =
     useSWRMutation(`/telegram/${telegramId}/delete`, POST, {
       onSuccess: () => {
-        toast({ title: "Account deleted successfully!" });
+        toast({ variant: "success", title: "Account deleted successfully!" });
         resetAccount();
         // 延迟关闭对话框
         setTimeout(() => {

@@ -86,9 +86,8 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({
         switch (payload.type) {
           case WebSocketMessageType.ERROR:
             toast({
-              title: "Error",
+              variant: "error",
               description: (payload.data as TelegramError).message,
-              variant: "destructive",
             });
             break;
           case WebSocketMessageType.FILE_DOWNLOAD:

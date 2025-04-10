@@ -62,7 +62,7 @@ export const TelegramChatProvider: React.FC<TelegramChatProviderProps> = ({
     }
     const chat = chats?.find((c) => c.id === newChatId);
     if (!chat) {
-      toast({ title: "Error", description: "Failed to switch chat" });
+      toast({ variant: "error", description: "Failed to switch chat" });
       return;
     }
     router.push(`/accounts?id=${accountId}&chatId=${newChatId}`);

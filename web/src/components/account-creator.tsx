@@ -99,7 +99,7 @@ export default function AccountCreator({
           break;
         case TelegramConstructor.STATE_READY:
           toast({
-            title: "Success",
+            variant: "success",
             description: "Account added successfully",
           });
           setTimeout(() => {

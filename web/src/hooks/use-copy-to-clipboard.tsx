@@ -11,6 +11,7 @@ export function useCopyToClipboard(): [string | null, (value: string) => void] {
           await navigator.clipboard.writeText(value);
           setState(value);
           toast({
+            variant: "success",
             title: "Successfully copied to clipboard",
             description: (
               <p className="line-clamp-1">
@@ -26,6 +27,7 @@ export function useCopyToClipboard(): [string | null, (value: string) => void] {
         oldSchoolCopy(value);
         setState(value);
         toast({
+          variant: "success",
           title: "Successfully copied to clipboard",
           description: (
             <p className="line-clamp-1">

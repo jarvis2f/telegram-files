@@ -73,6 +73,7 @@ export const TelegramAccountProvider: React.FC<
     setAccountId(newAccountId);
     if (account.status === "active") {
       toast({
+        variant: "info",
         title: "Account Changed",
         description: `Switched to ${accounts?.find((a) => a.id === newAccountId)?.name}'s account`,
       });

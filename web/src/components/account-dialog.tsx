@@ -72,7 +72,7 @@ export function AccountDialog({
                 // Only set with new account
                 setProxyName(proxyName);
                 toast({
-                  title: "Success",
+                  variant: "success",
                   description: proxyName
                     ? `Proxy is set to ${proxyName} with new account`
                     : "Proxy is disabled",

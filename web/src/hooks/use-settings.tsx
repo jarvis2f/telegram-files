@@ -52,7 +52,7 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({
       // @ts-expect-error
       await mutate((current) => ({ ...current, ...updates }), false);
     }
-    toast({ title: "Success", description: "Settings updated" });
+    toast({ variant: "success", description: "Settings updated" });
   };
 
   const setSetting = async (key: SettingKey, value: string) => {

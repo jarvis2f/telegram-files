@@ -34,7 +34,7 @@ import {
 } from "@/components/ui/tooltip";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import {mutate} from "swr";
+import { mutate } from "swr";
 
 export interface ProxysProps {
   enableSelect?: boolean;
@@ -77,7 +77,7 @@ export default function Proxys({
         onSuccess: () => {
           void mutate(`/telegrams`);
           toast({
-            title: "Success",
+            variant: "success",
             description: innerProxyName
               ? `Proxy is set to ${innerProxyName}`
               : "Proxy is disabled",
@@ -384,13 +384,13 @@ function ProxyParser({ onParsed }: { onParsed: (proxys: Proxy) => void }) {
     const proxy = parseProxyString(clipboardText);
     if (proxy) {
       toast({
-        title: "Success",
+        variant: "success",
         description: "Proxy string is parsed successfully",
       });
       onParsed(proxy);
     } else {
       toast({
-        title: "Error",
+        variant: "error",
         description: "Invalid proxy string format",
       });
     }

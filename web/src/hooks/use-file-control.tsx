@@ -38,7 +38,7 @@ export function useFileControl(file: TelegramFile) {
         }
         if (!file.uniqueId || file.uniqueId.trim() === "") {
           toast({
-            title: "Error",
+            variant: "error",
             description: "☹️Sorry, this file cannot be downloaded",
           });
           return;

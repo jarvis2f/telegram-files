@@ -4,11 +4,36 @@
 import * as React from "react";
 
 import type { ToastActionElement, ToastProps } from "@/components/ui/toast";
+import {AlertCircle, AlertTriangle, CheckCircle, Info} from "lucide-react";
 
 const TOAST_LIMIT = 1;
 const TOAST_REMOVE_DELAY = 1000000;
 
+const TOAST_VARIANTS = {
+  success: {
+    icon: CheckCircle,
+    iconColor: "text-green-500 dark:text-green-300"
+  },
+  error: {
+    icon: AlertCircle,
+    iconColor: "text-red-500 dark:text-red-300"
+  },
+  warning: {
+    icon: AlertTriangle,
+    iconColor: "text-amber-500 dark:text-amber-300"
+  },
+  info: {
+    icon: Info,
+    iconColor: "text-blue-500 dark:text-blue-300"
+  },
+  default: {
+    icon: null,
+    iconColor: "text-gray-500 dark:text-gray-300"
+  }
+};
+
 type ToasterToast = ToastProps & {
+  variant?: keyof typeof TOAST_VARIANTS;
   id: string;
   title?: React.ReactNode;
   description?: React.ReactNode;
@@ -188,4 +213,4 @@ function useToast() {
   };
 }
 
-export { useToast, toast };
+export { TOAST_VARIANTS, useToast, toast };
