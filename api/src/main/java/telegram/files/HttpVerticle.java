@@ -492,7 +492,7 @@ public class HttpVerticle extends AbstractVerticle {
         }
         TelegramVerticles.get(telegramId)
                 .ifPresentOrElse(telegramVerticle ->
-                                telegramVerticle.client.execute(new TdApi.TestNetwork())
+                                telegramVerticle.client.execute(new TdApi.TestNetwork(), 10000, vertx)
                                         .onComplete(r ->
                                                 ctx.json(JsonObject.of("success", r.succeeded()))),
                         () -> ctx.fail(404)

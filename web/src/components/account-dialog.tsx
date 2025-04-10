@@ -1,6 +1,6 @@
 "use client";
 
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -11,6 +11,7 @@ import {
 import { useTelegramAccount } from "@/hooks/use-telegram-account";
 import ProxysDialog from "@/components/proxys-dialog";
 import AccountCreator from "@/components/account-creator";
+import { toast } from "@/hooks/use-toast";
 
 export function AccountDialog({
   children,
@@ -23,6 +24,12 @@ export function AccountDialog({
   const { account } = useTelegramAccount();
   const [newAccountId, setNewAccountId] = useState<string | undefined>();
   const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    if (account) {
+      setProxyName(account.proxy);
+    }
+  }, [account]);
 
   return (
     <Dialog
@@ -61,7 +68,16 @@ export function AccountDialog({
             <ProxysDialog
               telegramId={account ? account.id : newAccountId}
               proxyName={proxyName}
-              onProxyNameChange={setProxyName}
+              onProxyNameChange={(proxyName) => {
+                // Only set with new account
+                setProxyName(proxyName);
+                toast({
+                  title: "Success",
+                  description: proxyName
+                    ? `Proxy is set to ${proxyName} with new account`
+                    : "Proxy is disabled",
+                });
+              }}
               enableSelect={true}
               className="mt-3"
             />

@@ -11,7 +11,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import {
-  Dialog, DialogClose,
+  Dialog,
+  DialogClose,
   DialogContent,
   DialogFooter,
   DialogHeader,
@@ -19,7 +20,6 @@ import {
 } from "@/components/ui/dialog";
 import { Copy, Edit2, Plus, Trash2 } from "lucide-react";
 import { type Proxy } from "@/lib/types";
-import { BorderBeam } from "@/components/ui/border-beam";
 import { cn, parseProxyString } from "@/lib/utils";
 import useSWRMutation from "swr/mutation";
 import { request } from "@/lib/api";
@@ -32,7 +32,9 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import {Badge} from "@/components/ui/badge";
+import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import {mutate} from "swr";
 
 export interface ProxysProps {
   enableSelect?: boolean;
@@ -48,7 +50,7 @@ export default function Proxys({
   onProxyNameChange,
 }: ProxysProps) {
   const { settings, updateSettings } = useSettings();
-  const [innerProxyName, setInnerProxyName] = useState("");
+  const [innerProxyName, setInnerProxyName] = useState(proxyName ?? "");
   const [isDialogOpen, setDialogOpen] = useState(false);
   const [editingProxy, setEditingProxy] = useState<Proxy | null>(null);
   const [formState, setFormState] = useState<Proxy>({
@@ -73,6 +75,7 @@ export default function Proxys({
       },
       {
         onSuccess: () => {
+          void mutate(`/telegrams`);
           toast({
             title: "Success",
             description: innerProxyName
@@ -178,8 +181,6 @@ export default function Proxys({
             key={proxy.name}
             className={cn("relative hover:shadow-lg", {
               "cursor-pointer": enableSelect,
-              "border-2 border-primary":
-                enableSelect && proxy.name === innerProxyName,
             })}
             onClick={() => {
               if (innerProxyName === proxy.name) {
@@ -189,19 +190,18 @@ export default function Proxys({
               }
             }}
           >
-            {proxyName && proxy.name === proxyName && (
-              <BorderBeam size={100} duration={12} delay={9} />
-            )}
             <CardHeader className="p-3">
-              <CardTitle className="font-semibold">
-                {proxy.name}
+              <CardTitle className="flex items-center justify-between">
+                <span className="font-semibold">{proxy.name}</span>
+                <Checkbox
+                  className="h-4 w-4"
+                  checked={enableSelect && innerProxyName === proxy.name}
+                />
               </CardTitle>
             </CardHeader>
             <CardContent className="p-0 px-3">
               <div className="flex items-baseline space-x-2">
-                <Badge variant="outline">
-                  {proxy.type.toUpperCase()}
-                </Badge>
+                <Badge variant="outline">{proxy.type.toUpperCase()}</Badge>
                 <p className="text-sm text-gray-400">{`${proxy.server}:${proxy.port}`}</p>
               </div>
             </CardContent>
@@ -227,9 +227,13 @@ export default function Proxys({
         ))}
       </div>
       {enableSelect && (
-        <div className="absolute bottom-0 flex w-full items-center justify-end gap-2 flex-col-reverse sm:flex-row">
+        <div className="absolute bottom-0 flex w-full flex-col-reverse items-center justify-end gap-2 sm:flex-row">
           <DialogClose asChild>
-            <Button className="w-full md:w-auto" variant="outline" type="button">
+            <Button
+              className="w-full md:w-auto"
+              variant="outline"
+              type="button"
+            >
               Cancel
             </Button>
           </DialogClose>

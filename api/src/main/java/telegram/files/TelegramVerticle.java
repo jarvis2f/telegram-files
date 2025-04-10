@@ -535,15 +535,14 @@ public class TelegramVerticle extends AbstractVerticle {
                             : client.execute(new TdApi.AddProxy(proxy.server, proxy.port, true, proxyType));
                 })
                 .compose(r -> {
+                    this.proxyName = proxyName;
                     if (this.telegramRecord != null) {
-                        return DataVerticle.telegramRepository.update(this.telegramRecord.withProxy(proxyName)).map(r);
+                        return DataVerticle.telegramRepository.update(this.telegramRecord.withProxy(proxyName))
+                                .onSuccess(telegramRecord -> this.telegramRecord = telegramRecord)
+                                .map(r);
                     } else {
                         return Future.succeededFuture(r);
                     }
-                })
-                .compose(r -> {
-                    this.proxyName = proxyName;
-                    return Future.succeededFuture(r);
                 });
     }
 
@@ -556,12 +555,17 @@ public class TelegramVerticle extends AbstractVerticle {
         if (StrUtil.isBlank(toggleProxyName) && StrUtil.isNotBlank(this.proxyName)) {
             // disable proxy
             return client.execute(new TdApi.DisableProxy())
-                    .compose(r -> DataVerticle.telegramRepository.update(this.telegramRecord.withProxy(null)))
-                    .andThen(r -> {
+                    .compose(r -> {
                         this.proxyName = null;
-                        this.telegramRecord = r.result();
-                    })
-                    .mapEmpty();
+                        if (this.telegramRecord != null) {
+                            return DataVerticle.telegramRepository.update(this.telegramRecord.withProxy(null))
+                                    .onSuccess(telegramRecord -> {
+                                        this.telegramRecord = telegramRecord;
+                                    })
+                                    .mapEmpty();
+                        }
+                        return Future.succeededFuture();
+                    });
         } else {
             return this.enableProxy(toggleProxyName);
         }

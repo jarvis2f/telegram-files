@@ -4,12 +4,15 @@ import cn.hutool.core.util.TypeUtil;
 import cn.hutool.log.Log;
 import cn.hutool.log.LogFactory;
 import io.vertx.core.Future;
+import io.vertx.core.Promise;
+import io.vertx.core.Vertx;
 import org.drinkless.tdlib.Client;
 import org.drinkless.tdlib.TdApi;
 
 import java.io.IOError;
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.concurrent.TimeoutException;
 
 public class TelegramClient {
     private static final Log log = LogFactory.get();
@@ -54,6 +57,30 @@ public class TelegramClient {
                 promise.complete((R) object);
             }
         }));
+    }
+
+    public <R extends TdApi.Object> Future<R> execute(TdApi.Function<R> method, long timeoutMs, Vertx vertx) {
+        Promise<R> promise = Promise.promise();
+
+        long timerId = vertx.setTimer(timeoutMs, id -> {
+            if (!promise.future().isComplete()) {
+                promise.fail(new TimeoutException("Operation timed out after " + timeoutMs + " ms"));
+            }
+        });
+
+        execute(method).onComplete(ar -> {
+            vertx.cancelTimer(timerId);
+            if (promise.future().isComplete()) {
+                return;
+            }
+            if (ar.succeeded()) {
+                promise.complete(ar.result());
+            } else {
+                promise.fail(ar.cause());
+            }
+        });
+
+        return promise.future();
     }
 
     public Client getNativeClient() {
