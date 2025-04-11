@@ -17,6 +17,8 @@ import TimeRangeSelector from "@/components/ui/time-range-selector";
 import { Switch } from "@/components/ui/switch";
 import { type SettingKey } from "@/lib/types";
 import { Slider } from "@/components/ui/slider";
+import { TagsInput } from "@/components/ui/tags-input";
+import { split } from "lodash";
 
 export default function SettingsForm() {
   const { settings, setSetting, updateSettings } = useSettings();
@@ -50,7 +52,7 @@ export default function SettingsForm() {
       onSubmit={handleSave}
       className="flex h-full flex-col overflow-hidden"
     >
-      <div className="flex flex-col space-y-4 overflow-y-scroll">
+      <div className="no-scrollbar flex flex-col space-y-4 overflow-y-scroll">
         <p className="rounded-md bg-gray-50 p-2 text-sm text-muted-foreground shadow dark:bg-gray-700">
           <Bell className="mr-2 inline-block h-4 w-4" />
           These settings will be applied to all accounts.
@@ -212,6 +214,20 @@ export default function SettingsForm() {
               If you don&#39;t want to set a time range, you can set the start
               and end to 00:00.
             </p>
+          </div>
+        </div>
+        <div className="flex w-full flex-col space-y-4 rounded-md border p-4 shadow">
+          <Label>Tags Settings</Label>
+          <div className="flex flex-col space-y-4">
+            <TagsInput
+              maxTags={20}
+              value={
+                (settings?.tags?.length ?? 0 > 0)
+                  ? split(settings?.tags, ",")
+                  : []
+              }
+              onChange={(tags) => void setSetting("tags", tags.join(","))}
+            />
           </div>
         </div>
       </div>

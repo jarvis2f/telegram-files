@@ -133,7 +133,6 @@ export default function FilePreview({
       <SpoiledWrapper hasSensitiveContent={file.hasSensitiveContent}>
         <Image
           src={src}
-          placeholder="blur"
           unoptimized={true}
           blurDataURL={`data:image/jpeg;base64,${file.thumbnail}`}
           alt={file.fileName ?? "File Image"}

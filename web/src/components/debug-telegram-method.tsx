@@ -127,7 +127,7 @@ export default function DebugTelegramMethod() {
   const isExecuteDisabled = !method || !!error || isMethodExecuting;
 
   return (
-    <Card className="mx-auto h-full w-full overflow-y-scroll">
+    <Card className="no-scrollbar mx-auto h-full w-full overflow-y-scroll">
       <CardHeader>
         <CardTitle>Telegram API Debug</CardTitle>
       </CardHeader>

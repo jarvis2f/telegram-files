@@ -11,6 +11,7 @@ import FileFilters from "@/components/file-filters";
 import DraggableElement from "@/components/ui/draggable-element";
 import { useLocalStorage } from "@/hooks/use-local-storage";
 import FileNotFount from "@/components/file-not-found";
+import { MobileFileTagsDrawer } from "@/components/file-tags";
 
 interface FileListProps {
   accountId: string;
@@ -22,7 +23,11 @@ export default function FileList({ accountId, chatId }: FileListProps) {
   const [currentViewFile, setCurrentViewFile] = useState<
     TelegramFile | undefined
   >();
+  const [currentTagsFile, setCurrentTagsFile] = useState<
+    TelegramFile | undefined
+  >();
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [isTagsDrawerOpen, setIsTagsDrawerOpen] = useState(false);
   const [layout] = useLocalStorage<"detailed" | "gallery">(
     "telegramFileLayout",
     "detailed",
@@ -30,6 +35,7 @@ export default function FileList({ accountId, chatId }: FileListProps) {
 
   const {
     filters,
+    updateField,
     handleFilterChange,
     clearFilters,
     isLoading,
@@ -107,6 +113,18 @@ export default function FileList({ accountId, chatId }: FileListProps) {
           {...useFilesProps}
         />
       )}
+      {currentTagsFile && (
+        <MobileFileTagsDrawer
+          file={currentTagsFile}
+          onTagsUpdate={(tags) => {
+            void updateField(currentTagsFile.uniqueId, {
+              tags: tags.join(","),
+            });
+          }}
+          open={isTagsDrawerOpen}
+          onOpenChange={setIsTagsDrawerOpen}
+        />
+      )}
       <div
         style={{
           height: `${rowVirtual.getTotalSize()}px`,
@@ -162,6 +180,10 @@ export default function FileList({ accountId, chatId }: FileListProps) {
                 onFileClick={() => {
                   setCurrentViewFile(file);
                   setIsDrawerOpen(true);
+                }}
+                onFileTagsClick={() => {
+                  setCurrentTagsFile(file);
+                  setIsTagsDrawerOpen(true);
                 }}
                 layout={layout}
                 {...useFilesProps}

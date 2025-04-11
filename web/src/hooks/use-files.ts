@@ -17,6 +17,7 @@ const DEFAULT_FILTERS: FileFilter = {
   downloadStatus: undefined,
   transferStatus: undefined,
   offline: false,
+  tags: [],
 };
 
 type FileResponse = {
@@ -58,6 +59,9 @@ export function useFiles(accountId: string, chatId: string) {
       ...(filters.downloadStatus && { downloadStatus: filters.downloadStatus }),
       ...(filters.transferStatus && { transferStatus: filters.transferStatus }),
       ...(filters.offline && { offline: "true" }),
+      ...(filters.tags.length > 0 && {
+        tags: filters.tags.join(","),
+      }),
       ...(filters.dateType && { dateType: filters.dateType }),
       ...(filters.dateRange && { dateRange: filters.dateRange.join(",") }),
       ...(filters.sizeRange && { sizeRange: filters.sizeRange.join(",") }),
@@ -96,6 +100,7 @@ export function useFiles(accountId: string, chatId: string) {
     size,
     setSize,
     error,
+    mutate,
   } = useSWRInfinite<FileResponse, Error>(getKey, {
     revalidateFirstPage: false,
     keepPreviousData: true,
@@ -230,11 +235,31 @@ export function useFiles(accountId: string, chatId: string) {
     await setSize(1);
   };
 
+  const updateField = async (
+    uniqueId: string,
+    patch: Partial<TelegramFile>,
+  ) => {
+    await mutate((pages) => {
+      if (!pages) return [];
+
+      return pages.map((page) => {
+        const newFiles = page.files.map((file) =>
+          file.uniqueId === uniqueId ? { ...file, ...patch } : file,
+        );
+        return {
+          ...page,
+          files: newFiles,
+        };
+      });
+    }, false);
+  };
+
   return {
     size,
     files,
     filters,
     isLoading: debounceLoading,
+    updateField,
     handleFilterChange,
     clearFilters,
     handleLoadMore,

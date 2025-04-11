@@ -166,6 +166,7 @@ public class HttpVerticle extends AbstractVerticle {
         router.get("/files/count").handler(this::handleFilesCount);
         router.get("/files").handler(this::handleFiles);
         router.post("/files/start-download-multiple").handler(this::handleFileStartDownloadMultiple);
+        router.post("/file/:uniqueId/update-tags").handler(this::handleFileTagsUpdate);
 
         router.route()
                 .failureHandler(ctx -> {
@@ -675,6 +676,20 @@ public class HttpVerticle extends AbstractVerticle {
 
         FileRecordRetriever.getFiles(0, filter)
                 .onSuccess(ctx::json)
+                .onFailure(ctx::fail);
+    }
+
+    private void handleFileTagsUpdate(RoutingContext ctx) {
+        String uniqueId = ctx.pathParam("uniqueId");
+        if (StrUtil.isBlank(uniqueId)) {
+            ctx.fail(400);
+            return;
+        }
+
+        JsonObject params = ctx.body().asJsonObject();
+        String tags = params.getString("tags");
+        DataVerticle.fileRepository.updateTags(uniqueId, tags)
+                .onSuccess(r -> ctx.end())
                 .onFailure(ctx::fail);
     }
 

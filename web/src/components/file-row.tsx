@@ -11,6 +11,7 @@ import { type Column } from "./table-column-filter";
 import { useFileSpeed } from "@/hooks/use-file-speed";
 import { Progress } from "@/components/ui/progress";
 import FileImage from "./file-image";
+import FileTags from "@/components/file-tags";
 
 type FileRowProps = {
   index: number;
@@ -19,6 +20,10 @@ type FileRowProps = {
   ref?: React.Ref<HTMLTableRowElement>;
   file: TelegramFile;
   checked: boolean;
+  updateField: (
+    uniqueId: string,
+    patch: Partial<TelegramFile>,
+  ) => Promise<void>;
   properties: {
     rowHeight: RowHeight;
     dynamicClass: {
@@ -38,6 +43,7 @@ export default function FileRow({
   ref,
   file,
   checked,
+  updateField,
   properties,
   onCheckedChange,
   onFileClick,
@@ -65,6 +71,14 @@ export default function FileRow({
     ),
     size: <span className="text-sm">{prettyBytes(file.size)}</span>,
     status: <FileStatus file={file} />,
+    tags: (
+      <FileTags
+        file={file}
+        onTagsUpdate={(tags) =>
+          updateField(file.uniqueId, { tags: tags.join(",") })
+        }
+      />
+    ),
     extra: <FileExtra file={file} rowHeight={rowHeight} />,
     actions: (
       <FileControl

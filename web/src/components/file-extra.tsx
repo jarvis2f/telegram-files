@@ -61,6 +61,7 @@ function FileCaption({ file, rowHeight, ellipsis }: FileExtraProps) {
             <p
               className={cn(
                 (rowHeight !== "l" || ellipsis) && "line-clamp-1",
+                rowHeight === "l" && "line-clamp-6",
                 "overflow-hidden text-wrap px-1 text-start text-sm",
               )}
             >
@@ -70,7 +71,7 @@ function FileCaption({ file, rowHeight, ellipsis }: FileExtraProps) {
         </TooltipTrigger>
         <TooltipContent>
           <p
-            className="max-w-80 text-wrap rounded p-2"
+            className="no-scrollbar max-h-96 max-w-80 overflow-auto text-wrap rounded p-2"
             dangerouslySetInnerHTML={{
               __html: file.caption.replaceAll("\n", "<br />"),
             }}
@@ -81,7 +82,7 @@ function FileCaption({ file, rowHeight, ellipsis }: FileExtraProps) {
   );
 }
 
-function FilePath({ file, ellipsis }: FileExtraProps) {
+function FilePath({ file, ellipsis, rowHeight }: FileExtraProps) {
   const [, copyToClipboard] = useCopyToClipboard();
   const isMobile = useIsMobile();
 
@@ -95,7 +96,8 @@ function FilePath({ file, ellipsis }: FileExtraProps) {
           <FileCheck className="h-4 w-4 flex-shrink-0" />
           <p
             className={cn(
-              "group cursor-pointer overflow-hidden text-nowrap rounded px-1 hover:bg-gray-100 dark:hover:bg-gray-800",
+              "group cursor-pointer overflow-hidden text-nowrap rounded px-1 text-left hover:bg-gray-100 dark:hover:bg-gray-800",
+              rowHeight === "l" && "text-wrap",
               ellipsis && "line-clamp-1",
               isMobile && "px-0",
             )}

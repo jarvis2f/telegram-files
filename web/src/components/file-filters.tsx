@@ -40,12 +40,14 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { RangeSlider } from "@/components/ui/slider";
-import { cn } from "@/lib/utils";
+import { cn, split } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import FileTypeFilter from "@/components/file-type-filter";
 import FileStatusFilter from "@/components/file-status-filter";
 import { Switch } from "@/components/ui/switch";
 import useIsMobile from "@/hooks/use-is-mobile";
+import { TagsSelector } from "@/components/ui/tags-selector";
+import { useSettings } from "@/hooks/use-settings";
 
 const SearchFilter = ({
   search,
@@ -81,6 +83,26 @@ const SearchFilter = ({
           </Button>
         )}
       </div>
+    </div>
+  );
+};
+
+interface TagsFilterProps {
+  tags: string[];
+  onChange: (tags: string[]) => void;
+}
+
+const TagsFilter = ({ tags, onChange }: TagsFilterProps) => {
+  const { settings } = useSettings();
+
+  return (
+    <div className="space-y-2">
+      <Label>Tags</Label>
+      <TagsSelector
+        value={tags}
+        onChange={onChange}
+        tags={split(",", settings?.tags)}
+      />
     </div>
   );
 };
@@ -385,6 +407,10 @@ export default function FileFilters({
     }));
   };
 
+  const handleTagsChange = (tags: string[]) => {
+    setLocalFilters((prev) => ({ ...prev, tags }));
+  };
+
   const handleDateChange = (
     dateType: "sent" | "downloaded",
     dateRange: [string, string],
@@ -441,7 +467,7 @@ export default function FileFilters({
         <DrawerPrimitive.Content
           className={cn(
             isMobile
-              ? "fixed inset-x-0 bottom-0 z-50 mt-24 flex h-auto flex-col rounded-t-[10px] border bg-background"
+              ? "fixed inset-x-0 bottom-0 z-50 mt-24 flex h-auto max-h-screen flex-col rounded-t-[10px] border bg-background"
               : "fixed bottom-2 left-2 top-2 z-50 flex w-[380px] outline-none",
           )}
           style={
@@ -450,8 +476,11 @@ export default function FileFilters({
               : ({ "--initial-transform": "calc(100% + 8px)" } as CSSProperties)
           }
         >
-          <div className="flex h-full w-full grow flex-col rounded-[16px] bg-white shadow-lg dark:bg-zinc-900">
-            <div className="flex-1 p-6">
+          {isMobile && (
+            <div className="mx-auto mt-4 h-2 w-[100px] rounded-full bg-muted" />
+          )}
+          <div className="no-scrollbar flex h-full w-full grow flex-col overflow-auto rounded-[16px] bg-background shadow-lg">
+            <div className="flex-1 p-6 pb-[130px]">
               <DrawerTitle>
                 <div className="flex items-center justify-between">
                   <span className="text-xl font-semibold text-zinc-900 dark:text-zinc-100">
@@ -523,6 +552,11 @@ export default function FileFilters({
                       onChange={handleStatusChange}
                     />
 
+                    <TagsFilter
+                      tags={localFilters.tags}
+                      onChange={handleTagsChange}
+                    />
+
                     <DateFilter
                       dateType={localFilters.dateType}
                       dateRange={localFilters.dateRange}
@@ -545,7 +579,7 @@ export default function FileFilters({
               </div>
             </div>
 
-            <DrawerFooter>
+            <DrawerFooter className="fixed bottom-0 left-0 right-0 bg-background">
               <Button onClick={handleApply}>Apply Filters</Button>
               <Button variant="outline" onClick={handleClear}>
                 Clear Filters

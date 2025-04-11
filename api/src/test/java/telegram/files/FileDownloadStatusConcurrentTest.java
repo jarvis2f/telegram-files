@@ -26,7 +26,7 @@ public class FileDownloadStatusConcurrentTest {
 
     static FileRecord fileRecord = new FileRecord(
             1, "unique_id", 1, 1, 1, 1, 1, false, 1, 0, "type", "mime_type", "file_name", "thumbnail", "thumbnailUniqueId", "caption", null, null,
-            FileRecord.DownloadStatus.idle.name(), FileRecord.TransferStatus.idle.name(), 0, null
+            FileRecord.DownloadStatus.idle.name(), FileRecord.TransferStatus.idle.name(), 0, null, null
     );
 
     @BeforeAll

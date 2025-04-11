@@ -61,6 +61,8 @@ export type TelegramFile = {
   originalDeleted: boolean;
   transferStatus?: TransferStatus;
   extra?: PhotoExtra | VideoExtra;
+  tags?: string;
+  loaded: boolean;
 
   prev?: TelegramFile;
   next?: TelegramFile;
@@ -117,6 +119,7 @@ export type FileFilter = {
   downloadStatus?: DownloadStatus;
   transferStatus?: TransferStatus;
   offline: boolean;
+  tags: string[];
   dateType?: "sent" | "downloaded";
   dateRange?: [string, string];
   sizeRange?: [number, number];
@@ -138,6 +141,7 @@ export const SettingKeys = [
   "autoDownloadTimeLimited",
   "proxys",
   "avgSpeedInterval",
+  "tags",
 ] as const;
 
 export type SettingKey = (typeof SettingKeys)[number];

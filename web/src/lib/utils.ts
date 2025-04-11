@@ -34,3 +34,10 @@ export function parseProxyString(proxyString: string): Proxy | null {
     type: type as "http" | "socks5",
   };
 }
+
+export function split(separator: string, str?: string): string[] {
+  if (!str || str.length === 0) {
+    return [];
+  }
+  return str.split(separator).map((item) => item.trim());
+}

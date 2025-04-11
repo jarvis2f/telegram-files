@@ -99,7 +99,7 @@ export default function FileStatus({
             <TooltipWrapper content="Download Status">
               <Badge
                 className={cn(
-                  "text-xs hover:bg-gray-200",
+                  "h-6 text-xs hover:bg-gray-200",
                   DOWNLOAD_STATUS[file.downloadStatus].className,
                   isMobile && "shadow-none",
                 )}
@@ -122,7 +122,7 @@ export default function FileStatus({
               <TooltipWrapper content="Transfer Status">
                 <Badge
                   className={cn(
-                    "text-xs hover:bg-gray-200",
+                    "h-6 text-xs hover:bg-gray-200",
                     TRANSFER_STATUS[file.transferStatus].className,
                   )}
                 >

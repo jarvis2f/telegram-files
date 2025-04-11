@@ -47,7 +47,7 @@ export const SettingsDialog: React.FC = () => {
           defaultValue="general"
           className="mt-3 flex h-full flex-col overflow-hidden"
         >
-          <TabsList className="justify-start overflow-auto min-h-9">
+          <TabsList className="min-h-9 justify-start overflow-auto">
             <TabsTrigger value="general">General</TabsTrigger>
             <TabsTrigger value="statistics">Statistics</TabsTrigger>
             <TabsTrigger value="proxys">Proxys</TabsTrigger>
@@ -58,7 +58,7 @@ export const SettingsDialog: React.FC = () => {
             <SettingsForm />
           </TabsContent>
           <TabsContent value="statistics" className="h-full overflow-hidden">
-            <div className="flex h-full flex-col overflow-y-scroll">
+            <div className="no-scrollbar flex h-full flex-col overflow-y-scroll">
               {accountId ? (
                 <Tabs defaultValue="panel">
                   <TabsList className="bg-none!">
@@ -92,7 +92,7 @@ export const SettingsDialog: React.FC = () => {
             </div>
           </TabsContent>
           <TabsContent value="proxys" className="h-full overflow-hidden">
-            <div className="flex h-full flex-col overflow-y-scroll">
+            <div className="no-scrollbar flex h-full flex-col overflow-y-scroll">
               <Proxys
                 telegramId={accountId}
                 proxyName={account?.proxy}

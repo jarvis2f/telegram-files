@@ -8,6 +8,7 @@ import FileControl from "@/components/file-control";
 import React from "react";
 import FileExtra from "@/components/file-extra";
 import FileImage from "../file-image";
+import { MobileFileTags } from "@/components/file-tags";
 
 type FileCardProps = {
   index: number;
@@ -16,6 +17,7 @@ type FileCardProps = {
   ref?: React.Ref<HTMLDivElement>;
   file: TelegramFile;
   onFileClick: () => void;
+  onFileTagsClick?: () => void;
   layout: "detailed" | "gallery";
 };
 
@@ -26,6 +28,7 @@ export function FileCard({
   ref,
   file,
   onFileClick,
+  onFileTagsClick,
   layout,
 }: FileCardProps) {
   const { downloadProgress } = useFileSpeed(file);
@@ -73,7 +76,15 @@ export function FileCard({
                   <span className="text-xs text-muted-foreground">
                     {prettyBytes(file.size)} • {file.type}
                   </span>
-                  <FileStatus file={file} className="justify-start" />
+                  <div className="flex items-center gap-1">
+                    <FileStatus file={file} className="justify-start" />
+                    {file.loaded && (
+                      <MobileFileTags
+                        tags={file.tags}
+                        onClick={onFileTagsClick}
+                      />
+                    )}
+                  </div>
                 </div>
 
                 <div

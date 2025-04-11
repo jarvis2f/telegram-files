@@ -45,5 +45,7 @@ public interface FileRepository {
 
     Future<Integer> updateCaptionByMediaAlbumId(long mediaAlbumId, String caption);
 
+    Future<Void> updateTags(String uniqueId, String tags);
+
     Future<Void> deleteByUniqueId(String uniqueId);
 }

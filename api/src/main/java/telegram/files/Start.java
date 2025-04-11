@@ -13,7 +13,7 @@ public class Start {
 
     private static final Log log = LogFactory.get();
 
-    public static final String VERSION = "0.2.0";
+    public static final String VERSION = "0.2.1";
 
     private static final CountDownLatch shutdownLatch = new CountDownLatch(1);
 

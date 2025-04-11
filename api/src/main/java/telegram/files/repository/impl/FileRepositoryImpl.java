@@ -83,6 +83,7 @@ public class FileRepositoryImpl extends AbstractSqlRepository implements FileRep
         String type = filter.get("type");
         String downloadStatus = filter.get("downloadStatus");
         String transferStatus = filter.get("transferStatus");
+        List<String> tags = StrUtil.split(filter.get("tags"), ",");
         String dateType = filter.get("dateType");
         String dateRange = filter.get("dateRange");
         String sizeRange = filter.get("sizeRange");
@@ -119,6 +120,13 @@ public class FileRepositoryImpl extends AbstractSqlRepository implements FileRep
         if (StrUtil.isNotBlank(transferStatus)) {
             whereClause += " AND transfer_status = #{transferStatus}";
             params.put("transferStatus", transferStatus);
+        }
+        if (CollUtil.isNotEmpty(tags)) {
+            String tagClause = tags.stream()
+                    .filter(StrUtil::isNotBlank)
+                    .map(tag -> "tags LIKE '%%" + tag + "%%'")
+                    .collect(Collectors.joining(" OR "));
+            whereClause += " AND (%s)".formatted(tagClause);
         }
         if (StrUtil.isNotBlank(dateType) && StrUtil.isNotBlank(dateRange)) {
             String[] dates = dateRange.split(",");
@@ -601,6 +609,20 @@ public class FileRepositoryImpl extends AbstractSqlRepository implements FileRep
                     )
                     .map(SqlResult::rowCount);
         });
+    }
+
+    @Override
+    public Future<Void> updateTags(String uniqueId, String tags) {
+        if (StrUtil.isBlank(uniqueId)) {
+            return Future.succeededFuture();
+        }
+        return SqlTemplate
+                .forUpdate(sqlClient, """
+                        UPDATE file_record SET tags = #{tags} WHERE unique_id = #{uniqueId}
+                        """)
+                .execute(Map.of("uniqueId", uniqueId, "tags", tags))
+                .onFailure(err -> log.error("Failed to update file record: %s".formatted(err.getMessage())))
+                .mapEmpty();
     }
 
     @Override

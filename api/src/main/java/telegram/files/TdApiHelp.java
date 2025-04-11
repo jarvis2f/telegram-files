@@ -280,6 +280,7 @@ public class TdApiHelp {
                     downloadStatus == null ? "idle" : downloadStatus.name(),
                     "idle",
                     System.currentTimeMillis(),
+                    null,
                     null
             );
         }
@@ -326,6 +327,7 @@ public class TdApiHelp {
                     "idle",
                     "idle",
                     System.currentTimeMillis(),
+                    null,
                     null
             );
         }
@@ -385,6 +387,7 @@ public class TdApiHelp {
                     "idle",
                     "idle",
                     System.currentTimeMillis(),
+                    null,
                     null
             );
         }
@@ -450,6 +453,7 @@ public class TdApiHelp {
                     "idle",
                     "idle",
                     System.currentTimeMillis(),
+                    null,
                     null
             );
         }
@@ -510,6 +514,7 @@ public class TdApiHelp {
                     "idle",
                     "idle",
                     System.currentTimeMillis(),
+                    null,
                     null
             );
         }

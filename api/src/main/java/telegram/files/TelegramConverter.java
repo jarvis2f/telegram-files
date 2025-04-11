@@ -129,7 +129,8 @@ public class TelegramConverter {
                                         TdApi.Message message) {
         TdApiHelp.FileHandler<? extends TdApi.MessageContent> fileHandler = TdApiHelp.getFileHandler(message)
                 .orElse(null);
-        if (fileRecord == null && fileHandler == null) {
+        boolean loaded = fileRecord != null;
+        if (!loaded && fileHandler == null) {
             return null;
         }
 
@@ -151,6 +152,7 @@ public class TelegramConverter {
         }
 
         JsonObject fileObject = JsonObject.mapFrom(fileRecord);
+        fileObject.put("loaded", loaded);
         fileObject.put("formatDate", DateUtil.date(fileObject.getLong("date") * 1000).toString());
         fileObject.put("extra", extra);
         fileObject.put("originalDeleted", message == null);

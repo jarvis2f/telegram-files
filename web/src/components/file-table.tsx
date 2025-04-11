@@ -44,10 +44,16 @@ const COLUMNS: Column[] = [
     className: "w-32 text-center",
   },
   {
+    id: "tags",
+    label: "Tags",
+    isVisible: true,
+    className: "w-32",
+  },
+  {
     id: "extra",
     label: "Extra",
     isVisible: true,
-    className: "flex-1 max-w-44 lg:max-w-none",
+    className: "flex-1 max-w-44 overflow-hidden lg:max-w-none",
   },
   {
     id: "actions",
@@ -73,6 +79,7 @@ export function FileTable({ accountId, chatId }: FileTableProps) {
   const useFilesProps = useFiles(accountId, chatId);
   const {
     filters,
+    updateField,
     handleFilterChange,
     clearFilters,
     isLoading,
@@ -335,6 +342,7 @@ export function FileTable({ accountId, chatId }: FileTableProps) {
                       }}
                       ref={rowVirtual.measureElement}
                       file={file}
+                      updateField={updateField}
                       checked={selectedFiles.has(file.id)}
                       onCheckedChange={() => handleSelectFile(file.id)}
                       onFileClick={() => {

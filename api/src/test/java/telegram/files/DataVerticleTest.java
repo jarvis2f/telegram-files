@@ -138,7 +138,7 @@ public class DataVerticleTest {
     @DisplayName("Test Get file record by primary key")
     void getFileRecordByPrimaryKeyTest(Vertx vertx, VertxTestContext testContext) {
         FileRecord fileRecord = new FileRecord(
-                1, "unique_id", 1, 1, 1, 1, 1, false, 1, 0, "type", "mime_type", "file_name", "thumbnail", "thumbnailUniqueId", "caption", "extra", "local_path", "download_status", "transfer_status", 0, null
+                1, "unique_id", 1, 1, 1, 1, 1, false, 1, 0, "type", "mime_type", "file_name", "thumbnail", "thumbnailUniqueId", "caption", "extra", "local_path", "download_status", "transfer_status", 0, null, null
         );
         DataVerticle.fileRepository.create(fileRecord)
                 .compose(r -> DataVerticle.fileRepository.getByPrimaryKey(r.id(), r.uniqueId()))
@@ -152,7 +152,7 @@ public class DataVerticleTest {
     @DisplayName("Test update file download status")
     void updateFileDownloadStatusTest(Vertx vertx, VertxTestContext testContext) {
         FileRecord fileRecord = new FileRecord(
-                1, "unique_id", 1, 1, 1, 1, 1, false, 1, 0, "type", "mime_type", "file_name", "thumbnail", "thumbnailUniqueId", "caption", "extra", null, FileRecord.DownloadStatus.idle.name(), FileRecord.TransferStatus.idle.name(), 0, null
+                1, "unique_id", 1, 1, 1, 1, 1, false, 1, 0, "type", "mime_type", "file_name", "thumbnail", "thumbnailUniqueId", "caption", "extra", null, FileRecord.DownloadStatus.idle.name(), FileRecord.TransferStatus.idle.name(), 0, null, null
         );
         String updateLocalPath = "local_path";
         Long completionDate = 1L;
@@ -179,7 +179,7 @@ public class DataVerticleTest {
     @DisplayName("Test update file transfer status")
     void updateFileTransferStatusTest(Vertx vertx, VertxTestContext testContext) {
         FileRecord fileRecord = new FileRecord(
-                1, "unique_id", 1, 1, 1, 1, 1, false, 1, 0, "type", "mime_type", "file_name", "thumbnail", "thumbnailUniqueId", "caption", "extra", null, FileRecord.DownloadStatus.idle.name(), FileRecord.TransferStatus.idle.name(), 0, null
+                1, "unique_id", 1, 1, 1, 1, 1, false, 1, 0, "type", "mime_type", "file_name", "thumbnail", "thumbnailUniqueId", "caption", "extra", null, FileRecord.DownloadStatus.idle.name(), FileRecord.TransferStatus.idle.name(), 0, null, null
         );
         String updateLocalPath = "local_path";
         DataVerticle.fileRepository.create(fileRecord)
