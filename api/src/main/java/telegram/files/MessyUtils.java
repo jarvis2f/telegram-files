@@ -58,8 +58,18 @@ public class MessyUtils {
             }
         });
 
-        String md5File1 = md5Task1.join();
-        String md5File2 = md5Task2.join();
+        String md5File1 = null;
+        String md5File2 = null;
+        try {
+            md5File1 = md5Task1.join();
+            md5File2 = md5Task2.join();
+        } catch (Exception ignore) {
+            return false;
+        }
+
+        if (md5File1 == null || md5File2 == null) {
+            return false;
+        }
 
         return md5File1.equals(md5File2);
     }

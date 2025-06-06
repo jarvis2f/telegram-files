@@ -72,6 +72,13 @@ class MessyUtilsTest {
         assertFalse(MessyUtils.compareFilesMD5(smallFile, largeFile), "MD5 hashes for different files should not match!");
     }
 
+    @Test
+    void testCompareFilesMD5ForMissingFile() {
+        File missingFile = new File("missing.txt");
+        assertFalse(MessyUtils.compareFilesMD5(smallFile, missingFile),
+                "MD5 comparison should return false if one of the files is missing!");
+    }
+
     private String calculateExpectedMD5(File file) throws Exception {
         MessageDigest md = MessageDigest.getInstance("MD5");
         byte[] fileBytes = Files.readAllBytes(file.toPath());
