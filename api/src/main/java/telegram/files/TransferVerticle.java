@@ -137,7 +137,7 @@ public class TransferVerticle extends AbstractVerticle {
                 continue;
             }
             Tuple3<List<FileRecord>, Long, Long> filesTuple = Future.await(DataVerticle.fileRepository.getFiles(automation.chatId,
-                    Map.of("status", FileRecord.DownloadStatus.completed.name(),
+                    Map.of("downloadStatus", FileRecord.DownloadStatus.completed.name(),
                             "transferStatus", FileRecord.TransferStatus.idle.name()
                     )
             ));
