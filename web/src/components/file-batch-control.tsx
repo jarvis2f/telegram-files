@@ -219,6 +219,7 @@ function ControlButton({
             chatId: number;
             messageId: number;
             fileId: number;
+            uniqueId: string;
           }>;
         } & Record<string, any>;
       },
@@ -242,6 +243,7 @@ function ControlButton({
         chatId: file.chatId ?? 0,
         messageId: file.messageId ?? 0,
         fileId: file.id ?? 0,
+        uniqueId: file.uniqueId
       })),
       ...extra,
     });
