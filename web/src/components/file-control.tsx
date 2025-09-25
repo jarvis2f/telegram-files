@@ -305,7 +305,7 @@ export function MobileFileControl({ file }: { file: TelegramFile }) {
         </>
       )}
       {file.downloadStatus === "completed" && (
-        <Button variant="outline" className="w-full" onClick={() => remove(file.id, file.uniqueId)}>
+        <Button variant="outline" className="w-full" onClick={() => remove(file.id)}>
           {removing ? (
             <Loader2 className="h-4 w-4 animate-spin" />
           ) : (
