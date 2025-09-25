@@ -239,6 +239,11 @@ public class TransferVerticle extends AbstractVerticle {
         if (isStopped) {
             return;
         }
+        if (!fileRecord.isDownloadStatus(FileRecord.DownloadStatus.completed)
+            || StrUtil.isBlank(fileRecord.localPath())) {
+            log.warn("File {} is not downloaded yet", fileRecord.id());
+            return;
+        }
         if (fileRecord.transferStatus() != null
             && !fileRecord.isTransferStatus(FileRecord.TransferStatus.idle)) {
             log.debug("File {} transfer status is not idle: {}", fileRecord.id(), fileRecord.transferStatus());
