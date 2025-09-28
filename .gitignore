@@ -5,6 +5,7 @@
 out/
 */.gradle
 **/*build*/
+api/bin
 
 /app/
 /app-test/
