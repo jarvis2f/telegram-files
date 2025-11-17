@@ -43,6 +43,12 @@ const COLUMNS: Column[] = [
     className: "w-32 text-center",
   },
   {
+    id: "formatedDate",
+    label: "Date",
+    isVisible: true,
+    className: "w-32 text-center",
+  },
+  {
     id: "tags",
     label: "Tags",
     isVisible: true,

@@ -4,6 +4,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import React, { type ReactNode, useState } from "react";
 import { type TelegramFile } from "@/lib/types";
 import prettyBytes from "pretty-bytes";
+import { fromUnixTime, format } from "date-fns";
 import FileStatus from "@/components/file-status";
 import FileExtra from "@/components/file-extra";
 import FileControl from "@/components/file-control";
@@ -37,6 +38,19 @@ type FileRowProps = {
   onCheckedChange: (checked: boolean) => void;
   onFileClick: () => void;
 };
+
+function formatDurationFromSeconds(seconds: number) {
+  const h = Math.floor(seconds / 3600)
+  const m = Math.floor((seconds % 3600) / 60)
+  const s = seconds % 60
+
+  const hh = h > 0 ? String(h).padStart(2, '0') + ':' : ''
+  const mm = String(m).padStart(2, '0')
+  const ss = String(s).padStart(2, '0')
+
+  return hh + mm + ':' + ss
+
+}
 
 export default function FileRow({
   index,
@@ -81,8 +95,23 @@ export default function FileRow({
         )}
       </div>
     ),
-    size: <span className="text-sm">{prettyBytes(file.size)}</span>,
+    size: (
+      <>
+        <span className="text-sm">{prettyBytes(file.size)}</span>
+        <br />
+        {file.extra && "duration" in file.extra ? (
+          <span className="text-sm">
+            {formatDurationFromSeconds(file.extra?.duration)}
+          </span>
+        ) : (
+          ""
+        )}
+      </>
+    ),
     status: <FileStatus file={file} />,
+    formatedDate: (
+      <span>{format(fromUnixTime(file.date), "yyyy-MM-dd HH:mm:ss")}</span>
+    ),
     tags: (
       <FileTags
         file={file}
