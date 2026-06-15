@@ -201,7 +201,7 @@ export function useFiles(
         if (file.originalDeleted && latestFilesStatus[file.uniqueId]?.removed) {
           return;
         }
-        files.push({
+        const merged = {
           ...file,
           id: latestFilesStatus[file.uniqueId]?.fileId ?? file.id,
           downloadStatus:
@@ -221,7 +221,23 @@ export function useFiles(
           thumbnailFile:
             latestFilesStatus[file.uniqueId]?.thumbnailFile ??
             file.thumbnailFile,
-        });
+        };
+        // Live WebSocket updates can change a row's status after it was fetched. When a status
+        // filter is active, drop rows that no longer match so the filtered view stays consistent
+        // (otherwise e.g. a "downloading" filter keeps showing files that just completed).
+        if (
+          filters.downloadStatus &&
+          merged.downloadStatus !== filters.downloadStatus
+        ) {
+          return;
+        }
+        if (
+          filters.transferStatus &&
+          merged.transferStatus !== filters.transferStatus
+        ) {
+          return;
+        }
+        files.push(merged);
       });
     });
     files.forEach((file, index) => {
@@ -229,7 +245,12 @@ export function useFiles(
       file.next = files[index + 1];
     });
     return files;
-  }, [pages, latestFilesStatus]);
+  }, [
+    pages,
+    latestFilesStatus,
+    filters.downloadStatus,
+    filters.transferStatus,
+  ]);
 
   const hasMore = useMemo(() => {
     if (!pages || pages.length === 0) return true;
