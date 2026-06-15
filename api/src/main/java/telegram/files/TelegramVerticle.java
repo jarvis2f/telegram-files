@@ -24,11 +24,13 @@ import org.jooq.lambda.tuple.Tuple2;
 import telegram.files.repository.*;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
 
 public class TelegramVerticle extends AbstractVerticle {
@@ -380,21 +382,48 @@ public class TelegramVerticle extends AbstractVerticle {
      * while browsing, without having to download the full media. Fire-and-forget: already
      * downloaded thumbnails are skipped by {@link #downloadThumbnail}.
      */
+    private static final int MAX_PRELOAD_THUMBNAILS = 30;
+
+    private static final int PRELOAD_THUMBNAIL_CONCURRENCY = 3;
+
     private void preloadThumbnails(TdApi.FoundChatMessages foundChatMessages) {
         if (foundChatMessages == null || foundChatMessages.messages == null || telegramRecord == null) {
             return;
         }
+        // Collect at most MAX_PRELOAD_THUMBNAILS thumbnail records for this page, then download them
+        // with bounded concurrency, so opening large pages or fast scrolling can't burst TDLib, the
+        // DB and websocket with one download per message.
+        List<FileRecord> thumbnails = new ArrayList<>();
         for (TdApi.Message message : foundChatMessages.messages) {
-            TdApiHelp.getFileHandler(message).ifPresent(fileHandler -> {
-                FileRecord thumbnailRecord = fileHandler.convertThumbnailRecord(telegramRecord.id());
-                if (thumbnailRecord == null) {
-                    return;
-                }
-                downloadThumbnail(message.chatId, message.id, thumbnailRecord)
-                        .onFailure(err -> log.debug("[%s] Preload thumbnail failed for message %d: %s"
-                                .formatted(getRootId(), message.id, err.getMessage())));
-            });
+            if (thumbnails.size() >= MAX_PRELOAD_THUMBNAILS) {
+                break;
+            }
+            FileRecord thumbnailRecord = TdApiHelp.getFileHandler(message)
+                    .map(fileHandler -> fileHandler.convertThumbnailRecord(telegramRecord.id()))
+                    .orElse(null);
+            if (thumbnailRecord != null) {
+                thumbnails.add(thumbnailRecord);
+            }
         }
+        if (thumbnails.isEmpty()) {
+            return;
+        }
+        AtomicInteger index = new AtomicInteger(0);
+        for (int i = 0; i < Math.min(PRELOAD_THUMBNAIL_CONCURRENCY, thumbnails.size()); i++) {
+            preloadNextThumbnail(thumbnails, index);
+        }
+    }
+
+    private void preloadNextThumbnail(List<FileRecord> thumbnails, AtomicInteger index) {
+        int i = index.getAndIncrement();
+        if (i >= thumbnails.size()) {
+            return;
+        }
+        FileRecord thumbnailRecord = thumbnails.get(i);
+        downloadThumbnail(thumbnailRecord.chatId(), thumbnailRecord.messageId(), thumbnailRecord)
+                .onFailure(err -> log.debug("[%s] Preload thumbnail failed for %s: %s"
+                        .formatted(getRootId(), thumbnailRecord.uniqueId(), err.getMessage())))
+                .onComplete(_ -> preloadNextThumbnail(thumbnails, index));
     }
 
     public Future<Void> cancelDownload(Integer fileId) {
