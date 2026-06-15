@@ -10,7 +10,7 @@ import {
   TransferPolices,
   type TransferPolicy,
 } from "@/lib/types";
-import React, { useMemo, useState } from "react";
+import React, { useId, useMemo, useState } from "react";
 import {
   Accordion,
   AccordionContent,
@@ -357,6 +357,7 @@ interface TransferRuleProps {
 }
 
 function TransferRule({ value, onChange }: TransferRuleProps) {
+  const captionNameId = useId();
   const handleTransferRuleChange = (changes: Partial<AutoTransferRule>) => {
     onChange({
       ...value,
@@ -456,9 +457,9 @@ function TransferRule({ value, onChange }: TransferRuleProps) {
 
             <div className="rounded-md border p-4">
               <div className="flex items-center justify-between">
-                <Label htmlFor="use-caption-name">Add caption to file name</Label>
+                <Label htmlFor={captionNameId}>Add caption to file name</Label>
                 <Switch
-                  id="use-caption-name"
+                  id={captionNameId}
                   checked={value.useCaptionName ?? false}
                   onCheckedChange={(checked) =>
                     handleTransferRuleChange({ useCaptionName: checked })

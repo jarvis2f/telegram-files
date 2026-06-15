@@ -22,6 +22,7 @@ import java.nio.file.Path;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Consumer;
+import java.util.regex.Pattern;
 
 public abstract class Transfer {
 
@@ -44,6 +45,13 @@ public abstract class Transfer {
     private FileRecord transferRecord;
 
     private static final int MAX_CAPTION_NAME_LENGTH = 80;
+
+    // Keep the whole file name under common filesystem limits (~255), with margin for multibyte chars.
+    private static final int MAX_FILENAME_LENGTH = 200;
+
+    private static final Pattern ILLEGAL_FILENAME_CHARS = Pattern.compile("[\\\\/:*?\"<>|\\r\\n\\t]");
+
+    private static final Pattern WHITESPACE = Pattern.compile("\\s+");
 
     public Transfer(SettingAutoRecords.TransferRule transferRule) {
         this.destination = transferRule.destination;
@@ -145,8 +153,11 @@ public abstract class Transfer {
 
     /**
      * Builds the destination file name. When {@link #useCaptionName} is enabled and the file has a
-     * caption, the caption is appended before the extension: {@code <originalBaseName>_<caption>.<ext>}.
-     * Falls back to the original file name when disabled or when there is no usable caption.
+     * caption, the caption is appended before the extension: {@code <originalBaseName>_<caption>.<ext>},
+     * capped at {@link #MAX_FILENAME_LENGTH}. Falls back to the original file name when disabled or
+     * when there is no usable caption.
+     * <p>Note: the GROUP_BY_AI policy may instead use a file name chosen by the model (when it returns
+     * a path that already includes a file name); in that case the caption is not appended.
      */
     protected String buildFileName(FileRecord fileRecord) {
         String originalName = FileUtil.getName(fileRecord.localPath());
@@ -159,9 +170,15 @@ public abstract class Transfer {
         }
         String extension = FileUtil.extName(originalName);
         String baseName = FileUtil.mainName(originalName);
-        return StrUtil.isBlank(extension)
-                ? "%s_%s".formatted(baseName, caption)
-                : "%s_%s.%s".formatted(baseName, caption, extension);
+        String stem = "%s_%s".formatted(baseName, caption);
+        String suffix = StrUtil.isBlank(extension) ? "" : "." + extension;
+        // Cap the whole file name (preserving the extension) so a long original name plus the
+        // caption can't exceed common filesystem limits.
+        int maxStem = MAX_FILENAME_LENGTH - suffix.length();
+        if (maxStem > 0 && stem.length() > maxStem) {
+            stem = stem.substring(0, maxStem).trim();
+        }
+        return stem + suffix;
     }
 
     private static String sanitizeForFileName(String text) {
@@ -169,8 +186,8 @@ public abstract class Transfer {
             return "";
         }
         // Replace characters that are illegal/problematic in file names and collapse whitespace.
-        String sanitized = text.replaceAll("[\\\\/:*?\"<>|\\r\\n\\t]", " ")
-                .replaceAll("\\s+", " ")
+        String sanitized = WHITESPACE.matcher(ILLEGAL_FILENAME_CHARS.matcher(text).replaceAll(" "))
+                .replaceAll(" ")
                 .trim();
         if (sanitized.length() > MAX_CAPTION_NAME_LENGTH) {
             sanitized = sanitized.substring(0, MAX_CAPTION_NAME_LENGTH).trim();
@@ -250,7 +267,8 @@ public abstract class Transfer {
             }
             log.debug("File {} classified to {} by AI, reason: {}", fileRecord.id(), result.path, result.reason);
             String name = buildFileName(fileRecord);
-            // Check if the path contains file extension
+            // If the model returned a path that already includes a file name (has an extension),
+            // that AI-chosen name is used as-is — the caption is intentionally not appended here.
             if (StrUtil.isNotBlank(FileUtil.extName(result.path))) {
                 name = "";
             }
