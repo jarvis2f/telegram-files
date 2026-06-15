@@ -736,14 +736,19 @@ public class TelegramVerticle extends AbstractVerticle {
         }
         TelegramVerticle old = found.get();
         log.info("[%s] Replacing stale verticle at path: %s".formatted(getRootId(), oldRootPath));
-        TelegramVerticles.remove(old);
         String deployId = old.deploymentID();
         if (deployId == null) {
+            // Not deployed; just drop it from the registry.
+            TelegramVerticles.remove(old);
             return Future.succeededFuture();
         }
+        // Undeploy first; only drop it from the registry once undeploy succeeds. A failed undeploy
+        // must not leave a still-running verticle that is no longer tracked/manageable.
         return vertx.undeploy(deployId)
+                .onSuccess(_ -> TelegramVerticles.remove(old))
                 .recover(e -> {
-                    log.warn("[%s] Could not undeploy stale verticle: %s".formatted(getRootId(), e.getMessage()));
+                    log.warn("[%s] Could not undeploy stale verticle, keeping it registered: %s"
+                            .formatted(getRootId(), e.getMessage()));
                     return Future.succeededFuture();
                 })
                 .mapEmpty();
@@ -886,26 +891,21 @@ public class TelegramVerticle extends AbstractVerticle {
                 authorized = true;
                 if (telegramRecord == null) {
                     client.execute(new TdApi.GetMe())
-                            .compose(user ->
-                                    DataVerticle.telegramRepository.create(new TelegramRecord(user.id, user.firstName, this.rootPath, this.proxyName))
-                                            .recover(e -> {
-                                                if (e.getMessage() != null && (e.getMessage().contains("UNIQUE constraint") ||
-                                                        e.getMessage().contains("SQLITE_CONSTRAINT") ||
-                                                        e.getMessage().contains("duplicate key"))) {
-                                                    return DataVerticle.telegramRepository.getById(user.id)
-                                                            .compose(existing -> {
-                                                                if (existing != null) {
-                                                                    return cleanupOldVerticle(existing.rootPath())
-                                                                            .compose(_ -> DataVerticle.telegramRepository.update(
-                                                                                    new TelegramRecord(user.id, user.firstName, this.rootPath, this.proxyName)
-                                                                            ));
-                                                                }
-                                                                return Future.failedFuture(e);
-                                                            });
-                                                }
-                                                return Future.failedFuture(e);
-                                            })
-                            )
+                            .compose(user -> {
+                                TelegramRecord record = new TelegramRecord(user.id, user.firstName, this.rootPath, this.proxyName);
+                                // Check existence explicitly rather than inferring a duplicate-key from the
+                                // exception message (brittle across DB drivers/versions/locales).
+                                return DataVerticle.telegramRepository.getById(user.id)
+                                        .compose(existing -> {
+                                            if (existing == null) {
+                                                return DataVerticle.telegramRepository.create(record);
+                                            }
+                                            // Account already registered (e.g. re-auth into a fresh root):
+                                            // take over by cleaning up the stale verticle, then update the record.
+                                            return cleanupOldVerticle(existing.rootPath())
+                                                    .compose(_ -> DataVerticle.telegramRepository.update(record));
+                                        });
+                            })
                             .onSuccess(o -> {
                                 telegramRecord = o;
                                 log.info("[%s] %s Authorization Ready".formatted(getRootId(), this.telegramRecord.firstName()));
