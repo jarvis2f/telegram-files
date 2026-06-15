@@ -59,7 +59,7 @@ public class TelegramVerticle extends AbstractVerticle {
 
     private long downloadStatusReconciliationTimerId;
 
-    public TdApi.ConnectionState lastConnectionState;
+    private volatile TdApi.ConnectionState lastConnectionState;
 
     private long lastFileEventTime;
 

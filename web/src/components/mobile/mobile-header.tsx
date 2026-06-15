@@ -185,8 +185,25 @@ function MenuDrawer() {
                     className={
                       connectionStatus !== "Open" ? "cursor-pointer" : undefined
                     }
+                    role={connectionStatus !== "Open" ? "button" : undefined}
+                    tabIndex={connectionStatus !== "Open" ? 0 : undefined}
+                    aria-label={
+                      connectionStatus !== "Open"
+                        ? "Reconnect live updates"
+                        : undefined
+                    }
                     onClick={
                       connectionStatus !== "Open" ? reconnect : undefined
+                    }
+                    onKeyDown={
+                      connectionStatus !== "Open"
+                        ? (e) => {
+                            if (e.key === "Enter" || e.key === " ") {
+                              e.preventDefault();
+                              reconnect();
+                            }
+                          }
+                        : undefined
                     }
                   >
                     {connectionStatus === "Open" ? (
