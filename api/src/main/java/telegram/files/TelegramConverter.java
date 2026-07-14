@@ -15,9 +15,11 @@ import io.vertx.core.json.JsonObject;
 import org.drinkless.tdlib.TdApi;
 import org.jooq.lambda.tuple.Tuple;
 import telegram.files.repository.FileRecord;
+import telegram.files.repository.ShareSourceRecord;
 import telegram.files.repository.SettingAutoRecords;
 import telegram.files.repository.SettingKey;
 import telegram.files.repository.StatisticRecord;
+import telegram.files.repository.TorrentRecord;
 
 import java.util.*;
 import java.util.function.Function;
@@ -88,7 +90,7 @@ public class TelegramConverter {
                                 FileRecord fileRecord = fileRecords.get(TdApiHelp.getFileUniqueId(message));
                                 String thumbnailUniqueId = fileRecord != null && StrUtil.isNotBlank(fileRecord.thumbnailUniqueId())
                                         ? fileRecord.thumbnailUniqueId()
-                                        : TdApiHelp.getFileHandler(message).map(handler -> handler.getThumbnailFileUniqueId()).orElse(null);
+                                        : TdApiHelp.getFileHandler(message).map(TdApiHelp.FileHandler::getThumbnailFileUniqueId).orElse(null);
                                 return withSource(telegramId,
                                         fileRecord,
                                         StrUtil.isBlank(thumbnailUniqueId) ? null : thumbnails.get(thumbnailUniqueId),
@@ -98,6 +100,134 @@ public class TelegramConverter {
                             .toList();
                     return new JsonArray(fileObjects);
                 });
+    }
+
+    public static Future<JsonObject> enrichSeedAssociations(JsonObject response) {
+        List<JsonObject> files = response.getJsonArray("files", new JsonArray()).stream()
+                .filter(JsonObject.class::isInstance)
+                .map(JsonObject.class::cast)
+                .toList();
+        return enrichSeedAssociations(files)
+                .map(enriched -> response.copy().put("files", enriched));
+    }
+
+    public static Future<List<JsonObject>> enrichSeedAssociations(List<JsonObject> files) {
+        List<String> uniqueIds = files.stream().map(file -> file.getString("uniqueId"))
+                .filter(Objects::nonNull).toList();
+        return Future.all(
+                DataVerticle.torrentRepository.listByTelegramFileUniqueIds(uniqueIds),
+                DataVerticle.shareSourceRepository.listByFileUniqueIds(uniqueIds)
+        ).map(results -> {
+            List<TorrentRecord> torrents = results.resultAt(0);
+            List<ShareSourceRecord> shares = results.resultAt(1);
+            Map<String, TorrentRecord> torrentByFile = torrents.stream().collect(java.util.stream.Collectors.toMap(
+                    TorrentRecord::telegramFileUniqueId,
+                    torrent -> torrent,
+                    (left, right) -> left.updatedAt() >= right.updatedAt() ? left : right
+            ));
+            Map<String, ShareSourceRecord> shareByFile = shares.stream().collect(java.util.stream.Collectors.toMap(
+                    ShareSourceRecord::fileUniqueId,
+                    share -> share,
+                    (left, right) -> left.updatedAt() >= right.updatedAt() ? left : right
+            ));
+            files.forEach(file -> enrichTelegramFile(
+                    file,
+                    torrentByFile.get(file.getString("uniqueId")),
+                    shareByFile.get(file.getString("uniqueId"))
+            ));
+            return files;
+        });
+    }
+
+    public static List<JsonObject> convertSeedOnlyFiles(List<TorrentRecord> torrents) {
+        return torrents.stream().map(TelegramConverter::convertSeedOnlyFile).toList();
+    }
+
+    static void enrichTelegramFile(JsonObject json, TorrentRecord torrent, ShareSourceRecord share) {
+        json.put("source", "TELEGRAM")
+                .put("acquiredVia", torrent == null ? "TELEGRAM" : torrent.acquiredVia())
+                .put("seedResourceId", torrent == null ? null : torrent.resourceId())
+                .put("seedAvailable", torrent != null && !"STOPPED".equals(torrent.status()))
+                .put("torrentStatus", torrent == null ? null : torrent.status())
+                .put("infoHashV1", torrent == null ? null : torrent.infoHashV1())
+                .put("sharedByMe", share != null && "PUBLISHED".equals(share.status()))
+                .put("shareStatus", share == null ? "UNSHARED" : share.status())
+                .put("sharedSourceId", share == null ? null : share.id())
+                .put("sharedResourceId", share == null ? null : share.platformResourceId())
+                .put("shareTitle", share == null ? null : share.title())
+                .put("shareDescription", share == null ? null : share.description())
+                .put("shareTags", share == null ? new JsonArray() : new JsonArray(share.tagsJson()))
+                .put("shareCategory", share == null ? null : share.category())
+                .put("shareAccessScope", share == null ? null : share.accessScope())
+                .put("sharePublicMessageUrl", share == null ? null : share.publicMessageUrl())
+                .put("shareErrorCode", share == null ? null : share.lastErrorCode())
+                .put("torrentDownloadSpeed", torrent == null ? 0 : torrent.downloadSpeedBytesPerSecond())
+                .put("torrentUploadSpeed", torrent == null ? 0 : torrent.uploadSpeedBytesPerSecond())
+                .put("torrentUploadedBytes", torrent == null ? 0 : torrent.uploadedBytes())
+                .put("torrentDownloadedBytes", torrent == null ? 0 : torrent.downloadedBytes())
+                .put("torrentRatio", torrent == null ? 0.0 : (double) torrent.uploadedBytes() / Math.max(torrent.downloadedBytes(), 1))
+                .put("torrentConnectedPeers", torrent == null ? 0 : torrent.connectedPeers())
+                .put("torrentSeedingSeconds", torrent == null ? 0 : torrent.seedingSeconds());
+    }
+
+    private static JsonObject convertSeedOnlyFile(TorrentRecord torrent) {
+        boolean completed = torrent.acquiredVia() == null
+                || "SEED".equals(torrent.acquiredVia())
+                || "SEEDING".equals(torrent.status())
+                || "STOPPED".equals(torrent.status())
+                || torrent.completedAt() != null
+                || (torrent.fileSize() > 0 && torrent.downloadedBytes() >= torrent.fileSize());
+        String downloadStatus = completed ? "completed" : "downloading";
+        long date = (torrent.completedAt() == null ? torrent.updatedAt() : torrent.completedAt()) / 1000;
+        long downloadedSize = completed ? Math.max(torrent.downloadedBytes(), torrent.fileSize()) : torrent.downloadedBytes();
+        return new JsonObject()
+                .put("id", -Math.max(1, torrent.resourceId().hashCode() & Integer.MAX_VALUE))
+                .put("telegramId", 0)
+                .put("uniqueId", "seed:" + torrent.resourceId())
+                .put("messageId", 0)
+                .put("chatId", 0)
+                .put("mediaAlbumId", 0)
+                .put("fileName", torrent.fileName())
+                .put("type", "file")
+                .put("mimeType", torrent.mimeType())
+                .put("size", torrent.fileSize())
+                .put("downloadedSize", downloadedSize)
+                .put("downloadStatus", downloadStatus)
+                .put("transferStatus", "idle")
+                .put("localPath", Config.shareConfiguration().sharedRoot()
+                        .resolve(torrent.viewRelativePath()).normalize().toString())
+                .put("completionDate", torrent.completedAt())
+                .put("date", date)
+                .put("formatDate", DateUtil.date(date * 1000).toString())
+                .put("reactionCount", 0)
+                .put("caption", "")
+                .put("tags", "")
+                .put("thumbnail", null)
+                .put("thumbnailUniqueId", null)
+                .put("thumbnailFile", null)
+                .put("hasSensitiveContent", false)
+                .put("startDate", 0)
+                .put("extra", null)
+                .put("loaded", true)
+                .put("originalDeleted", false)
+                .put("threadChatId", 0)
+                .put("messageThreadId", 0)
+                .put("hasReply", false)
+                .put("source", "SEED")
+                .put("acquiredVia", "SEED")
+                .put("seedResourceId", torrent.resourceId())
+                .put("seedAvailable", true)
+                .put("torrentStatus", torrent.status())
+                .put("infoHashV1", torrent.infoHashV1())
+                .put("sharedByMe", false)
+                .put("shareStatus", "UNSHARED")
+                .put("torrentDownloadSpeed", torrent.downloadSpeedBytesPerSecond())
+                .put("torrentUploadSpeed", torrent.uploadSpeedBytesPerSecond())
+                .put("torrentUploadedBytes", torrent.uploadedBytes())
+                .put("torrentDownloadedBytes", torrent.downloadedBytes())
+                .put("torrentRatio", (double) torrent.uploadedBytes() / Math.max(torrent.downloadedBytes(), 1))
+                .put("torrentConnectedPeers", torrent.connectedPeers())
+                .put("torrentSeedingSeconds", torrent.seedingSeconds());
     }
 
     public static List<JsonObject> convertRangedSpeedStats(List<StatisticRecord> statisticRecords, int timeRange) {

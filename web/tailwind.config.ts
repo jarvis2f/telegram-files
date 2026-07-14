@@ -117,9 +117,6 @@ export default {
           "5": "hsl(var(--chart-5))",
         },
       },
-      width: {
-        progress: "var(--tw-progress-width)",
-      },
       padding: {
         "safe-bottom": "env(safe-area-inset-bottom)",
       },

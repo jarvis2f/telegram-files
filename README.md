@@ -75,6 +75,7 @@ docker run -d \
   --restart always \
   -e APP_ENV=${APP_ENV:-prod} \
   -e APP_ROOT=${APP_ROOT:-/app/data} \
+  -e HTTP_SECURE_COOKIES=${HTTP_SECURE_COOKIES:-false} \
   -e TELEGRAM_API_ID=${TELEGRAM_API_ID} \
   -e TELEGRAM_API_HASH=${TELEGRAM_API_HASH} \
   -p 6543:80 \
@@ -94,7 +95,19 @@ docker-compose up -d
 
 On unRaid, install from the Community Repositories by searching for `telegram-files`.
 
-> **Important Note:** You should NOT expose the service to the public internet. Because the service is not secure.
+> **Security note:** Management APIs, file previews, and WebSockets require an administrator session. Use HTTPS,
+> configure `HTTP_ALLOWED_ORIGINS`, and complete the first-administrator bootstrap before exposing the service.
+
+On the first start, the API prints a 15-minute one-time bootstrap code. Open the UI from loopback or the same private
+LAN and create the first administrator before exposing the service. A reverse proxy must preserve
+`X-Real-IP`, `X-Forwarded-Host`, and `X-Forwarded-Proto`; the bundled Nginx configuration already does this.
+
+Password recovery is local-only and revokes every active session:
+
+```sh
+java -cp api/build/libs/telegram-files.jar telegram.files.Maintain admin reset-password owner
+java -cp api/build/libs/telegram-files.jar telegram.files.Maintain admin apply-reset owner
+```
 
 ---
 
@@ -245,4 +258,6 @@ docker run --rm \
 
 - `album-caption`: Fixed issue with missing caption for album messages before `0.1.15`.
 - `thumbnail`: Fixed issue with missing clear thumbnail.
+- `admin reset-password <username>`: Issue a one-time local administrator recovery code and revoke active sessions.
+- `admin apply-reset <username>`: Apply the recovery code and set a new administrator password interactively.
 </details>

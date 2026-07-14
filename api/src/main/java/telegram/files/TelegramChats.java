@@ -17,7 +17,7 @@ import java.util.stream.Collectors;
 public class TelegramChats {
     private static final Log log = LogFactory.get();
 
-    private final TelegramClient client;
+    private final TelegramGateway client;
 
     private final ConcurrentMap<Long, TdApi.Chat> chats = new ConcurrentHashMap<>();
 
@@ -29,7 +29,7 @@ public class TelegramChats {
 
     private boolean haveFullArchivedChatList = false;
 
-    public TelegramChats(TelegramClient client) {
+    public TelegramChats(TelegramGateway client) {
         this.client = client;
     }
 

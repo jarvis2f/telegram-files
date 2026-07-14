@@ -1,0 +1,21 @@
+{
+  "nodeId": "node_fixture",
+  "agentVersion": "0.4.0",
+  "contractVersions": ["1.0"],
+  "taskCapabilities": ["TELEGRAM_BOOTSTRAP_V1"],
+  "torrentCapabilities": ["V1_PRIVATE"],
+  "telegramAvailable": true,
+  "torrentEnabled": true,
+  "freeDiskBytes": "107374182400",
+  "reservedDiskBytes": "10737418240",
+  "activeTelegramDownloads": 1,
+  "activeTorrentDownloads": 0,
+  "activeSeeds": 2,
+  "peerNetwork": {
+    "listenPort": 51413,
+    "ipv4Reachable": false,
+    "ipv6Reachable": true,
+    "mappingMethod": "IPV6",
+    "lastCheckedAt": "2026-07-13T00:00:00Z"
+  }
+}

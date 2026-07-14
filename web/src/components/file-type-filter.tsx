@@ -17,6 +17,7 @@ interface FileTypeFilterProps {
   telegramId: string;
   chatId: string;
   type: FileType | "all";
+  seedOnly?: boolean;
   onChange: (type: FileType | "all") => void;
 }
 
@@ -55,11 +56,16 @@ export default function FileTypeFilter({
   telegramId,
   chatId,
   type,
+  seedOnly = false,
   onChange,
 }: FileTypeFilterProps) {
   const [localType, setLocalType] = React.useState<FileType | "all">(type);
+  const countParams = new URLSearchParams({
+    offline: String(offline),
+    ...(offline && seedOnly && { seedOnly: "true" }),
+  });
   const { data: counts, isLoading } = useSWR<Record<FileType, number>>(
-    `/telegram/${telegramId}/chat/${chatId}/files/count?offline=${offline}`,
+    `/telegram/${telegramId}/chat/${chatId}/files/count?${countParams.toString()}`,
   );
 
   const handleTypeChange = (value: FileType | "all") => {

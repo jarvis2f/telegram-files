@@ -10,6 +10,7 @@ import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 import io.vertx.core.VertxException;
 import telegram.files.repository.TelegramRecord;
+import telegram.files.share.UnifiedFileDownloadService;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -21,6 +22,33 @@ public class TelegramVerticles {
     private static final Log log = LogFactory.get();
 
     private static final List<TelegramVerticle> telegramVerticles = new ArrayList<>();
+
+    private static UnifiedFileDownloadService unifiedFileDownloadService;
+
+    private static TelegramGatewayFactory telegramGatewayFactory = TelegramGatewayFactory.tdlib();
+
+    static void configureTelegramGatewayFactory(TelegramGatewayFactory factory) {
+        telegramGatewayFactory = Objects.requireNonNull(factory, "factory");
+    }
+
+    static void resetTelegramGatewayFactory() {
+        telegramGatewayFactory = TelegramGatewayFactory.tdlib();
+    }
+
+    public static void configureUnifiedFileDownloadService(UnifiedFileDownloadService service) {
+        unifiedFileDownloadService = service;
+        telegramVerticles.forEach(telegram -> telegram.withUnifiedFileDownloadService(service));
+    }
+
+    public static TelegramVerticle create(String rootPath) {
+        return new TelegramVerticle(rootPath, telegramGatewayFactory)
+                .withUnifiedFileDownloadService(unifiedFileDownloadService);
+    }
+
+    public static TelegramVerticle create(TelegramRecord record) {
+        return new TelegramVerticle(record, telegramGatewayFactory)
+                .withUnifiedFileDownloadService(unifiedFileDownloadService);
+    }
 
     public static Future<Void> initTelegramVerticles(Vertx vertx) {
         return DataVerticle.telegramRepository.getAll()
@@ -34,7 +62,7 @@ public class TelegramVerticles {
                             .toList();
                     List<Future<String>> futures = new ArrayList<>();
                     for (TelegramRecord telegramRecord : telegramRecords) {
-                        TelegramVerticle telegramVerticle = new TelegramVerticle(telegramRecord);
+                        TelegramVerticle telegramVerticle = create(telegramRecord);
                         if (!telegramVerticle.check()) {
                             continue;
                         }
@@ -43,7 +71,7 @@ public class TelegramVerticles {
                     }
                     if (CollUtil.isNotEmpty(uncertifiedPaths)) {
                         for (String uncertifiedPath : uncertifiedPaths) {
-                            TelegramVerticle telegramVerticle = new TelegramVerticle(uncertifiedPath);
+                            TelegramVerticle telegramVerticle = create(uncertifiedPath);
                             if (!telegramVerticle.check()) {
                                 continue;
                             }
@@ -68,6 +96,10 @@ public class TelegramVerticles {
 
     public static List<TelegramVerticle> getAll() {
         return telegramVerticles;
+    }
+
+    public static boolean hasAuthorized() {
+        return telegramVerticles.stream().anyMatch(telegramVerticle -> telegramVerticle.authorized);
     }
 
     public static Optional<TelegramVerticle> get(String telegramId) {

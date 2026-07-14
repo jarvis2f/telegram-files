@@ -273,8 +273,6 @@ export function MobileFileTagsDrawer({
           e.stopPropagation();
         }}
       >
-        <div className="mx-auto mt-4 h-2 w-[100px] rounded-full bg-muted" />
-
         <div className="p-4">
           <DrawerTitle className="mb-4">Edit Tags</DrawerTitle>
           <TagsSelector

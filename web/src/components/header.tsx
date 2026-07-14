@@ -16,7 +16,7 @@ import { SettingsDialog } from "@/components/settings-dialog";
 import prettyBytes from "pretty-bytes";
 import ChatSelect from "@/components/chat-select";
 import Link from "next/link";
-import TelegramIcon from "@/components/telegram-icon";
+import { PlatformTelegramIcon } from "@/components/platform-telegram-icon";
 import AutomationDialog from "@/components/automation-dialog";
 import useIsMobile from "@/hooks/use-is-mobile";
 import { useState } from "react";
@@ -25,11 +25,16 @@ import ThemeToggleButton from "@/components/theme-toggle-button";
 import AccountSelect from "@/components/account-select";
 import { useSearchParams } from "next/navigation";
 import { useSettings } from "@/hooks/use-settings";
+import { PlatformBindingShortcut } from "@/components/platform-binding-shortcut";
 
 export function Header() {
   const useTelegramAccountProps = useTelegramAccount();
-  const { connectionStatus, accountDownloadSpeed, reconnect, telegramConnectionState } =
-    useWebsocket();
+  const {
+    connectionStatus,
+    accountDownloadSpeed,
+    reconnect,
+    telegramConnectionState,
+  } = useWebsocket();
   const { settings } = useSettings();
   const isMobile = useIsMobile();
   const [showMore, setShowMore] = useState(false);
@@ -37,12 +42,12 @@ export function Header() {
   const messageThreadId = searchParams.get("messageThreadId");
 
   return (
-    <Card className="mb-6">
+    <Card className="mb-6 shadow-sm">
       <CardContent className="p-4">
         <div className="relative flex flex-col flex-wrap items-start justify-between gap-4 md:flex-row md:items-center">
           <div className="flex w-full flex-1 flex-col gap-4 md:flex-row md:items-center">
             <Link href={"/"} className="hidden md:inline-flex">
-              <TelegramIcon className="h-6 w-6" />
+              <PlatformTelegramIcon className="size-6" />
             </Link>
 
             <div className="w-full md:w-auto">
@@ -63,7 +68,7 @@ export function Header() {
               <TooltipWrapper content="Current account download speed">
                 <div className="flex items-center gap-2 overflow-hidden text-sm text-muted-foreground">
                   <span className="flex-1 text-nowrap">
-                    {`${prettyBytes(accountDownloadSpeed, { bits: settings?.speedUnits === 'bits' })}/s`}
+                    {`${prettyBytes(accountDownloadSpeed, { bits: settings?.speedUnits === "bits" })}/s`}
                   </span>
                   <Download className="h-4 w-4 flex-shrink-0" />
                 </div>
@@ -124,6 +129,8 @@ export function Header() {
             )}
 
             <ThemeToggleButton />
+
+            <PlatformBindingShortcut />
 
             <SettingsDialog />
           </div>

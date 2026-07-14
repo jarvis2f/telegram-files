@@ -1,0 +1,784 @@
+openapi: 3.1.0
+info:
+  title: telegram-seed API
+  version: 1.0.0
+  description: Versioned coordinator contract shared with telegram-files.
+servers:
+  - url: https://seed.example.test
+security: []
+paths:
+  /api/v1/device/authorize:
+    post:
+      operationId: authorizeDevice
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./schemas/v1.schema.json#/$defs/DeviceAuthorizeRequest
+      responses:
+        "200":
+          description: Device authorization created.
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas/v1.schema.json#/$defs/DeviceAuthorizeResponse
+        default:
+          $ref: "#/components/responses/Error"
+  /api/v1/device/token:
+    post:
+      operationId: exchangeDeviceToken
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./schemas/v1.schema.json#/$defs/DeviceTokenRequest
+      responses:
+        "200":
+          description: Current grant state or newly issued opaque credentials.
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas/v1.schema.json#/$defs/DeviceTokenResponse
+        default:
+          $ref: "#/components/responses/Error"
+  /api/v1/device/signature:
+    post:
+      operationId: submitDeviceInstallationSignature
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./schemas/v1.schema.json#/$defs/DeviceSignatureRequest
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+        default:
+          $ref: "#/components/responses/Error"
+  /api/v1/device/decision:
+    post:
+      operationId: decideDeviceAuthorization
+      security:
+        - browserSession: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./schemas/v1.schema.json#/$defs/DeviceDecisionRequest
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+        default:
+          $ref: "#/components/responses/Error"
+  /api/v1/nodes/heartbeat:
+    post:
+      operationId: recordNodeHeartbeat
+      security:
+        - nodeBearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./schemas/v1.schema.json#/$defs/HeartbeatRequest
+      responses:
+        "200":
+          description: Compact node coordination versions.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [taskVersion, configVersion]
+                properties:
+                  taskVersion:
+                    type: string
+                    minLength: 1
+                  configVersion:
+                    type: string
+                    minLength: 1
+        default:
+          $ref: "#/components/responses/Error"
+  /api/v1/nodes/config:
+    get:
+      operationId: getNodeRuntimeConfiguration
+      security:
+        - nodeBearer: []
+      responses:
+        "200":
+          description: Node polling and statistics configuration.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required:
+                  [
+                    version,
+                    heartbeatIntervalSeconds,
+                    taskPullIntervalSeconds,
+                    statisticsIntervalSeconds,
+                    statisticsRolloutPercent,
+                  ]
+                properties:
+                  version:
+                    type: string
+                    minLength: 1
+                  heartbeatIntervalSeconds:
+                    type: integer
+                    minimum: 5
+                    maximum: 600
+                  taskPullIntervalSeconds:
+                    type: integer
+                    minimum: 0
+                    maximum: 3600
+                  statisticsIntervalSeconds:
+                    type: integer
+                    minimum: 5
+                    maximum: 3600
+                  statisticsRolloutPercent:
+                    type: integer
+                    minimum: 0
+                    maximum: 100
+        default:
+          $ref: "#/components/responses/Error"
+  /api/v1/nodes/{nodeId}:
+    parameters:
+      - name: nodeId
+        in: path
+        required: true
+        schema:
+          type: string
+          minLength: 1
+    put:
+      operationId: renameCurrentUserNode
+      security:
+        - browserSession: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./schemas/v1.schema.json#/$defs/NodeRenameRequest
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+        default:
+          $ref: "#/components/responses/Error"
+    delete:
+      operationId: revokeCurrentUserNode
+      security:
+        - browserSession: []
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+        default:
+          $ref: "#/components/responses/Error"
+  /api/v1/nodes/tasks/pull:
+    get:
+      operationId: pullNodeTasks
+      security:
+        - nodeBearer: []
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 10
+            default: 1
+      responses:
+        "200":
+          description: Leased task envelopes.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: ./schemas/v1.schema.json#/$defs/TaskEnvelope
+        default:
+          $ref: "#/components/responses/Error"
+  /api/v1/nodes/tasks/{taskId}/ack:
+    post:
+      operationId: acknowledgeNodeTask
+      security:
+        - nodeBearer: []
+      parameters:
+        - $ref: "#/components/parameters/TaskId"
+      requestBody:
+        $ref: "#/components/requestBodies/TaskAttempt"
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+        default:
+          $ref: "#/components/responses/Error"
+  /api/v1/nodes/tasks/{taskId}/progress:
+    post:
+      operationId: reportNodeTaskProgress
+      security:
+        - nodeBearer: []
+      parameters:
+        - $ref: "#/components/parameters/TaskId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./schemas/v1.schema.json#/$defs/TaskProgress
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+        default:
+          $ref: "#/components/responses/Error"
+  /api/v1/nodes/tasks/{taskId}/complete:
+    post:
+      operationId: completeNodeTask
+      security:
+        - nodeBearer: []
+      parameters:
+        - $ref: "#/components/parameters/TaskId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        $ref: "#/components/requestBodies/TaskComplete"
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+        default:
+          $ref: "#/components/responses/Error"
+  /api/v1/nodes/tasks/{taskId}/fail:
+    post:
+      operationId: failNodeTask
+      security:
+        - nodeBearer: []
+      parameters:
+        - $ref: "#/components/parameters/TaskId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        $ref: "#/components/requestBodies/TaskFailure"
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+        default:
+          $ref: "#/components/responses/Error"
+  /api/v1/nodes/file-availability:
+    post:
+      operationId: queryNodeFileAvailability
+      security:
+        - nodeBearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./schemas/v1.schema.json#/$defs/FileAvailabilityRequest
+      responses:
+        "200":
+          description: Batch file availability for the authenticated node.
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas/v1.schema.json#/$defs/FileAvailabilityResponse
+        default:
+          $ref: "#/components/responses/Error"
+  /api/v1/nodes/statistics/events:
+    post:
+      operationId: ingestNodeTorrentStatistics
+      description: Operational snapshots for reconciliation; never added to Tracker accounting.
+      security:
+        - nodeBearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [events]
+              properties:
+                events:
+                  type: array
+                  minItems: 1
+                  maxItems: 100
+                  items:
+                    type: object
+                    additionalProperties: false
+                    required:
+                      [
+                        eventId,
+                        resourceId,
+                        infoHashV1,
+                        counterEpoch,
+                        uploadedBytes,
+                        downloadedBytes,
+                        seedingSeconds,
+                        activeUploadCount,
+                        completedUploadCount,
+                        cumulativeUploadSeconds,
+                        cumulativeDownloadSeconds,
+                        uploadSpeedBytesPerSecond,
+                        downloadSpeedBytesPerSecond,
+                        uploadSessions,
+                        torrentStatus,
+                        observedAt,
+                      ]
+                    properties:
+                      eventId: { type: string, minLength: 1, maxLength: 128 }
+                      resourceId: { type: string, minLength: 1, maxLength: 128 }
+                      infoHashV1: { type: string, pattern: "^[a-f0-9]{40}$" }
+                      counterEpoch: { type: integer, minimum: 0 }
+                      uploadedBytes: { type: string, pattern: "^(0|[1-9][0-9]{0,29})$" }
+                      downloadedBytes: { type: string, pattern: "^(0|[1-9][0-9]{0,29})$" }
+                      seedingSeconds: { type: string, pattern: "^(0|[1-9][0-9]{0,29})$" }
+                      activeUploadCount: { type: integer, minimum: 0 }
+                      completedUploadCount: { type: integer, minimum: 0 }
+                      cumulativeUploadSeconds: { type: string, pattern: "^(0|[1-9][0-9]{0,29})$" }
+                      cumulativeDownloadSeconds: { type: string, pattern: "^(0|[1-9][0-9]{0,29})$" }
+                      uploadSpeedBytesPerSecond: { type: string, pattern: "^(0|[1-9][0-9]{0,29})$" }
+                      downloadSpeedBytesPerSecond:
+                        { type: string, pattern: "^(0|[1-9][0-9]{0,29})$" }
+                      uploadSessions:
+                        type: array
+                        maxItems: 256
+                        items:
+                          $ref: ./schemas/v1.schema.json#/$defs/TorrentUploadSession
+                      torrentStatus: { type: string, minLength: 1, maxLength: 32 }
+                      observedAt: { type: string, format: date-time }
+      responses:
+        "202":
+          $ref: "#/components/responses/Success"
+        default:
+          $ref: "#/components/responses/Error"
+  /api/v1/publication-policy:
+    get:
+      operationId: getPublicationPolicy
+      security:
+        - nodeBearer: []
+      responses:
+        "200":
+          description: Current resource sharing policy configured by telegram-seed.
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas/v1.schema.json#/$defs/ResourceSharingPolicy
+        default:
+          $ref: "#/components/responses/Error"
+  /api/v1/resources:
+    post:
+      operationId: createResource
+      security:
+        - nodeBearer: []
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./schemas/v1.schema.json#/$defs/ResourceCreateRequest
+      responses:
+        "201":
+          description: Resource created.
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas/v1.schema.json#/$defs/IdResponse
+        default:
+          $ref: "#/components/responses/Error"
+  /api/v1/resources/search:
+    get:
+      operationId: searchResources
+      parameters:
+        - name: query
+          in: query
+          schema:
+            type: string
+            maxLength: 255
+        - name: cursor
+          in: query
+          schema:
+            type: string
+        - name: tag
+          in: query
+          schema:
+            type: string
+            maxLength: 64
+        - name: category
+          in: query
+          schema:
+            type: string
+            maxLength: 64
+        - name: status
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+      responses:
+        "200":
+          description: Stable cursor page.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items, nextCursor]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+                  nextCursor:
+                    type: [string, "null"]
+        default:
+          $ref: "#/components/responses/Error"
+  /api/v1/resources/{resourceId}:
+    parameters:
+      - $ref: "#/components/parameters/ResourceId"
+    get:
+      operationId: getResource
+      responses:
+        "200":
+          description: Resource details.
+          content:
+            application/json:
+              schema:
+                type: object
+        default:
+          $ref: "#/components/responses/Error"
+    put:
+      operationId: updateResource
+      security:
+        - nodeBearer: []
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./schemas/v1.schema.json#/$defs/ResourceUpdateRequest
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+        default:
+          $ref: "#/components/responses/Error"
+    delete:
+      operationId: deleteResource
+      security:
+        - nodeBearer: []
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+        default:
+          $ref: "#/components/responses/Error"
+  /api/v1/resources/{resourceId}/torrent:
+    post:
+      operationId: reportResourceTorrent
+      security:
+        - nodeBearer: []
+      parameters:
+        - $ref: "#/components/parameters/ResourceId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./schemas/v1.schema.json#/$defs/TorrentReport
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+        default:
+          $ref: "#/components/responses/Error"
+  /api/v1/resources/{resourceId}/source-status:
+    post:
+      operationId: reportSourceStatus
+      security:
+        - nodeBearer: []
+      parameters:
+        - $ref: "#/components/parameters/ResourceId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        $ref: "#/components/requestBodies/TaskAttempt"
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+        default:
+          $ref: "#/components/responses/Error"
+  /api/v1/resources/{resourceId}/seed-status:
+    post:
+      operationId: reportSeedStatus
+      security:
+        - nodeBearer: []
+      parameters:
+        - $ref: "#/components/parameters/ResourceId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./schemas/v1.schema.json#/$defs/SeedStatusReport
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+        default:
+          $ref: "#/components/responses/Error"
+  /api/v1/resources/{resourceId}/download:
+    post:
+      operationId: requestResourceDownload
+      security:
+        - browserSession: []
+      parameters:
+        - $ref: "#/components/parameters/ResourceId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [targetNodeId]
+              additionalProperties: false
+              properties:
+                targetNodeId:
+                  type: string
+                  minLength: 1
+      responses:
+        "202":
+          description: Download request accepted.
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas/v1.schema.json#/$defs/IdResponse
+        default:
+          $ref: "#/components/responses/Error"
+  /api/v1/resources/{resourceId}/report:
+    post:
+      operationId: reportResource
+      security:
+        - browserSession: []
+      parameters:
+        - $ref: "#/components/parameters/ResourceId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [reason]
+              properties:
+                reason:
+                  type: string
+                  enum: [COPYRIGHT, MALWARE, PRIVACY, ILLEGAL_CONTENT, MISLEADING, OTHER]
+                details:
+                  type: [string, "null"]
+                  maxLength: 2000
+      responses:
+        "202":
+          $ref: "#/components/responses/Success"
+        default:
+          $ref: "#/components/responses/Error"
+  /api/v1/moderation/cases:
+    get:
+      operationId: listModerationCases
+      security:
+        - browserSession: []
+      responses:
+        "200":
+          $ref: "#/components/responses/ObjectList"
+        default:
+          $ref: "#/components/responses/Error"
+  /api/v1/moderation/cases/{caseId}/decision:
+    post:
+      operationId: decideModerationCase
+      security:
+        - browserSession: []
+      parameters:
+        - name: caseId
+          in: path
+          required: true
+          schema: { type: string, minLength: 1 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [decision, reason, expectedVersion]
+              properties:
+                decision: { type: string, enum: [BLOCK, RESTORE, DISMISS] }
+                reason: { type: string, minLength: 1, maxLength: 2000 }
+                expectedVersion: { type: integer, minimum: 0 }
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+        default:
+          $ref: "#/components/responses/Error"
+  /api/v1/moderation/hash-blocklist:
+    post:
+      operationId: blockContentHash
+      security:
+        - browserSession: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [sha256, reason]
+              properties:
+                sha256: { type: string, pattern: "^[a-f0-9]{64}$" }
+                reason: { type: string, minLength: 1, maxLength: 2000 }
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+        default:
+          $ref: "#/components/responses/Error"
+  /api/v1/users/me:
+    get:
+      operationId: getCurrentUser
+      security:
+        - browserSession: []
+      responses:
+        "200":
+          description: Current user.
+          content:
+            application/json:
+              schema:
+                type: object
+        default:
+          $ref: "#/components/responses/Error"
+  /api/v1/users/me/nodes:
+    get:
+      operationId: listCurrentUserNodes
+      security:
+        - browserSession: []
+      responses:
+        "200":
+          $ref: "#/components/responses/ObjectList"
+        default:
+          $ref: "#/components/responses/Error"
+  /api/v1/users/me/shares:
+    get:
+      operationId: listCurrentUserShares
+      security:
+        - browserSession: []
+      responses:
+        "200":
+          $ref: "#/components/responses/ObjectList"
+        default:
+          $ref: "#/components/responses/Error"
+  /api/v1/users/me/downloads:
+    get:
+      operationId: listCurrentUserDownloads
+      security:
+        - browserSession: []
+      responses:
+        "200":
+          description: Telegram and PT downloads for the current user.
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas/v1.schema.json#/$defs/UserDownloadsResponse
+        default:
+          $ref: "#/components/responses/Error"
+  /api/v1/users/me/statistics:
+    get:
+      operationId: getCurrentUserStatistics
+      security:
+        - browserSession: []
+      responses:
+        "200":
+          description: Client-declared transfer statistics.
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas/v1.schema.json#/$defs/UserTransferStatisticsResponse
+        default:
+          $ref: "#/components/responses/Error"
+components:
+  securitySchemes:
+    nodeBearer:
+      type: http
+      scheme: bearer
+      bearerFormat: opaque
+    browserSession:
+      type: apiKey
+      in: cookie
+      name: seed_session
+  parameters:
+    TaskId:
+      name: taskId
+      in: path
+      required: true
+      schema:
+        type: string
+        minLength: 1
+    ResourceId:
+      name: resourceId
+      in: path
+      required: true
+      schema:
+        type: string
+        minLength: 1
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema:
+        type: string
+        minLength: 16
+        maxLength: 128
+  requestBodies:
+    TaskAttempt:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ./schemas/v1.schema.json#/$defs/TaskAttemptCommand
+    TaskComplete:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ./schemas/v1.schema.json#/$defs/TaskComplete
+    TaskFailure:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ./schemas/v1.schema.json#/$defs/TaskFailure
+  responses:
+    Error:
+      description: Stable error envelope.
+      content:
+        application/json:
+          schema:
+            $ref: ./schemas/v1.schema.json#/$defs/ErrorResponse
+    Success:
+      description: Operation accepted.
+      content:
+        application/json:
+          schema:
+            $ref: ./schemas/v1.schema.json#/$defs/SuccessResponse
+    ObjectList:
+      description: Object list.
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object

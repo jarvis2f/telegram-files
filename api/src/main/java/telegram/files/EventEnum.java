@@ -34,6 +34,33 @@ public enum EventEnum {
 
     /**
      * suffix = null <br>
+     * body = JSONObject containing only fileRecordId, recordVersion and telegramId.
+     * The event is emitted after the file state and share job are durably committed.
+     */
+    FILE_READY_FOR_SHARE,
+
+    SHARE_DEVICE_AUTHORIZE,
+
+    SHARE_DEVICE_STATUS,
+
+    SHARE_DEVICE_CANCEL,
+
+    SHARE_NODE_UNBIND,
+
+    SHARE_NODE_RENAME,
+
+    SHARE_RESOURCE_PUBLISH,
+
+    SHARE_RESOURCE_LIST,
+
+    SHARE_PUBLICATION_POLICY,
+
+    SHARE_RESOURCE_UPDATE,
+
+    SHARE_RESOURCE_REVOKE,
+
+    /**
+     * suffix = null <br>
      * body = JSONObject with "success", "message"
      */
     MAINTAIN,

@@ -4,31 +4,36 @@
 import * as React from "react";
 
 import type { ToastActionElement, ToastProps } from "@/components/ui/toast";
-import { AlertCircle, AlertTriangle, CheckCircle, Info } from "lucide-react";
+import { AlertCircle, AlertTriangle, CheckCircle2, Info } from "lucide-react";
 
-const TOAST_LIMIT = 1;
-const TOAST_REMOVE_DELAY = 1000000;
+const TOAST_LIMIT = 4;
+const TOAST_REMOVE_DELAY = 5000;
 
 const TOAST_VARIANTS = {
   success: {
-    icon: CheckCircle,
-    iconColor: "text-green-500 dark:text-green-300",
+    icon: CheckCircle2,
+    iconColor: "text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 dark:bg-emerald-500/20 ring-1 ring-emerald-500/20",
+    variantStyle: "border-emerald-500/20 bg-background/95 dark:bg-zinc-900/95 shadow-emerald-500/5",
   },
   error: {
     icon: AlertCircle,
-    iconColor: "text-red-500 dark:text-red-300",
+    iconColor: "text-rose-600 dark:text-rose-400 bg-rose-500/10 dark:bg-rose-500/20 ring-1 ring-rose-500/20",
+    variantStyle: "border-rose-500/20 bg-background/95 dark:bg-zinc-900/95 shadow-rose-500/5",
   },
   warning: {
     icon: AlertTriangle,
-    iconColor: "text-amber-500 dark:text-amber-300",
+    iconColor: "text-amber-600 dark:text-amber-400 bg-amber-500/10 dark:bg-amber-500/20 ring-1 ring-amber-500/20",
+    variantStyle: "border-amber-500/20 bg-background/95 dark:bg-zinc-900/95 shadow-amber-500/5",
   },
   info: {
     icon: Info,
-    iconColor: "text-blue-500 dark:text-blue-300",
+    iconColor: "text-sky-600 dark:text-sky-400 bg-sky-500/10 dark:bg-sky-500/20 ring-1 ring-sky-500/20",
+    variantStyle: "border-sky-500/20 bg-background/95 dark:bg-zinc-900/95 shadow-sky-500/5",
   },
   default: {
     icon: null,
-    iconColor: "text-gray-500 dark:text-gray-300",
+    iconColor: "text-zinc-500 dark:text-zinc-400 bg-zinc-500/10 dark:bg-zinc-500/20 ring-1 ring-zinc-500/20",
+    variantStyle: "border-border bg-background/95 dark:bg-zinc-900/95",
   },
 };
 

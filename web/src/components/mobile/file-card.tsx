@@ -11,6 +11,8 @@ import FileImage from "../file-image";
 import { MobileFileTags } from "@/components/file-tags";
 import { TooltipWrapper } from "@/components/ui/tooltip";
 import { Badge } from "@/components/ui/badge";
+import { FileSharing, FileSource } from "@/components/file-provenance";
+import { Progress } from "@/components/ui/progress";
 
 type FileCardProps = {
   index: number;
@@ -40,42 +42,73 @@ export function FileCard({
       ref={ref}
       data-index={index}
       className={cn(
-        "before:ease-[cubic-bezier(0.4, 0, 0.2, 1)] before:will-change:transform relative before:absolute before:inset-0 before:bottom-0 before:left-0 before:top-auto before:z-10 before:h-2 before:transform before:rounded-bl-xl before:bg-primary before:duration-500 before:content-['']",
-        downloadProgress > 0 && downloadProgress !== 100
-          ? `before:w-progress`
-          : "before:w-0",
+        "relative overflow-hidden",
+        isGalleryLayout
+          ? "rounded-xl border-white/10 bg-zinc-950 text-white shadow-sm active:scale-[0.99]"
+          : "",
         className,
       )}
-      style={{
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        // @ts-expect-error
-        "--tw-progress-width": `${downloadProgress > 0 && downloadProgress !== 100 ? downloadProgress.toFixed(0) + "%" : "0"}`,
-        ...style,
-      }}
+      style={style}
       onClick={onFileClick}
     >
-      <CardContent className="relative z-20 max-h-[340px] w-full p-2">
+      <CardContent
+        className={cn(
+          "relative z-20 w-full",
+          isGalleryLayout ? "h-full p-0" : "max-h-[340px] p-2",
+        )}
+      >
         <div
           className={cn(
             "flex items-center gap-4",
-            isGalleryLayout && "flex-col justify-center gap-2",
+            isGalleryLayout && "relative h-full flex-col justify-center gap-0",
           )}
         >
           {file.reactionCount > 0 && (
             <TooltipWrapper content="Reaction Count">
-              <Badge className="absolute -left-1 -top-1 z-10 flex h-6 w-6 items-center justify-center rounded-full bg-blue-500 text-xs hover:bg-blue-600">
+              <Badge
+                className={cn(
+                  "absolute z-30 flex h-6 w-6 items-center justify-center rounded-full bg-blue-500 text-xs hover:bg-blue-600",
+                  isGalleryLayout ? "left-2 top-2" : "-left-1 -top-1",
+                )}
+              >
                 {file.reactionCount}
               </Badge>
             </TooltipWrapper>
           )}
           <FileImage
             file={file}
-            className={cn(!isGalleryLayout && "h-16 w-16 min-w-16")}
+            className={cn(
+              isGalleryLayout
+                ? "h-full max-h-none w-full rounded-none object-cover"
+                : "h-16 w-16 min-w-16",
+            )}
             isGalleryLayout={isGalleryLayout}
           />
           {isGalleryLayout ? (
-            <div className="w-5/6">
-              <FileExtra file={file} rowHeight="s" ellipsis={true} />
+            <div className="absolute inset-x-0 bottom-0 z-20 bg-gradient-to-t from-black/85 via-black/45 to-transparent px-3 pb-3 pt-12">
+              <div className="min-w-0 text-white">
+                <FileExtra file={file} rowHeight="s" ellipsis={true} />
+              </div>
+              <div className="mt-2 flex items-end justify-between gap-3">
+                <div className="min-w-0 space-y-1">
+                  <span className="block truncate text-[11px] font-medium text-white/75">
+                    {prettyBytes(file.size)} • {file.type}
+                  </span>
+                  <div className="flex min-h-5 flex-wrap items-center gap-1.5">
+                    <FileStatus file={file} className="justify-start" />
+                    {file.loaded && (
+                      <MobileFileTags
+                        tags={file.tags}
+                        onClick={onFileTagsClick}
+                        className="bg-foreground"
+                      />
+                    )}
+                  </div>
+                </div>
+                <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
+                  <FileControl file={file} isMobile={true} />
+                </div>
+              </div>
             </div>
           ) : (
             <div className="flex-1 overflow-hidden">
@@ -85,6 +118,14 @@ export function FileCard({
                   <span className="text-xs text-muted-foreground">
                     {prettyBytes(file.size)} • {file.type}
                   </span>
+                  <div className="flex min-h-5 items-center gap-2">
+                    <FileSource
+                      file={file}
+                      className="justify-start"
+                      showEmpty={false}
+                    />
+                    <FileSharing file={file} showEmpty={false} />
+                  </div>
                   <div className="flex items-center gap-1">
                     <FileStatus file={file} className="justify-start" />
                     {file.loaded && (
@@ -107,6 +148,15 @@ export function FileCard({
           )}
         </div>
       </CardContent>
+      {downloadProgress > 0 && downloadProgress !== 100 && (
+        <div className="absolute inset-x-2 bottom-1 z-30">
+          <Progress
+            value={downloadProgress}
+            variant="download"
+            data-download-state={file.downloadStatus}
+          />
+        </div>
+      )}
     </Card>
   );
 }

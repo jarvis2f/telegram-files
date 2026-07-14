@@ -16,7 +16,64 @@ permissions:
   packages: write
 
 jobs:
+  artifacts:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 23
+        uses: actions/setup-java@v5
+        with:
+          java-version: '23'
+          distribution: 'temurin'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Build API artifact
+        working-directory: ./api
+        run: |
+          chmod +x gradlew
+          ./gradlew shadowJar --no-daemon
+          mkdir -p ../.docker-artifacts
+          cp build/libs/telegram-files.jar ../.docker-artifacts/api.jar
+          jdeps --print-module-deps --ignore-missing-deps ../.docker-artifacts/api.jar > ../.docker-artifacts/dependencies.txt
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Build web artifact
+        working-directory: ./web
+        env:
+          NEXT_PUBLIC_API_URL: /api
+          NEXT_PUBLIC_WS_URL: /ws
+          NEXT_TELEMETRY_DISABLED: '1'
+          SKIP_ENV_VALIDATION: '1'
+          npm_config_fetch_retry_mintimeout: '20000'
+          npm_config_fetch_retry_maxtimeout: '120000'
+          npm_config_fetch_retries: '5'
+        run: |
+          npm ci
+          npm run build
+          mkdir -p ../.docker-artifacts/web
+          cp -R out/. ../.docker-artifacts/web/
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-build-artifacts
+          path: .docker-artifacts
+          if-no-files-found: error
+          include-hidden-files: true
+          retention-days: 1
+
   build:
+    needs: artifacts
     runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false
@@ -25,15 +82,18 @@ jobs:
           - runner: ubuntu-latest
             platform: linux/amd64
             platform_tag: linux-amd64
-          - runner: [ self-hosted, linux, ARM64 ]
+          - runner: ubuntu-24.04-arm
             platform: linux/arm64
             platform_tag: linux-arm64
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Docker Setup QEMU
-        uses: docker/setup-qemu-action@v3.0.0
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: docker-build-artifacts
+          path: .docker-artifacts
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3.10.0
@@ -65,7 +125,7 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           outputs: type=image,"name=${{ env.GHCR_REPO }}",push-by-digest=true,name-canonical=true,push=true
           cache-from: type=gha,scope=build-${{ matrix.platform_tag }}
-          cache-to: type=gha,scope=build-${{ matrix.platform_tag }},mode=max
+          cache-to: type=gha,scope=build-${{ matrix.platform_tag }},mode=${{ github.event_name == 'release' && 'max' || 'min' }}
 
       - name: Export digest
         run: |

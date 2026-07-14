@@ -32,6 +32,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import { FileSharing, FileSource } from "@/components/file-provenance";
 
 export default function FileInfo({
   file,
@@ -50,6 +51,10 @@ export default function FileInfo({
           <FileImage file={file} className="" isGalleryLayout />
           <span className="max-w-64 truncate">{file.fileName}</span>
         </div>
+        <div className="flex items-center justify-center gap-3 py-1">
+          <FileSource file={file} showEmpty={false} />
+          <FileSharing file={file} showEmpty={false} />
+        </div>
         <div className="py-1">
           <FileStatus file={file} />
         </div>
@@ -67,7 +72,9 @@ export default function FileInfo({
           <div className="flex items-end justify-between gap-2">
             <Progress
               value={downloadProgress}
-              className="flex-1 rounded-none md:w-32"
+              variant="download"
+              data-download-state={file.downloadStatus}
+              className="flex-1 md:w-32"
             />
           </div>
         )}

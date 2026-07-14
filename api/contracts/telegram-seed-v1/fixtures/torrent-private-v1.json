@@ -1,0 +1,10 @@
+{
+  "torrentVersion": "V1_PRIVATE",
+  "torrentBase64": "ZDQ6aW5mb2Q2Omxlbmd0aGkxMDI0ZTQ6bmFtZTExOmZpeHR1cmUuYmluMTI6cGllY2UgbGVuZ3RoaTI2MjE0NGU2OnBpZWNlczIwOmDKy/PXLh54NCA9pggDexv4O0DoNzpwcml2YXRlaTFlZWU=",
+  "infoHashV1": "12a4577456eb1aa06a37a5d6ccebaea54713c4ab",
+  "contentSha256": "5f70bf18a086007016e948b04aed3b82103a36bea41755b6cddfaf10ace3c6ef",
+  "fileName": "fixture.bin",
+  "fileSize": "1024",
+  "pieceLength": 262144,
+  "pieceCount": 1
+}

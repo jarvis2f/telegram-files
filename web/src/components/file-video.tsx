@@ -1,8 +1,9 @@
 import { type TelegramFile } from "@/lib/types";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { AnimatePresence, motion } from "framer-motion";
 import {
+  AlertTriangle,
   Loader2,
   Maximize,
   Minimize,
@@ -20,6 +21,7 @@ import { cn } from "@/lib/utils";
 import useIsMobile from "@/hooks/use-is-mobile";
 import * as SliderPrimitive from "@radix-ui/react-slider";
 import { SafeBottomWrapper } from "@/components/safe-bottom-wrapper";
+import prettyBytes from "pretty-bytes";
 
 // 检测浏览器是否支持特定视频格式
 const checkVideoSupport = (mimeType: string): "probably" | "maybe" | "" => {
@@ -51,15 +53,51 @@ const getMimeType = (file: TelegramFile): string => {
   return "video/mp4";
 };
 
+const estimateBufferedBytes = (
+  video: HTMLVideoElement,
+  duration: number,
+  fileSize: number,
+) => {
+  if (!Number.isFinite(duration) || duration <= 0 || fileSize <= 0) return 0;
+
+  let bufferedSeconds = 0;
+  for (let index = 0; index < video.buffered.length; index += 1) {
+    bufferedSeconds += Math.max(
+      0,
+      video.buffered.end(index) - video.buffered.start(index),
+    );
+  }
+
+  return Math.min(
+    fileSize,
+    Math.round((bufferedSeconds / duration) * fileSize),
+  );
+};
+
+const formatLoadingSpeed = (bytesPerSecond: number) => {
+  if (!Number.isFinite(bytesPerSecond) || bytesPerSecond <= 0) return "0 B/s";
+
+  return `${prettyBytes(bytesPerSecond)}/s`;
+};
+
+const LOAD_SPEED_WINDOW_MS = 2500;
+const LOAD_SPEED_IDLE_TIMEOUT_MS = 1500;
+
 const VideoErrorFallback = ({
   className = "",
   message = "Video loading failed!",
 }) => (
   <div
-    className={`flex flex-col items-center justify-center rounded bg-gray-100 p-4 ${className}`}
+    className={cn(
+      "flex flex-col items-center justify-center rounded-lg border border-white/10 bg-zinc-950/90 p-6 text-center shadow-2xl ring-1 ring-white/10",
+      className,
+    )}
   >
-    <VideoOff className="mb-2 h-8 w-8 text-gray-400" />
-    <p className="text-sm text-gray-500">{message}</p>
+    <div className="mb-3 rounded-full bg-white/10 p-3">
+      <VideoOff className="h-7 w-7 text-white/70" />
+    </div>
+    <p className="text-sm font-medium text-white">Video unavailable</p>
+    <p className="mt-1 max-w-sm text-sm text-white/60">{message}</p>
   </div>
 );
 
@@ -73,24 +111,24 @@ const Slider = React.forwardRef<
     ref={ref}
     className={cn(
       "relative flex w-full touch-none select-none items-center",
-      isMobile ? "py-4" : "",
+      isMobile ? "min-h-14 py-6" : "",
       className,
     )}
     {...props}
   >
     <SliderPrimitive.Track
       className={cn(
-        "relative w-full grow overflow-hidden rounded-full bg-gray-600/40",
-        isMobile ? "h-2" : "h-1.5",
+        "relative w-full grow overflow-hidden rounded-full bg-white/20",
+        isMobile ? "h-3" : "h-1.5",
       )}
     >
       <SliderPrimitive.Range className="absolute h-full bg-white" />
     </SliderPrimitive.Track>
     <SliderPrimitive.Thumb
       className={cn(
-        "block rounded-full border-4 border-white bg-background shadow transition-all",
-        isMobile ? "h-6 w-6 active:scale-110" : "h-4 w-4",
-        "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+        "block rounded-full border-4 border-white bg-zinc-950 shadow transition-all",
+        isMobile ? "h-8 w-8 border-[5px] active:scale-110" : "h-4 w-4",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70",
         "disabled:pointer-events-none disabled:opacity-50",
       )}
     />
@@ -162,13 +200,13 @@ const DesktopControls = ({
           max={duration}
           step={0.1}
           className="w-full cursor-pointer"
-          onValueChange={(value) => value[0] && onSeek(value[0])}
+          onValueChange={(value) => value[0] !== undefined && onSeek(value[0])}
         />
         {showPreview && (
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="absolute bottom-full mb-4 overflow-hidden bg-black"
+            className="absolute bottom-full mb-4 overflow-hidden rounded-md border border-white/10 bg-black shadow-2xl"
             style={{ left: `${previewPos}px`, transform: "translateX(-50%)" }}
           >
             <div className="flex aspect-video w-48 items-center justify-center bg-black">
@@ -177,7 +215,7 @@ const DesktopControls = ({
                 className="h-full w-full object-contain"
               />
             </div>
-            <div className="bg-black/80 px-2 py-1 text-center text-sm text-white">
+            <div className="bg-black/80 px-2 py-1 text-center text-xs font-medium text-white">
               {formatTime(previewTime)}
             </div>
           </motion.div>
@@ -188,7 +226,7 @@ const DesktopControls = ({
         <Button
           variant="ghost"
           size="icon"
-          className="text-white hover:bg-white/20"
+          className="rounded-full bg-white/10 text-white hover:bg-white/20 hover:text-white [&_svg]:size-5"
           onClick={onPlayPause}
         >
           {isPlaying ? (
@@ -202,7 +240,7 @@ const DesktopControls = ({
           <Button
             variant="ghost"
             size="icon"
-            className="text-white hover:bg-white/20"
+            className="rounded-full text-white hover:bg-white/20 hover:text-white [&_svg]:size-5"
             onClick={onMuteToggle}
           >
             {isMuted ? (
@@ -219,7 +257,7 @@ const DesktopControls = ({
           />
         </div>
 
-        <div className="text-sm text-white">
+        <div className="rounded-full bg-white/10 px-3 py-1 text-xs font-medium text-white/90">
           {formatTime(currentTime)} / {formatTime(duration)}
         </div>
 
@@ -229,7 +267,7 @@ const DesktopControls = ({
               <Button
                 variant="ghost"
                 size="sm"
-                className="text-white hover:bg-white/20"
+                className="rounded-full bg-white/10 text-white hover:bg-white/20 hover:text-white"
               >
                 {playbackRate}x
               </Button>
@@ -256,7 +294,7 @@ const DesktopControls = ({
           <Button
             variant="ghost"
             size="icon"
-            className="text-white hover:bg-white/20"
+            className="rounded-full text-white hover:bg-white/20 hover:text-white [&_svg]:size-5"
             onClick={onFullscreenToggle}
           >
             {isFullscreen ? (
@@ -295,13 +333,19 @@ const MobileControls = ({
   };
 
   return (
-    <div className="space-y-6" onClick={(e) => e.stopPropagation()}>
+    <div className="space-y-2" onClick={(e) => e.stopPropagation()}>
       <div className="flex items-center justify-between px-4">
-        <span className="text-sm text-white">{formatTime(currentTime)}</span>
-        <span className="text-sm text-white">{formatTime(duration)}</span>
+        <span className="rounded-full bg-white/10 px-2.5 py-1 text-xs font-medium text-white">
+          {formatTime(currentTime)}
+        </span>
+        <span className="rounded-full bg-white/10 px-2.5 py-1 text-xs font-medium text-white">
+          {formatTime(duration)}
+        </span>
       </div>
 
       <div
+        className="-mx-2 rounded-2xl px-2"
+        onPointerDown={(e) => e.stopPropagation()}
         onTouchStart={(e) => e.stopPropagation()}
         onClick={(e) => e.stopPropagation()}
       >
@@ -311,15 +355,15 @@ const MobileControls = ({
           max={duration}
           step={0.1}
           className="w-full cursor-pointer"
-          onValueChange={(value) => value[0] && onSeek(value[0])}
+          onValueChange={(value) => value[0] !== undefined && onSeek(value[0])}
         />
       </div>
 
-      <div className="flex items-center justify-center gap-8">
+      <div className="flex items-center justify-center gap-9">
         <Button
           variant="ghost"
           size="icon"
-          className="text-white hover:bg-white/20"
+          className="h-12 w-12 rounded-full bg-white/10 text-white hover:bg-white/20 hover:text-white [&_svg]:size-5"
           onClick={onSkipBackward}
         >
           <RotateCcw className="h-8 w-8" />
@@ -328,7 +372,7 @@ const MobileControls = ({
         <Button
           variant="ghost"
           size="icon"
-          className="text-white hover:bg-white/20"
+          className="h-14 w-14 rounded-full bg-white text-black shadow-2xl hover:bg-white/90 hover:text-black [&_svg]:size-7"
           onClick={onPlayPause}
         >
           {isPlaying ? (
@@ -341,7 +385,7 @@ const MobileControls = ({
         <Button
           variant="ghost"
           size="icon"
-          className="text-white hover:bg-white/20"
+          className="h-12 w-12 rounded-full bg-white/10 text-white hover:bg-white/20 hover:text-white [&_svg]:size-5"
           onClick={onSkipForward}
         >
           <RotateCw className="h-8 w-8" />
@@ -355,21 +399,28 @@ const FileVideo = ({
   file,
   onTimeUpdate,
   onVolumeChange,
+  onControlsVisibilityChange,
   className,
 }: {
   file: TelegramFile;
   onTimeUpdate?: (time: number) => void;
   onVolumeChange?: (volume: number) => void;
+  onControlsVisibilityChange?: (visible: boolean) => void;
   className?: string;
 }) => {
-  const videoWidth = file.extra?.width ?? 480;
-  const videoHeight = file.extra?.height ?? 270;
-  const aspectRatio = videoWidth / videoHeight;
   const videoRef = useRef<HTMLVideoElement>(null);
   const previewVideoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const progressBarRef = useRef<HTMLDivElement>(null);
+  const hideControlsTimeoutRef = useRef<number | null>(null);
+  const loadSpeedSamplesRef = useRef<
+    Array<{
+      bytes: number;
+      timestamp: number;
+    }>
+  >([]);
+  const resetLoadSpeedTimeoutRef = useRef<number | null>(null);
   const isMobile = useIsMobile();
   const [loading, setLoading] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -387,9 +438,134 @@ const FileVideo = ({
   const [error, setError] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [formatWarning, setFormatWarning] = useState<string | null>(null);
+  const [loadedBytesEstimate, setLoadedBytesEstimate] = useState(0);
+  const [loadingSpeed, setLoadingSpeed] = useState(0);
+  const [isBufferGrowing, setIsBufferGrowing] = useState(false);
 
   const url = `${getApiUrl()}/${file.telegramId}/file/${file.uniqueId}`;
   const mimeType = getMimeType(file);
+  const loadedPercent =
+    file.size > 0 ? Math.min(100, (loadedBytesEstimate / file.size) * 100) : 0;
+  const showLoadingSpeed =
+    file.size > 0 && duration > 0 && (loading || isBufferGrowing);
+
+  const clearControlsHideTimeout = useCallback(() => {
+    if (hideControlsTimeoutRef.current === null) return;
+    window.clearTimeout(hideControlsTimeoutRef.current);
+    hideControlsTimeoutRef.current = null;
+  }, []);
+
+  const scheduleControlsHide = useCallback(() => {
+    clearControlsHideTimeout();
+
+    if (isMobile || !isPlaying) return;
+
+    hideControlsTimeoutRef.current = window.setTimeout(() => {
+      setShowControls(false);
+      hideControlsTimeoutRef.current = null;
+    }, 2600);
+  }, [clearControlsHideTimeout, isMobile, isPlaying]);
+
+  const revealControls = useCallback(() => {
+    setShowControls(true);
+    scheduleControlsHide();
+  }, [scheduleControlsHide]);
+
+  const toggleControls = useCallback(() => {
+    setShowControls((visible) => {
+      if (visible) {
+        clearControlsHideTimeout();
+        return false;
+      }
+
+      return true;
+    });
+  }, [clearControlsHideTimeout]);
+
+  const clearLoadSpeedResetTimeout = useCallback(() => {
+    if (resetLoadSpeedTimeoutRef.current === null) return;
+    window.clearTimeout(resetLoadSpeedTimeoutRef.current);
+    resetLoadSpeedTimeoutRef.current = null;
+  }, []);
+
+  const updateLoadingSpeed = useCallback(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    const bufferedBytes = estimateBufferedBytes(video, duration, file.size);
+    const timestamp = performance.now();
+    const previous = loadSpeedSamplesRef.current.at(-1);
+
+    setLoadedBytesEstimate(bufferedBytes);
+
+    if (previous && bufferedBytes < previous.bytes) {
+      loadSpeedSamplesRef.current = [{ bytes: bufferedBytes, timestamp }];
+      clearLoadSpeedResetTimeout();
+      setLoadingSpeed(0);
+      setIsBufferGrowing(false);
+      return;
+    }
+
+    const cutoff = timestamp - LOAD_SPEED_WINDOW_MS;
+    const samples = [
+      ...loadSpeedSamplesRef.current,
+      { bytes: bufferedBytes, timestamp },
+    ];
+    const firstRecentIndex = samples.findIndex(
+      (sample) => sample.timestamp >= cutoff,
+    );
+    const windowStartIndex = Math.max(0, firstRecentIndex - 1);
+    const recentSamples = samples.slice(windowStartIndex);
+    loadSpeedSamplesRef.current = recentSamples;
+
+    if (!previous || bufferedBytes <= previous.bytes) return;
+
+    const oldest = recentSamples[0]!;
+    const elapsedSeconds = (timestamp - oldest.timestamp) / 1000;
+    const loadedDelta = bufferedBytes - oldest.bytes;
+
+    setIsBufferGrowing(true);
+
+    if (elapsedSeconds >= 0.25 && loadedDelta > 0) {
+      setLoadingSpeed(loadedDelta / elapsedSeconds);
+    }
+
+    clearLoadSpeedResetTimeout();
+    resetLoadSpeedTimeoutRef.current = window.setTimeout(() => {
+      setLoadingSpeed(0);
+      setIsBufferGrowing(false);
+      resetLoadSpeedTimeoutRef.current = null;
+    }, LOAD_SPEED_IDLE_TIMEOUT_MS);
+  }, [clearLoadSpeedResetTimeout, duration, file.size]);
+
+  useEffect(() => {
+    onControlsVisibilityChange?.(showControls);
+  }, [onControlsVisibilityChange, showControls]);
+
+  useEffect(() => {
+    if (isPlaying && showControls) {
+      scheduleControlsHide();
+    } else {
+      clearControlsHideTimeout();
+    }
+  }, [clearControlsHideTimeout, isPlaying, scheduleControlsHide, showControls]);
+
+  useEffect(() => clearControlsHideTimeout, [clearControlsHideTimeout]);
+
+  useEffect(
+    () => () => {
+      clearLoadSpeedResetTimeout();
+    },
+    [clearLoadSpeedResetTimeout],
+  );
+
+  useEffect(() => {
+    loadSpeedSamplesRef.current = [];
+    setLoadedBytesEstimate(0);
+    setLoadingSpeed(0);
+    setIsBufferGrowing(false);
+    clearLoadSpeedResetTimeout();
+  }, [clearLoadSpeedResetTimeout, file.id, url]);
 
   // Check format compatibility
   useEffect(() => {
@@ -405,8 +581,7 @@ const FileVideo = ({
 
   useEffect(() => {
     const video = videoRef.current;
-    const previewVideo = previewVideoRef.current;
-    if (!video || !previewVideo) return;
+    if (!video) return;
 
     const handleLoadedMetadata = () => {
       setDuration(video.duration);
@@ -414,32 +589,54 @@ const FileVideo = ({
     };
 
     video.addEventListener("loadedmetadata", handleLoadedMetadata);
-    previewVideo.addEventListener("loadedmetadata", handleLoadedMetadata);
 
     return () => {
       video.removeEventListener("loadedmetadata", handleLoadedMetadata);
-      previewVideo.removeEventListener("loadedmetadata", handleLoadedMetadata);
     };
   }, []);
+
+  useEffect(() => {
+    updateLoadingSpeed();
+  }, [duration, updateLoadingSpeed]);
 
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
 
-    const handleWaiting = () => setLoading(true);
-    const handlePlaying = () => setLoading(false);
-    const handleCanPlay = () => setLoading(false);
+    const handleWaiting = () => {
+      setLoading(true);
+      updateLoadingSpeed();
+    };
+    const handlePlaying = () => {
+      setLoading(false);
+      updateLoadingSpeed();
+    };
+    const handleCanPlay = () => {
+      setLoading(false);
+      updateLoadingSpeed();
+    };
+    const handleLoadingProgress = () => updateLoadingSpeed();
 
     video.addEventListener("waiting", handleWaiting);
     video.addEventListener("playing", handlePlaying);
     video.addEventListener("canplay", handleCanPlay);
+    video.addEventListener("canplaythrough", handleCanPlay);
+    video.addEventListener("loadeddata", handleLoadingProgress);
+    video.addEventListener("loadstart", handleLoadingProgress);
+    video.addEventListener("progress", handleLoadingProgress);
+    video.addEventListener("suspend", handleLoadingProgress);
 
     return () => {
       video.removeEventListener("waiting", handleWaiting);
       video.removeEventListener("playing", handlePlaying);
       video.removeEventListener("canplay", handleCanPlay);
+      video.removeEventListener("canplaythrough", handleCanPlay);
+      video.removeEventListener("loadeddata", handleLoadingProgress);
+      video.removeEventListener("loadstart", handleLoadingProgress);
+      video.removeEventListener("progress", handleLoadingProgress);
+      video.removeEventListener("suspend", handleLoadingProgress);
     };
-  }, []);
+  }, [updateLoadingSpeed]);
 
   const captureVideoFrame = () => {
     const previewVideo = previewVideoRef.current;
@@ -498,16 +695,22 @@ const FileVideo = ({
   };
 
   const togglePlay = () => {
-    if (videoRef.current) {
-      if (!isPreviewReady) {
-        return;
-      }
-      if (isPlaying) {
-        videoRef.current.pause();
-      } else {
-        void videoRef.current.play();
-      }
-      setIsPlaying(!isPlaying);
+    const video = videoRef.current;
+    if (!video || !isPreviewReady) {
+      return;
+    }
+
+    if (isPlaying) {
+      video.pause();
+      setIsPlaying(false);
+    } else {
+      video
+        .play()
+        .then(() => setIsPlaying(true))
+        .catch((err: unknown) => {
+          console.warn("Video play request failed", err);
+          setIsPlaying(false);
+        });
     }
   };
 
@@ -521,6 +724,7 @@ const FileVideo = ({
   const handleTimeUpdate = () => {
     if (videoRef.current) {
       setCurrentTime(videoRef.current.currentTime);
+      updateLoadingSpeed();
       onTimeUpdate?.(videoRef.current.currentTime);
     }
   };
@@ -604,12 +808,13 @@ const FileVideo = ({
   const handleEnded = () => {
     setCurrentTime(0);
     setIsPlaying(false);
+    setShowControls(true);
   };
 
   if (error) {
     return (
       <VideoErrorFallback
-        className="h-full min-h-[200px] w-full"
+        className="h-dvh min-h-[240px] w-dvw rounded-none"
         message={errorMessage}
       />
     );
@@ -618,35 +823,36 @@ const FileVideo = ({
   return (
     <motion.div
       ref={containerRef}
-      style={{
-        aspectRatio: aspectRatio,
-        maxWidth: isMobile ? "100vw" : videoWidth,
-        maxHeight: isMobile ? "100vh" : videoHeight,
-        position: "relative",
-        background: "#000",
-      }}
       className={cn(
-        "group relative w-full overflow-hidden bg-black",
-        isMobile ? "flex h-screen w-screen items-center" : "min-w-[30rem]",
+        "group relative flex h-dvh w-dvw items-center overflow-hidden bg-black shadow-2xl ring-1 ring-white/10",
       )}
-      onClick={isMobile ? () => setShowControls((prev) => !prev) : undefined}
-      onMouseEnter={() => setShowControls(true)}
-      onMouseLeave={() => setShowControls(false)}
+      onClick={toggleControls}
+      onMouseEnter={!isMobile ? revealControls : undefined}
+      onMouseMove={!isMobile ? revealControls : undefined}
+      onMouseLeave={() => {
+        if (isMobile || !isPlaying) return;
+        clearControlsHideTimeout();
+        setShowControls(false);
+      }}
     >
       {!isPreviewReady && file.thumbnailFile && (
         <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
-          <Loader2 className="h-12 w-12 animate-spin text-white" />
+          <div className="rounded-full bg-black/45 p-4 backdrop-blur-md">
+            <Loader2 className="h-8 w-8 animate-spin text-white" />
+          </div>
         </div>
       )}
 
       <video
         ref={videoRef}
         autoPlay={isMobile}
+        preload="metadata"
         onPlay={() => isMobile && !isPlaying && setIsPlaying(true)}
+        onPause={() => setIsPlaying(false)}
         onEnded={handleEnded}
         onError={handleError}
         playsInline
-        className={cn("max-h-[calc(100vh-5rem)] w-full", className)}
+        className={cn("h-full w-full bg-black object-contain", className)}
         onTimeUpdate={handleTimeUpdate}
       >
         <source src={url} type={mimeType} />
@@ -655,74 +861,97 @@ const FileVideo = ({
 
       {/* Hidden video for preview */}
       {!isMobile && (
-        <video ref={previewVideoRef} className="hidden" preload="auto">
+        <video ref={previewVideoRef} className="hidden" preload="metadata">
           <source src={url} type={mimeType} />
         </video>
       )}
 
       {loading && (
         <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
-          <Loader2 className="h-12 w-12 animate-spin text-white" />
+          <div className="rounded-full bg-black/45 p-4 backdrop-blur-md">
+            <Loader2 className="h-8 w-8 animate-spin text-white" />
+          </div>
         </div>
       )}
 
       {/* Format warning */}
       {formatWarning && !error && (
-        <div className="absolute left-0 right-0 top-0 z-20 bg-yellow-500/90 px-4 py-2 text-center text-sm text-black">
-          ⚠️ {formatWarning}
+        <div className="absolute left-3 right-3 top-3 z-20 flex items-center justify-center gap-2 rounded-md border border-amber-300/30 bg-amber-500/90 px-3 py-2 text-center text-sm font-medium text-amber-950 shadow-lg backdrop-blur-md">
+          <AlertTriangle className="h-4 w-4 flex-shrink-0" />
+          <span>{formatWarning}</span>
         </div>
       )}
 
       <AnimatePresence>
         {showControls && (
-          <motion.div
-            id="video-controls"
-            onTouchStart={(e) => e.stopPropagation()}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 20 }}
-            className={cn(
-              "absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4",
-              isMobile && "bg-gray-900 bg-opacity-20",
+          <>
+            {showLoadingSpeed && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className={cn(
+                  "pointer-events-none absolute right-3 z-20 rounded-full border border-white/10 bg-black/45 px-3 py-1.5 text-xs font-medium text-white shadow-2xl backdrop-blur-md sm:right-5",
+                  formatWarning ? "top-16 sm:top-16" : "top-3 sm:top-5",
+                )}
+              >
+                <span className="text-white/60">Loading</span>{" "}
+                {formatLoadingSpeed(loadingSpeed)}
+                <span className="ml-2 text-white/50">
+                  {Math.floor(loadedPercent)}%
+                </span>
+              </motion.div>
             )}
-          >
-            {isMobile ? (
-              <SafeBottomWrapper>
-                <MobileControls
+            <motion.div
+              id="video-controls"
+              onClick={(e) => e.stopPropagation()}
+              onTouchStart={(e) => e.stopPropagation()}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 20 }}
+              className={cn(
+                "absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 via-black/55 to-transparent p-4 pt-14",
+                isMobile && "bg-black/40 pt-6",
+              )}
+            >
+              {isMobile ? (
+                <SafeBottomWrapper>
+                  <MobileControls
+                    isPlaying={isPlaying}
+                    currentTime={currentTime}
+                    duration={duration}
+                    onPlayPause={togglePlay}
+                    onSeek={handleSeek}
+                    onSkipForward={handleSkipForward}
+                    onSkipBackward={handleSkipBackward}
+                  />
+                </SafeBottomWrapper>
+              ) : (
+                <DesktopControls
                   isPlaying={isPlaying}
                   currentTime={currentTime}
                   duration={duration}
+                  volume={volume}
+                  isMuted={isMuted}
+                  isFullscreen={isFullscreen}
+                  playbackRate={playbackRate}
                   onPlayPause={togglePlay}
+                  onVolumeChange={handleVolumeChange}
+                  onMuteToggle={toggleMute}
+                  onFullscreenToggle={toggleFullscreen}
+                  onPlaybackRateChange={handlePlaybackRateChange}
                   onSeek={handleSeek}
-                  onSkipForward={handleSkipForward}
-                  onSkipBackward={handleSkipBackward}
+                  progressBarRef={progressBarRef}
+                  onProgressBarHover={handleProgressBarHover}
+                  onProgressBarLeave={() => setShowPreview(false)}
+                  showPreview={showPreview}
+                  previewTime={previewTime}
+                  previewPos={previewPos}
+                  canvasRef={canvasRef}
                 />
-              </SafeBottomWrapper>
-            ) : (
-              <DesktopControls
-                isPlaying={isPlaying}
-                currentTime={currentTime}
-                duration={duration}
-                volume={volume}
-                isMuted={isMuted}
-                isFullscreen={isFullscreen}
-                playbackRate={playbackRate}
-                onPlayPause={togglePlay}
-                onVolumeChange={handleVolumeChange}
-                onMuteToggle={toggleMute}
-                onFullscreenToggle={toggleFullscreen}
-                onPlaybackRateChange={handlePlaybackRateChange}
-                onSeek={handleSeek}
-                progressBarRef={progressBarRef}
-                onProgressBarHover={handleProgressBarHover}
-                onProgressBarLeave={() => setShowPreview(false)}
-                showPreview={showPreview}
-                previewTime={previewTime}
-                previewPos={previewPos}
-                canvasRef={canvasRef}
-              />
-            )}
-          </motion.div>
+              )}
+            </motion.div>
+          </>
         )}
       </AnimatePresence>
     </motion.div>

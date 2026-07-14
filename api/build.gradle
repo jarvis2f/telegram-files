@@ -5,7 +5,17 @@ plugins {
 }
 
 group = 'telegram.files'
-version = '0.3.1'
+version = providers.fileContents(layout.projectDirectory.file('../VERSION')).asText.map { it.trim() }.get()
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(23)
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.release = 23
+}
 
 repositories {
     mavenCentral()
@@ -33,8 +43,10 @@ dependencies {
     implementation 'cn.hutool:hutool-log:5.8.34'
     implementation 'org.jooq:jool:0.9.15'
     implementation 'com.fasterxml.jackson.core:jackson-databind:2.17.3'
+    implementation 'org.bouncycastle:bcprov-jdk18on:1.79'
     implementation 'org.apache.commons:commons-jexl3:3.6.1'
     implementation 'com.openai:openai-java:4.13.0'
+    runtimeOnly 'org.slf4j:slf4j-jdk14:2.0.16'
     // only for macos
     if (osName.contains("mac")) {
         implementation('io.netty:netty-resolver-dns-native-macos:4.2.0.Final') {
@@ -88,6 +100,25 @@ jacocoTestReport {
 
 tasks.build {
     dependsOn shadowJar
+}
+
+tasks.named('processResources') {
+    inputs.property('applicationVersion', project.version)
+    filesMatching('telegram-files-version.properties') {
+        expand(applicationVersion: project.version)
+    }
+}
+
+tasks.register('syncSeedContracts', Sync) {
+    def sourceDir = providers.environmentVariable('TELEGRAM_SEED_CONTRACT_DIR')
+            .orElse(layout.projectDirectory.dir('../../telegram-seed/packages/contracts/artifacts/v1').asFile.absolutePath)
+    from(sourceDir)
+    into(layout.projectDirectory.dir('contracts/telegram-seed-v1'))
+    doFirst {
+        if (!file(sourceDir.get()).isDirectory()) {
+            throw new GradleException("telegram-seed contract artifact not found: ${sourceDir.get()}")
+        }
+    }
 }
 
 shadowJar {

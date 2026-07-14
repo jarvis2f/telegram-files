@@ -27,7 +27,7 @@ interface FileExtraProps {
   ellipsis?: boolean;
 }
 
-function FileName({ file, ellipsis }: FileExtraProps) {
+function FileName({ file, rowHeight, ellipsis }: FileExtraProps) {
   if (!file.fileName) {
     return null;
   }
@@ -41,7 +41,7 @@ function FileName({ file, ellipsis }: FileExtraProps) {
         <span
           className={cn(
             "overflow-hidden text-nowrap rounded px-1 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 lg:text-wrap",
-            ellipsis && "line-clamp-1",
+            (rowHeight !== "l" || ellipsis) && "line-clamp-1",
           )}
         >
           {file.fileName}
@@ -108,7 +108,7 @@ function FilePath({ file, ellipsis, rowHeight }: FileExtraProps) {
               className={cn(
                 "group cursor-pointer overflow-hidden text-nowrap rounded px-1 text-left hover:bg-gray-100 dark:hover:bg-gray-800",
                 rowHeight === "l" && "text-wrap",
-                ellipsis && "line-clamp-1",
+                (rowHeight !== "l" || ellipsis) && "line-clamp-1",
                 isMobile && "px-0",
               )}
               onClick={() => !isMobile && copyToClipboard(file.localPath)}
@@ -131,7 +131,7 @@ function FilePath({ file, ellipsis, rowHeight }: FileExtraProps) {
 function FileTime({ file }: FileExtraProps) {
   const isMobile = useIsMobile();
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-2 overflow-hidden whitespace-nowrap">
       <Tooltip>
         <TooltipTrigger asChild>
           <p className="flex items-center gap-2">

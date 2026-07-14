@@ -1,9 +1,14 @@
 import { env } from "@/env";
+import { browserWriteHeaders, isSessionTerminal } from "@/lib/security";
+
+export const SESSION_TERMINAL_EVENT = "telegram-files:session-terminal";
+
+const CSRF_EXEMPT_PATHS = new Set(["/auth/bootstrap", "/auth/login"]);
 
 export function getApiUrl(): string {
   const url = env.NEXT_PUBLIC_API_URL;
   if (url.startsWith("http")) {
-    return url;
+    return alignConfiguredLoopbackHost(url);
   }
   if (typeof window === "undefined") {
     return url;
@@ -14,7 +19,7 @@ export function getApiUrl(): string {
 export function getWsUrl(): string {
   const url = env.NEXT_PUBLIC_WS_URL;
   if (url.startsWith("ws")) {
-    return url;
+    return alignConfiguredLoopbackHost(url);
   }
   if (typeof window === "undefined") {
     return url;
@@ -24,25 +29,75 @@ export function getWsUrl(): string {
   }${url}`;
 }
 
+export function alignConfiguredLoopbackHost(
+  configuredUrl: string,
+  browserUrl?: string,
+): string {
+  const currentUrl =
+    browserUrl ?? (typeof window === "undefined" ? undefined : window.location.href);
+  if (!currentUrl) return configuredUrl;
+
+  try {
+    const configured = new URL(configuredUrl);
+    if (!isLoopbackHost(configured.hostname)) return configuredUrl;
+
+    const current = new URL(currentUrl);
+    if (!current.hostname || configured.hostname === current.hostname) {
+      return configuredUrl;
+    }
+
+    configured.hostname = current.hostname;
+    const normalized = configured.toString();
+    return configuredUrl.endsWith("/") ? normalized : normalized.replace(/\/$/, "");
+  } catch {
+    return configuredUrl;
+  }
+}
+
+function isLoopbackHost(hostname: string): boolean {
+  return (
+    hostname === "localhost" ||
+    hostname === "127.0.0.1" ||
+    hostname === "[::1]" ||
+    hostname === "::1"
+  );
+}
+
 /* eslint-disable */
 export async function request<T = any>(
   api: string,
   requestInit?: RequestInit,
 ): Promise<T> {
+  const method = requestInit?.method ?? "GET";
+  const csrfToken = readCookie("tf_csrf");
+  const csrfHeaders = CSRF_EXEMPT_PATHS.has(api)
+    ? {}
+    : browserWriteHeaders(method, csrfToken);
   const defaultHeaders = {
     "Content-Type": "application/json",
   };
 
   const response = await fetch(`${getApiUrl()}${api}`, {
+    ...requestInit,
     credentials: "include",
     headers: {
       ...defaultHeaders,
+      ...csrfHeaders,
       ...requestInit?.headers,
     },
-    ...requestInit,
   });
   const responseText = await response.text();
+  if (isSessionTerminal(response.status) && typeof window !== "undefined") {
+    window.dispatchEvent(
+      new CustomEvent(SESSION_TERMINAL_EVENT, {
+        detail: { status: response.status },
+      }),
+    );
+  }
   if (!responseText) {
+    if (!response.ok) {
+      throw new HttpError(response.status, "Request failed");
+    }
     return undefined as T;
   }
   let data;
@@ -52,12 +107,38 @@ export async function request<T = any>(
     throw new RequestParsedError(responseText);
   }
   if (!response.ok) {
-    throw new Error(
-      data.error ?? `Request failed with status ${response.status}`,
+    const error = data.error;
+    throw new HttpError(
+      response.status,
+      typeof error === "string"
+        ? error
+        : (error?.message ?? `Request failed with status ${response.status}`),
+      typeof error === "object" ? error?.code : undefined,
     );
   }
 
   return data as T;
+}
+
+export class HttpError extends Error {
+  constructor(
+    public readonly status: number,
+    message: string,
+    public readonly code?: string,
+  ) {
+    super(message);
+    this.name = "HttpError";
+  }
+}
+
+function readCookie(name: string): string | undefined {
+  if (typeof document === "undefined") return undefined;
+  const prefix = `${encodeURIComponent(name)}=`;
+  const entry = document.cookie
+    .split(";")
+    .map((part) => part.trim())
+    .find((part) => part.startsWith(prefix));
+  return entry ? decodeURIComponent(entry.slice(prefix.length)) : undefined;
 }
 
 export class RequestParsedError extends Error {

@@ -1,0 +1,20 @@
+{
+  "taskId": "task_torrent_fixture",
+  "attemptId": "attempt_torrent_fixture",
+  "type": "TORRENT_DOWNLOAD_V1",
+  "schemaVersion": 1,
+  "leaseToken": "lease_torrent_fixture_0123456789",
+  "deadlineAt": "2026-07-13T00:10:00Z",
+  "payload": {
+    "resourceId": "resource_fixture",
+    "torrentId": "torrent_fixture",
+    "torrentBase64": "ZDQ6aW5mb2Q2Omxlbmd0aGkxMDI0ZTQ6bmFtZTExOmZpeHR1cmUuYmluMTI6cGllY2UgbGVuZ3RoaTI2MjE0NGU2OnBpZWNlczIwOmDKy/PXLh54NCA9pggDexv4O0DoNzpwcml2YXRlaTFlZWU=",
+    "infoHashV1": "12a4577456eb1aa06a37a5d6ccebaea54713c4ab",
+    "contentSha256": "5f70bf18a086007016e948b04aed3b82103a36bea41755b6cddfaf10ace3c6ef",
+    "fileName": "fixture.bin",
+    "fileSize": "1024",
+    "reservedBytes": "67109888",
+    "trackerBaseUrl": "https://tracker.test.invalid"
+  },
+  "createdAt": "2026-07-13T00:00:00Z"
+}

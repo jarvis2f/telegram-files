@@ -32,26 +32,24 @@ export function Toaster() {
         return (
           <Toast variant={variant} key={id} {...props}>
             <div
-              className="flex items-start"
+              className="flex w-full items-start pr-4"
               onClick={(e) => e.stopPropagation()}
             >
               {IconComponent && (
-                <div className={`mr-3 flex-shrink-0 ${toastStyle.iconColor}`}>
-                  <IconComponent size={20} />
+                <div
+                  className={`mr-3 flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-transform duration-200 group-hover:scale-105 ${toastStyle.iconColor}`}
+                >
+                  <IconComponent className="h-4 w-4" />
                 </div>
               )}
 
-              <div className="min-w-0 flex-1">
-                {title && (
-                  <ToastTitle className="mb-1 font-medium">{title}</ToastTitle>
-                )}
+              <div className="min-w-0 flex-1 space-y-1">
+                {title && <ToastTitle>{title}</ToastTitle>}
                 {description && (
-                  <ToastDescription className="text-sm opacity-90">
-                    {description}
-                  </ToastDescription>
+                  <ToastDescription>{description}</ToastDescription>
                 )}
 
-                {action}
+                {action && <div className="pt-1.5">{action}</div>}
               </div>
               <ToastClose onClick={(e) => e.stopPropagation()} />
             </div>

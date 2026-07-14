@@ -1,6 +1,6 @@
 import "@/styles/globals.css";
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import Script from "next/script";
 import React from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { SWRProvider } from "@/components/swr-provider";
@@ -10,8 +10,8 @@ import { env } from "@/env";
 import { TelegramAccountProvider } from "@/hooks/use-telegram-account";
 import { ThemeProvider } from "@/components/theme-provider";
 import { LocalStorageProvider } from "@/hooks/use-local-storage";
-
-const inter = Inter({ subsets: ["latin"] });
+import { AdminSessionProvider } from "@/hooks/use-admin-session";
+import { AdminAuthGate } from "@/components/admin-auth-gate";
 
 export const metadata: Metadata = {
   title: "Telegram Files",
@@ -41,27 +41,31 @@ export default async function RootLayout({
         />
         <meta name="apple-mobile-web-app-title" content="TeleFiles" />
         <link rel="manifest" href="/site.webmanifest" />
+      </head>
+      <body className="font-sans">
         {env.NEXT_PUBLIC_SCAN && (
-          <script
+          <Script
             src="https://unpkg.com/react-scan/dist/auto.global.js"
-            async
+            strategy="afterInteractive"
           />
         )}
-      </head>
-      <body className={inter.className}>
         <LocalStorageProvider>
           <ThemeProvider
             attribute="class"
             defaultTheme="light"
             disableTransitionOnChange
           >
-            <SWRProvider>
-              <WebSocketProvider>
-                <SettingsProvider>
-                  <TelegramAccountProvider>{children}</TelegramAccountProvider>
-                </SettingsProvider>
-              </WebSocketProvider>
-            </SWRProvider>
+            <AdminSessionProvider>
+              <AdminAuthGate>
+                <SWRProvider>
+                  <WebSocketProvider>
+                    <SettingsProvider>
+                      <TelegramAccountProvider>{children}</TelegramAccountProvider>
+                    </SettingsProvider>
+                  </WebSocketProvider>
+                </SWRProvider>
+              </AdminAuthGate>
+            </AdminSessionProvider>
             <Toaster />
           </ThemeProvider>
         </LocalStorageProvider>

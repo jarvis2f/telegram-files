@@ -12,7 +12,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Button } from "./ui/button";
 import { ChevronDown, Columns, Menu } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -22,6 +22,7 @@ export type Column = {
   label: string;
   isVisible: boolean;
   className?: string;
+  tooltip?: string;
 };
 
 type SortableItemProps = {
@@ -82,11 +83,10 @@ export default function TableColumnFilter({
   onColumnConfigChange,
 }: TableColumnFilterProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [columnConfig, setColumnConfig] = useState<Column[]>(columns);
 
   const handleToggleVisibility = (id: string) => {
-    setColumnConfig((prev) =>
-      prev.map((col) =>
+    onColumnConfigChange(
+      columns.map((col) =>
         col.id === id ? { ...col, isVisible: !col.isVisible } : col,
       ),
     );
@@ -94,31 +94,25 @@ export default function TableColumnFilter({
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
-    if (active.id !== over?.id) {
-      setColumnConfig((prev) => {
-        const oldIndex = prev.findIndex((col) => col.id === active.id);
-        const newIndex = prev.findIndex((col) => col.id === over?.id);
-        return arrayMove(prev, oldIndex, newIndex);
-      });
+    if (!over || active.id === over.id) {
+      return;
     }
+
+    const oldIndex = columns.findIndex((col) => col.id === active.id);
+    const newIndex = columns.findIndex((col) => col.id === over.id);
+    onColumnConfigChange(arrayMove(columns, oldIndex, newIndex));
   };
 
-  useEffect(() => {
-    onColumnConfigChange(columnConfig);
-  }, [columnConfig, onColumnConfigChange]);
+  const visibleColumnCount = columns.filter(
+    (column) => column.isVisible,
+  ).length;
 
   return (
-    <DropdownMenu open={isOpen}>
-      <DropdownMenuTrigger
-        onClick={() => {
-          setIsOpen(!isOpen);
-        }}
-        className="select-none"
-        asChild
-      >
+    <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
+      <DropdownMenuTrigger className="select-none" asChild>
         <Button variant="outline" title="Show/hide columns">
           <Columns className="mr-2 h-4 w-4" />
-          <span className="text-xs text-muted-foreground">{`(${columnConfig.length}/${columns.length})`}</span>
+          <span className="text-xs text-muted-foreground">{`(${visibleColumnCount}/${columns.length})`}</span>
           <ChevronDown className="ml-2 h-4 w-4" />
         </Button>
       </DropdownMenuTrigger>
@@ -132,10 +126,10 @@ export default function TableColumnFilter({
           onDragEnd={handleDragEnd}
         >
           <SortableContext
-            items={columnConfig.map((col) => col.id)}
+            items={columns.map((col) => col.id)}
             strategy={verticalListSortingStrategy}
           >
-            {columnConfig.map((col) => (
+            {columns.map((col) => (
               <SortableItem
                 key={col.id}
                 id={col.id}

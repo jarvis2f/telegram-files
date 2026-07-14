@@ -33,6 +33,7 @@ export type DownloadStatus =
   | "error";
 
 export type TransferStatus = "idle" | "transferring" | "completed" | "error";
+export type ShareAccessScope = "PUBLIC" | "MEMBER_ACCESS" | "OWNER_ONLY";
 
 export type TelegramFile = {
   id: number;
@@ -64,6 +65,36 @@ export type TelegramFile = {
   messageThreadId: number;
   hasReply?: boolean;
   reactionCount: number;
+
+  source?: "TELEGRAM" | "SEED";
+  acquiredVia?: "TELEGRAM" | "SEED";
+  seedResourceId?: string;
+  seedAvailable?: boolean;
+  sharedByMe?: boolean;
+  shareStatus?:
+    | "UNSHARED"
+    | "PUBLISH_PENDING"
+    | "PUBLISHED"
+    | "FAILED"
+    | string;
+  sharedSourceId?: string;
+  sharedResourceId?: string;
+  shareTitle?: string;
+  shareDescription?: string | null;
+  shareTags?: string[];
+  shareCategory?: string | null;
+  shareAccessScope?: ShareAccessScope;
+  sharePublicMessageUrl?: string | null;
+  shareErrorCode?: string;
+  torrentStatus?: string;
+  infoHashV1?: string;
+  torrentDownloadSpeed?: number;
+  torrentUploadSpeed?: number;
+  torrentUploadedBytes?: number;
+  torrentDownloadedBytes?: number;
+  torrentRatio?: number;
+  torrentConnectedPeers?: number;
+  torrentSeedingSeconds?: number;
 
   prev?: TelegramFile;
   next?: TelegramFile;
@@ -122,6 +153,7 @@ export type FileFilter = {
   downloadStatus?: DownloadStatus;
   transferStatus?: TransferStatus;
   offline: boolean;
+  seedOnly: boolean;
   tags: string[];
   dateType?: "sent" | "downloaded";
   dateRange?: [string, string];
@@ -141,11 +173,13 @@ export const SettingKeys = [
   "alwaysHide",
   "showSensitiveContent",
   "autoDownloadLimit",
+  "thumbnailAutoLoad",
   "autoDownloadTimeLimited",
   "proxys",
   "avgSpeedInterval",
   "speedUnits",
   "tags",
+  "shareEnabled",
 ] as const;
 
 export type SettingKey = (typeof SettingKeys)[number];
@@ -178,7 +212,12 @@ export type Auto = {
   };
 };
 
-export const TransferPolices = ["DIRECT", "GROUP_BY_CHAT", "GROUP_BY_TYPE", "GROUP_BY_AI"] as const;
+export const TransferPolices = [
+  "DIRECT",
+  "GROUP_BY_CHAT",
+  "GROUP_BY_TYPE",
+  "GROUP_BY_AI",
+] as const;
 export type TransferPolicy = (typeof TransferPolices)[number];
 export const DuplicationPolicies = [
   "OVERWRITE",
@@ -194,7 +233,7 @@ export type AutoTransferRule = {
   transferPolicy: TransferPolicy;
   duplicationPolicy: DuplicationPolicy;
   useCaptionName?: boolean;
-  extra: Record<string, any>
+  extra: Record<string, any>;
 };
 
 export type AutoDownloadRule = {
@@ -203,4 +242,17 @@ export type AutoDownloadRule = {
   downloadHistory: boolean;
   downloadCommentFiles: boolean;
   filterExpr: string;
+};
+
+export type AutomationChatOverview = {
+  telegramId: string;
+  accountName: string;
+  chatId: string;
+  chatName: string;
+  chatType: TelegramChat["type"] | "unknown";
+  chatAvatar?: string;
+  unreadCount?: number;
+  auto: Auto & {
+    state: number;
+  };
 };

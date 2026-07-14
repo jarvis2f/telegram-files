@@ -10,12 +10,24 @@ import cn.hutool.log.dialect.jdk.JdkLog;
 import com.openai.models.ChatModel;
 import io.vertx.core.DeploymentOptions;
 import io.vertx.core.ThreadingModel;
+import telegram.files.share.ShareConfiguration;
+import telegram.files.share.TorrentConfiguration;
+import telegram.files.share.security.AesGcmSecretStore;
+import telegram.files.share.security.SecretStore;
+import telegram.files.security.RedactingFormatter;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.channels.ClosedChannelException;
+import java.nio.file.Path;
+import java.util.Arrays;
+import java.util.Base64;
+import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
 import java.util.logging.*;
+import javax.crypto.spec.SecretKeySpec;
 
 public class Config {
     public static final String LOG_LEVEL = StrUtil.blankToDefault(System.getenv("LOG_LEVEL"), "INFO");
@@ -48,6 +60,48 @@ public class Config {
 
     public static final int TELEGRAM_LOG_LEVEL = Convert.toInt(System.getenv("TELEGRAM_LOG_LEVEL"), 0);
 
+    public static final long HTTP_BODY_LIMIT_BYTES = Convert.toLong(
+            System.getenv("HTTP_BODY_LIMIT_BYTES"),
+            1024L * 1024L
+    );
+
+    public static final String HTTP_HOST = StrUtil.blankToDefault(
+            System.getenv("HTTP_HOST"), "0.0.0.0"
+    );
+
+    public static final boolean HTTP_SECURE_COOKIES = Convert.toBool(
+            System.getenv("HTTP_SECURE_COOKIES"),
+            "prod".equals(APP_ENV)
+    );
+
+    public static final Set<String> HTTP_ALLOWED_ORIGINS = parseCsv(
+            StrUtil.blankToDefault(
+                    System.getenv("HTTP_ALLOWED_ORIGINS"),
+                    "prod".equals(APP_ENV) ? "" : "http://localhost:3000,http://127.0.0.1:3000"
+            )
+    );
+
+    public static final int AUTH_LOGIN_ATTEMPTS_PER_MINUTE = Convert.toInt(
+            System.getenv("AUTH_LOGIN_ATTEMPTS_PER_MINUTE"), 10
+    );
+
+    public static final int FILE_READS_PER_MINUTE = Convert.toInt(
+            System.getenv("FILE_READS_PER_MINUTE"), 120
+    );
+
+    public static final int SHARE_HEARTBEAT_INTERVAL_SECONDS = Convert.toInt(
+            System.getenv("SHARE_HEARTBEAT_INTERVAL_SECONDS"), 30
+    );
+
+    public static final int PEER_LISTEN_PORT = Convert.toInt(
+            System.getenv("PEER_LISTEN_PORT"), 51413
+    );
+
+    public static final int SHARE_STATISTICS_ROLLOUT_PERCENT = Convert.toInt(
+            System.getenv("SHARE_STATISTICS_ROLLOUT_PERCENT"),
+            "prod".equals(APP_ENV) ? 0 : 100
+    );
+
     public static final String OPENAI_MODEL = StrUtil.blankToDefault(System.getenv("OPENAI_MODEL"), ChatModel.GPT_4O_MINI.asString());
 
     public static final DeploymentOptions VIRTUAL_THREAD_DEPLOYMENT_OPTIONS = new DeploymentOptions()
@@ -68,6 +122,18 @@ public class Config {
         if (TELEGRAM_API_HASH == null) {
             throw new RuntimeException("TELEGRAM_API_HASH is not set");
         }
+        if (HTTP_BODY_LIMIT_BYTES <= 0
+            || AUTH_LOGIN_ATTEMPTS_PER_MINUTE <= 0
+            || FILE_READS_PER_MINUTE <= 0) {
+            throw new RuntimeException("HTTP limits must be positive");
+        }
+        if (SHARE_HEARTBEAT_INTERVAL_SECONDS < 5 || SHARE_HEARTBEAT_INTERVAL_SECONDS > 600
+            || PEER_LISTEN_PORT < 1 || PEER_LISTEN_PORT > 65535) {
+            throw new RuntimeException("Share heartbeat interval or Peer listen port is invalid");
+        }
+        if (SHARE_STATISTICS_ROLLOUT_PERCENT < 0 || SHARE_STATISTICS_ROLLOUT_PERCENT > 100) {
+            throw new RuntimeException("SHARE_STATISTICS_ROLLOUT_PERCENT must be between 0 and 100");
+        }
 
         if (!FileUtil.exist(APP_ROOT)) {
             FileUtil.mkdir(APP_ROOT);
@@ -86,6 +152,45 @@ public class Config {
         return "prod".equals(APP_ENV);
     }
 
+    public static ShareConfiguration shareConfiguration() {
+        return ShareConfiguration.from(
+                System.getenv(),
+                Path.of(APP_ROOT),
+                Path.of(TELEGRAM_ROOT)
+        );
+    }
+
+    public static TorrentConfiguration torrentConfiguration(ShareConfiguration shareConfiguration) {
+        return TorrentConfiguration.from(System.getenv(), shareConfiguration.sharedRoot());
+    }
+
+    public static SecretStore shareSecretStore() {
+        String raw = System.getenv("SECRET_STORE_MASTER_KEY");
+        if (StrUtil.isBlank(raw)) {
+            throw new IllegalStateException("SECRET_STORE_MASTER_KEY is required when sharing is enabled");
+        }
+        byte[] key;
+        try {
+            key = Base64.getDecoder().decode(raw);
+        } catch (IllegalArgumentException exception) {
+            throw new IllegalStateException("SECRET_STORE_MASTER_KEY must be valid Base64", exception);
+        }
+        if (key.length != 32) {
+            throw new IllegalStateException("SECRET_STORE_MASTER_KEY must decode to 32 bytes");
+        }
+        return new AesGcmSecretStore(Map.of(1, new SecretKeySpec(key, "AES")), 1);
+    }
+
+    private static Set<String> parseCsv(String value) {
+        if (StrUtil.isBlank(value)) {
+            return Set.of();
+        }
+        return Arrays.stream(value.split(","))
+                .map(String::trim)
+                .filter(StrUtil::isNotBlank)
+                .collect(Collectors.toUnmodifiableSet());
+    }
+
     public static void initLogger() {
         Logger rootLogger = Logger.getLogger("");
         rootLogger.setLevel(Level.INFO);
@@ -101,7 +206,7 @@ public class Config {
         IgnoreExceptionLogFilter brokenPipeFilter = new IgnoreExceptionLogFilter();
         ConsoleHandler consoleHandler = new ConsoleHandler();
         consoleHandler.setLevel(Level.FINEST);
-        consoleHandler.setFormatter(new SimpleFormatter());
+        consoleHandler.setFormatter(new RedactingFormatter());
         consoleHandler.setFilter(brokenPipeFilter);
         rootLogger.addHandler(consoleHandler);
 
@@ -110,7 +215,7 @@ public class Config {
 
             FileHandler fileHandler = new FileHandler(logFilePattern, 5000000, 3, true);
             fileHandler.setLevel(Level.FINEST);
-            fileHandler.setFormatter(new SimpleFormatter());
+            fileHandler.setFormatter(new RedactingFormatter());
             fileHandler.setFilter(brokenPipeFilter);
             rootLogger.addHandler(fileHandler);
         } catch (IOException e) {
@@ -164,7 +269,8 @@ public class Config {
             Throwable t = record.getThrown();
             if (t instanceof IOException &&
                 t.getMessage() != null &&
-                t.getMessage().contains("Broken pipe")) {
+                (t.getMessage().contains("Broken pipe") ||
+                 t.getMessage().contains("Connection reset by peer"))) {
                 return false;
             }
 

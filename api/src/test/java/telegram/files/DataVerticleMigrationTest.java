@@ -198,21 +198,25 @@ public class DataVerticleMigrationTest {
     }
 
     private String getColumnsQuery() {
+        return getColumnsQuery("file_record");
+    }
+
+    private String getColumnsQuery(String tableName) {
         String getColumnsQuery;
         if (Config.isPostgres()) {
             getColumnsQuery = """
                     SELECT column_name as name FROM information_schema.columns
-                    WHERE table_name = 'file_record'
-                    """;
+                    WHERE table_name = '%s'
+                    """.formatted(tableName);
         } else if (Config.isMysql()) {
             getColumnsQuery = """
                     SELECT column_name as name FROM information_schema.columns
-                    WHERE table_name = 'file_record'
-                    """;
+                    WHERE table_name = '%s'
+                    """.formatted(tableName);
         } else {
             getColumnsQuery = """
-                    PRAGMA table_info(file_record)
-                    """;
+                    PRAGMA table_info(%s)
+                    """.formatted(tableName);
         }
         return getColumnsQuery;
     }
@@ -222,17 +226,17 @@ public class DataVerticleMigrationTest {
         if (Config.isPostgres()) {
             getTablesQuery = """
                     SELECT table_name FROM information_schema.tables
-                    WHERE table_schema = 'public' AND table_name IN ('setting_record', 'telegram_record', 'file_record', 'statistic_record')
+                    WHERE table_schema = 'public' AND table_name IN ('setting_record', 'telegram_record', 'file_record', 'statistic_record', 'admin_account', 'admin_session', 'admin_bootstrap_token', 'admin_recovery_token', 'admin_security_event', 'share_job', 'seed_node_identity', 'installation_identity', 'share_source', 'node_task_execution', 'disk_reservation', 'torrent_record', 'torrent_statistic_event', 'torrent_upload_session')
                     """;
         } else if (Config.isMysql()) {
             getTablesQuery = """
                     SELECT table_name FROM information_schema.tables
-                    WHERE table_schema = DATABASE() AND table_name IN ('setting_record', 'telegram_record', 'file_record', 'statistic_record')
+                    WHERE table_schema = DATABASE() AND table_name IN ('setting_record', 'telegram_record', 'file_record', 'statistic_record', 'admin_account', 'admin_session', 'admin_bootstrap_token', 'admin_recovery_token', 'admin_security_event', 'share_job', 'seed_node_identity', 'installation_identity', 'share_source', 'node_task_execution', 'disk_reservation', 'torrent_record', 'torrent_statistic_event', 'torrent_upload_session')
                     """;
         } else {
             getTablesQuery = """
                     SELECT name FROM sqlite_master
-                    WHERE type='table' AND name IN ('setting_record', 'telegram_record', 'file_record', 'statistic_record')
+                    WHERE type='table' AND name IN ('setting_record', 'telegram_record', 'file_record', 'statistic_record', 'admin_account', 'admin_session', 'admin_bootstrap_token', 'admin_recovery_token', 'admin_security_event', 'share_job', 'seed_node_identity', 'installation_identity', 'share_source', 'node_task_execution', 'disk_reservation', 'torrent_record', 'torrent_statistic_event', 'torrent_upload_session')
                     """;
         }
         return getTablesQuery;

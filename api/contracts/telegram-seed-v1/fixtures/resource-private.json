@@ -1,0 +1,21 @@
+{
+  "title": "Fixture resource",
+  "description": "safe fixture",
+  "tags": ["fixture"],
+  "source": {
+    "ownerNodeId": "node_fixture",
+    "opaqueSourceToken": "opaque_fixture_secret_0123456789",
+    "accessScope": "OWNER_ONLY",
+    "publicMessageUrl": null,
+    "fileUniqueId": "telegram-file-unique-id",
+    "fileName": "fixture.bin",
+    "fileSize": "1024",
+    "mimeType": "application/octet-stream",
+    "fileType": "file",
+    "downloaded": false
+  },
+  "publicationPolicy": {
+    "indexOnly": true,
+    "autoDownloadOnDemand": true
+  }
+}

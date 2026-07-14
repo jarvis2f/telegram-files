@@ -1,0 +1,19 @@
+{
+  "taskId": "task_fixture",
+  "attemptId": "attempt_fixture",
+  "type": "TELEGRAM_BOOTSTRAP_V1",
+  "schemaVersion": 1,
+  "leaseToken": "lease_fixture_secret_0123456789",
+  "deadlineAt": "2026-07-13T00:10:00Z",
+  "payload": {
+    "resourceId": "resource_fixture",
+    "sourceId": "source_fixture",
+    "fileUniqueId": "telegram_file_unique_fixture",
+    "fileName": "fixture.bin",
+    "fileSize": "1048576",
+    "accessScope": "OWNER_ONLY",
+    "reservedBytes": "70254592",
+    "opaqueSourceToken": "opaque_source_fixture_0123456789"
+  },
+  "createdAt": "2026-07-13T00:00:00Z"
+}

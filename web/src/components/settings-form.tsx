@@ -1,4 +1,15 @@
-import { Bell, Copy } from "lucide-react";
+import {
+  Bell,
+  Copy,
+  DownloadCloud,
+  EyeOff,
+  FolderOpen,
+  Gauge,
+  LogOut,
+  Shield,
+  Tags,
+  type LucideIcon,
+} from "lucide-react";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -8,7 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import React, { type FormEvent } from "react";
+import React, { type FormEvent, useState } from "react";
 import { useSettings } from "@/hooks/use-settings";
 import { useTelegramAccount } from "@/hooks/use-telegram-account";
 import { useCopyToClipboard } from "@/hooks/use-copy-to-clipboard";
@@ -20,11 +31,86 @@ import { Slider } from "@/components/ui/slider";
 import { TagsInput } from "@/components/ui/tags-input";
 import { split } from "lodash";
 import { RadioGroup, RadioGroupItem } from "./ui/radio-group";
+import { useAdminSession } from "@/hooks/use-admin-session";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+
+interface SettingsSectionProps {
+  icon: LucideIcon;
+  title: string;
+  description?: string;
+  children: React.ReactNode;
+}
+
+function SettingsSection({
+  icon: Icon,
+  title,
+  description,
+  children,
+}: SettingsSectionProps) {
+  return (
+    <Card>
+      <CardHeader className="p-4 pb-3">
+        <div className="flex items-start gap-3">
+          <span className="flex size-9 shrink-0 items-center justify-center rounded-md border bg-muted text-muted-foreground">
+            <Icon className="size-4" />
+          </span>
+          <div className="min-w-0">
+            <CardTitle className="text-base">{title}</CardTitle>
+            {description && (
+              <p className="mt-0.5 text-sm text-muted-foreground">
+                {description}
+              </p>
+            )}
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-4 p-4 pt-0">
+        {children}
+      </CardContent>
+    </Card>
+  );
+}
+
+interface SettingRowProps {
+  label: string;
+  description?: React.ReactNode;
+  children: React.ReactNode;
+  onClick?: (event: React.MouseEvent<HTMLDivElement>) => void;
+}
+
+function SettingRow({
+  label,
+  description,
+  children,
+  onClick,
+}: SettingRowProps) {
+  return (
+    <div
+      className="flex flex-col gap-3 rounded-md border bg-card p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between"
+      onClick={onClick}
+    >
+      <div className="min-w-0">
+        <Label className={onClick ? "cursor-pointer" : undefined}>
+          {label}
+        </Label>
+        {description && (
+          <p className="mt-1 text-sm leading-5 text-muted-foreground">
+            {description}
+          </p>
+        )}
+      </div>
+      <div className="shrink-0">{children}</div>
+    </div>
+  );
+}
 
 export default function SettingsForm() {
   const { settings, setSetting, updateSettings } = useSettings();
   const { account } = useTelegramAccount();
+  const { session, logout } = useAdminSession();
   const [, copyToClipboard] = useCopyToClipboard();
+  const [loggingOut, setLoggingOut] = useState(false);
 
   const avgSpeedIntervalOptions = [
     { value: "60", label: "1 minute" },
@@ -48,37 +134,65 @@ export default function SettingsForm() {
     void setSetting(key, String(!(settings?.[key] === "true")));
   };
 
+  const handleLogout = async () => {
+    setLoggingOut(true);
+    try {
+      await logout();
+    } finally {
+      setLoggingOut(false);
+    }
+  };
+
   return (
     <form
       onSubmit={handleSave}
       className="flex h-full flex-col overflow-hidden"
     >
-      <div className="no-scrollbar flex flex-col space-y-4 overflow-y-scroll">
-        <p className="rounded-md bg-gray-50 p-2 text-sm text-muted-foreground dark:bg-gray-700">
-          <Bell className="mr-2 inline-block h-4 w-4" />
-          These settings will be applied to all accounts.
-        </p>
-        <div className="w-full rounded-md border p-4 shadow">
-          <p className="mb-1 text-xs text-muted-foreground">Your root path</p>
-          <div className="flex items-center justify-between space-x-1">
-            <p className="rounded-md bg-gray-50 p-2 text-xs text-muted-foreground dark:bg-gray-700">
-              {account?.rootPath}
-            </p>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={(e) => {
-                e.preventDefault();
-                void copyToClipboard(account?.rootPath ?? "");
-              }}
-            >
-              <Copy className="h-4 w-4" />
-            </Button>
-          </div>
+      <div className="flex flex-1 flex-col gap-4 overflow-y-auto pr-1">
+        <div className="flex items-start gap-3 rounded-md border bg-muted/40 p-3 text-sm text-muted-foreground">
+          <Bell className="mt-0.5 size-4 shrink-0" />
+          <p>These settings are shared across every Telegram account.</p>
         </div>
-        <div className="flex w-full cursor-pointer flex-col space-y-4 rounded-md border p-4 shadow">
-          <div className="flex items-center justify-between">
-            <Label>Speed Units</Label>
+
+        <SettingsSection
+          icon={FolderOpen}
+          title="Storage"
+          description="Current account storage location"
+        >
+          <div className="flex flex-col gap-2 rounded-md border bg-card p-4 shadow-sm">
+            <div className="flex items-center justify-between gap-3">
+              <Label>Your root path</Label>
+              <Badge variant="secondary">Read only</Badge>
+            </div>
+            <div className="flex items-center gap-2">
+              <p className="min-w-0 flex-1 truncate rounded-md bg-muted px-3 py-2 font-mono text-xs text-muted-foreground">
+                {account?.rootPath || "No account selected"}
+              </p>
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label="Copy root path"
+                disabled={!account?.rootPath}
+                onClick={(e) => {
+                  e.preventDefault();
+                  void copyToClipboard(account?.rootPath ?? "");
+                }}
+              >
+                <Copy />
+              </Button>
+            </div>
+          </div>
+        </SettingsSection>
+
+        <SettingsSection
+          icon={Gauge}
+          title="Display"
+          description="Units and table visibility preferences"
+        >
+          <SettingRow
+            label="Speed units"
+            description="Choose how transfer speed is displayed throughout the app."
+          >
             <RadioGroup
               value={settings?.speedUnits || "bits"}
               onValueChange={(v) => void setSetting("speedUnits", v)}
@@ -102,73 +216,87 @@ export default function SettingsForm() {
                 />
               </label>
             </RadioGroup>
-          </div>
-        </div>
-        <div
-          className="flex w-full cursor-pointer flex-col space-y-4 rounded-md border p-4 shadow"
-          onClick={(event) => handleSwitchChange("uniqueOnly", event)}
-        >
-          <div className="flex items-center justify-between">
-            <Label>Unique Only</Label>
+          </SettingRow>
+
+          <SettingRow
+            label="Unique only"
+            description={
+              <>
+                Show only unique files in the table. When enabled, document
+                counts may be less precise.
+              </>
+            }
+            onClick={(event) => handleSwitchChange("uniqueOnly", event)}
+          >
             <Switch
               id="unique-only"
               checked={settings?.uniqueOnly === "true"}
               onCheckedChange={() => handleSwitchChange("uniqueOnly")}
             />
-          </div>
-          <p className="text-xs text-muted-foreground">
-            Show only unique file in the table. If disabled, will show all.{" "}
-            <br />
-            <strong>Warning:</strong> If enabled, the number of documents on the
-            form will be inaccurate.
-          </p>
-        </div>
-        <div className="flex w-full flex-col space-y-4 rounded-md border p-4 shadow">
-          <div
-            className="flex cursor-pointer flex-col space-y-4"
+          </SettingRow>
+        </SettingsSection>
+
+        <SettingsSection
+          icon={EyeOff}
+          title="Privacy"
+          description="Control how sensitive file content appears in lists"
+        >
+          <SettingRow
+            label="Always hide"
+            description="Always hide content and extra information in the table."
             onClick={(event) => handleSwitchChange("alwaysHide", event)}
           >
-            <div className="flex items-center justify-between">
-              <Label>Always Hide</Label>
-              <Switch
-                id="always-hide"
-                checked={settings?.alwaysHide === "true"}
-                onCheckedChange={() => handleSwitchChange("alwaysHide")}
-              />
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Always hide content and extra info in the table.
-            </p>
-          </div>
+            <Switch
+              id="always-hide"
+              checked={settings?.alwaysHide === "true"}
+              onCheckedChange={() => handleSwitchChange("alwaysHide")}
+            />
+          </SettingRow>
+
           {settings?.alwaysHide === "false" && (
-            <div
-              className="flex cursor-pointer flex-col space-y-4"
+            <SettingRow
+              label="Show sensitive content"
+              description="When disabled, sensitive content is still present but hidden behind a spoiler."
               onClick={(event) =>
                 handleSwitchChange("showSensitiveContent", event)
               }
             >
-              <div className="flex items-center justify-between">
-                <Label>Show Sensitive Content</Label>
-                <Switch
-                  id="show-sensitive-content"
-                  checked={settings?.showSensitiveContent === "true"}
-                  onCheckedChange={() =>
-                    handleSwitchChange("showSensitiveContent")
-                  }
-                />
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Show sensitive content in the table, Will use a spoiler to hide
-                sensitive content if disabled.
-              </p>
-            </div>
+              <Switch
+                id="show-sensitive-content"
+                checked={settings?.showSensitiveContent === "true"}
+                onCheckedChange={() =>
+                  handleSwitchChange("showSensitiveContent")
+                }
+              />
+            </SettingRow>
           )}
-        </div>
-        <div className="flex w-full flex-col space-y-4 rounded-md border p-4 shadow">
-          <Label>Auto Download Settings</Label>
-          <div className="flex flex-col space-y-4">
-            <div className="flex items-center justify-between">
-              <Label htmlFor="limit">Limit Per Account</Label>
+        </SettingsSection>
+
+        <SettingsSection
+          icon={DownloadCloud}
+          title="Auto Download"
+          description="Limits and timing for automatic downloads"
+        >
+          <SettingRow
+            label="Auto load thumbnails"
+            description="Download lightweight preview thumbnails while browsing files."
+            onClick={(event) => handleSwitchChange("thumbnailAutoLoad", event)}
+          >
+            <Switch
+              id="thumbnail-auto-load"
+              checked={settings?.thumbnailAutoLoad === "true"}
+              onCheckedChange={() => handleSwitchChange("thumbnailAutoLoad")}
+            />
+          </SettingRow>
+
+          <div className="rounded-md border bg-card p-4 shadow-sm">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <Label htmlFor="limit">Limit per account</Label>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Maximum concurrent automatic downloads per account.
+                </p>
+              </div>
               <span className="text-muted-foreground">
                 {settings?.autoDownloadLimit ?? 5} / 10
               </span>
@@ -181,16 +309,17 @@ export default function SettingsForm() {
               min={1}
               max={10}
               step={1}
-              className="w-full"
+              className="mt-4 w-full"
             />
-            <p className="text-xs text-muted-foreground">
-              The maximum number of files to download per account. <br />
-              This is useful for limiting the number of concurrent downloads.
-              Including the number of downloads you manually.
-            </p>
           </div>
-          <div className="flex flex-col space-y-4">
-            <Label htmlFor="avg-speed-interval">Avg Speed Interval</Label>
+
+          <div className="grid gap-4 rounded-md border bg-card p-4 shadow-sm md:grid-cols-[1fr_220px] md:items-center">
+            <div>
+              <Label htmlFor="avg-speed-interval">Average speed interval</Label>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Longer intervals smooth the chart, but may consume more memory.
+              </p>
+            </div>
             <Select
               value={String(settings?.avgSpeedInterval)}
               onValueChange={(v) => void setSetting("avgSpeedInterval", v)}
@@ -206,12 +335,9 @@ export default function SettingsForm() {
                 ))}
               </SelectContent>
             </Select>
-            <p className="text-xs text-muted-foreground">
-              The interval to calculate the average download speed. <br />
-              Longer intervals may consume more memory.
-            </p>
           </div>
-          <div className="flex flex-col space-y-4">
+
+          <div className="flex flex-col gap-3 rounded-md border bg-card p-4 shadow-sm">
             <Label htmlFor="time-limited">Time Limited</Label>
             <TimeRangeSelector
               startRequired={true}
@@ -236,37 +362,62 @@ export default function SettingsForm() {
               }}
               className="max-w-md"
             />
-            <p className="text-xs text-muted-foreground">
-              The time range for the download. Start and end times are required.{" "}
-              <br />
-              If you don&#39;t want to set a time range, you can set the start
-              and end to 00:00.
+            <p className="text-sm text-muted-foreground">
+              Set both values to 00:00 to disable the time window.
             </p>
           </div>
-        </div>
-        <div className="flex w-full flex-col space-y-4 rounded-md border p-4 shadow">
-          <Label>Tags Settings</Label>
-          <div className="flex flex-col space-y-4">
+        </SettingsSection>
+
+        <SettingsSection
+          icon={Tags}
+          title="Tags"
+          description="Reusable labels available when organizing files"
+        >
+          <div className="rounded-md border bg-card p-4 shadow-sm">
             <TagsInput
               maxTags={20}
               value={
-                (settings?.tags?.length ?? 0 > 0)
+                (settings?.tags?.length ?? 0) > 0
                   ? split(settings?.tags, ",")
                   : []
               }
               onChange={(tags) => void setSetting("tags", tags.join(","))}
             />
           </div>
-        </div>
+        </SettingsSection>
+
+        <SettingsSection
+          icon={Shield}
+          title="Administrator Session"
+          description="End the current administrator session on this device"
+        >
+          <div className="flex items-center justify-between gap-4 rounded-md border bg-card p-4 shadow-sm">
+            <div className="flex min-w-0 flex-col gap-1">
+              <Label>Signed in account</Label>
+              <p className="truncate text-xs text-muted-foreground">
+                Signed in as {session?.username ?? "administrator"}
+              </p>
+            </div>
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={loggingOut}
+              onClick={() => void handleLogout()}
+            >
+              <LogOut data-icon="inline-start" />
+              {loggingOut ? "Logging out…" : "Log out"}
+            </Button>
+          </div>
+        </SettingsSection>
       </div>
-      <DialogFooter className="mt-2 flex-1 gap-2">
+      <DialogFooter className="mt-3 border-t bg-background pt-3 gap-2">
         <DialogClose asChild>
           <Button className="w-full md:w-auto" variant="outline" type="button">
             Cancel
           </Button>
         </DialogClose>
         <Button className="w-full md:w-auto" type="submit">
-          Submit
+          Save settings
         </Button>
       </DialogFooter>
     </form>

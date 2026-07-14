@@ -5,22 +5,27 @@ import {
   Download,
   HardDrive,
   Loader2,
-  LoaderPinwheel,
+  LogOut,
   MessageSquare,
   UserPlus,
+  Workflow,
 } from "lucide-react";
 import { AccountList } from "./account-list";
 import { type TelegramAccount } from "@/lib/types";
-import TelegramIcon from "@/components/telegram-icon";
+import { PlatformTelegramIcon } from "@/components/platform-telegram-icon";
 import { AccountDialog } from "@/components/account-dialog";
-import React from "react";
+import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { BorderBeam } from "@/components/ui/border-beam";
+import { TooltipWrapper } from "@/components/ui/tooltip";
 import useSWR from "swr";
 import prettyBytes from "pretty-bytes";
 import { Card, CardContent } from "./ui/card";
 import { useRouter } from "next/navigation";
 import useIsMobile from "@/hooks/use-is-mobile";
+import { useAdminSession } from "@/hooks/use-admin-session";
+import { PlatformBindingShortcut } from "@/components/platform-binding-shortcut";
+import { DotmTriangle2 } from "@/components/ui/dotm-triangle-2";
 
 interface EmptyStateProps {
   isLoadingAccount?: boolean;
@@ -38,6 +43,18 @@ export function EmptyState({
   onSelectAccount,
 }: EmptyStateProps) {
   const isMobile = useIsMobile();
+  const { logout } = useAdminSession();
+  const [loggingOut, setLoggingOut] = useState(false);
+
+  const handleLogout = async () => {
+    setLoggingOut(true);
+    try {
+      await logout();
+    } finally {
+      setLoggingOut(false);
+    }
+  };
+
   if (message) {
     return (
       <div className="flex flex-col items-center">
@@ -53,10 +70,25 @@ export function EmptyState({
 
   return (
     <div className="container mx-auto px-4 py-6">
+      <div className="mb-2 flex justify-end">
+        <PlatformBindingShortcut />
+        <TooltipWrapper content="Log out">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            aria-label="Log out"
+            disabled={loggingOut}
+            onClick={() => void handleLogout()}
+          >
+            <LogOut data-icon="inline-start" />
+          </Button>
+        </TooltipWrapper>
+      </div>
       <div className="mb-8 flex flex-col items-center text-center">
         {hasAccounts ? (
           <>
-            <TelegramIcon className="mb-4 h-16 w-16 text-muted-foreground" />
+            <PlatformTelegramIcon className="mb-4 size-16 text-foreground" />
             {!isMobile && (
               <>
                 <h2 className="mb-2 text-2xl font-semibold">
@@ -71,7 +103,7 @@ export function EmptyState({
           </>
         ) : (
           <>
-            <TelegramIcon className="mb-4 h-16 w-16 text-muted-foreground" />
+            <PlatformTelegramIcon className="mb-4 size-16 text-foreground" />
             <h2 className="mb-2 text-2xl font-semibold">No Accounts Found</h2>
             <p className="mb-4 max-w-md text-muted-foreground">
               Add a Telegram account to start managing your files. You can add
@@ -79,7 +111,7 @@ export function EmptyState({
             </p>
           </>
         )}
-        <div className="flex items-center justify-center space-x-4">
+        <div className="flex items-center justify-center gap-4">
           <AccountDialog isAdd={true}>
             <div className="relative rounded-md">
               <BorderBeam size={60} duration={12} delay={9} />
@@ -96,9 +128,14 @@ export function EmptyState({
 
       {isLoadingAccount && (
         <div className="absolute inset-0 flex items-center justify-center">
-          <LoaderPinwheel
-            className="h-8 w-8 animate-spin"
-            style={{ strokeWidth: "0.8px" }}
+          <DotmTriangle2
+            size={32}
+            dotSize={4}
+            speed={1.4}
+            opacityBase={0.1}
+            opacityMid={0.4}
+            opacityPeak={0.95}
+            ariaLabel="Loading account"
           />
         </div>
       )}
@@ -119,7 +156,6 @@ interface FileCount {
 function AllFiles() {
   const router = useRouter();
   const { data, error, isLoading } = useSWR<FileCount, Error>(`/files/count`);
-  const isMobile = useIsMobile();
 
   if (error) {
     return (
@@ -144,12 +180,9 @@ function AllFiles() {
   }
 
   return (
-    <Card
-      className="mx-auto mb-8 max-w-5xl"
-      onClick={() => isMobile && router.push("/files")}
-    >
-      <CardContent className="flex items-center justify-between p-3">
-        <div className="grid grid-cols-3 gap-4">
+    <Card className="mx-auto mb-8 max-w-5xl">
+      <CardContent className="flex flex-col gap-3 p-3 md:flex-row md:items-center md:justify-between">
+        <div className="grid grid-cols-3 gap-3 md:gap-4">
           <div className="flex items-center justify-center gap-3 rounded-lg bg-gray-100 p-3 dark:bg-gray-800">
             <Check className="text-green-500" />
             <span className="hidden text-sm font-medium md:inline-block">
@@ -174,15 +207,24 @@ function AllFiles() {
             </span>
           </div>
         </div>
-        {!isMobile && (
+        <div className="flex justify-end gap-2">
           <Button
             variant="outline"
-            size="icon"
+            size="sm"
+            onClick={() => router.push("/automations")}
+          >
+            <Workflow data-icon="inline-start" />
+            Automations
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
             onClick={() => router.push("/files")}
           >
-            <ArrowRight className="h-4 w-4" />
+            Files
+            <ArrowRight data-icon="inline-end" />
           </Button>
-        )}
+        </div>
       </CardContent>
     </Card>
   );

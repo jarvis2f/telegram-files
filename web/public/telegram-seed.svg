@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg"
+     viewBox="0 0 1024 1024"
+     role="img"
+     aria-labelledby="title desc">
+  <title id="title">Telegram Seed Icon</title>
+  <desc id="desc">A smooth black globe-network emblem with blue and green center nodes.</desc>
+  <g fill="none"
+     stroke="#111111"
+     stroke-width="36"
+     stroke-linecap="round"
+     stroke-linejoin="round">
+    <circle cx="512" cy="512" r="350"/>
+    <ellipse cx="512" cy="512" rx="180" ry="350"/>
+    <ellipse cx="512" cy="512" rx="350" ry="180"/>
+    <path d="M352 352 C344 450 395 540 510 575"/>
+    <path d="M515 420 C610 452 670 548 672 672"/>
+  </g>
+  <g fill="#111111">
+    <circle cx="352" cy="352" r="38"/>
+    <circle cx="672" cy="352" r="38"/>
+    <circle cx="352" cy="672" r="38"/>
+    <circle cx="672" cy="672" r="38"/>
+  </g>
+  <circle cx="515" cy="420" r="36" fill="#229ED9"/>
+  <circle cx="510"
+          cy="575"
+          r="36"
+          fill="#8BC34A"
+          stroke="#111111"
+          stroke-width="8"/>
+</svg>

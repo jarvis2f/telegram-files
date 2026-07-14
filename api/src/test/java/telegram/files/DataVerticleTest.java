@@ -9,6 +9,7 @@ import io.vertx.core.Vertx;
 import io.vertx.junit5.VertxExtension;
 import io.vertx.junit5.VertxTestContext;
 import io.vertx.sqlclient.SqlClient;
+import org.drinkless.tdlib.TdApi;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
 import telegram.files.repository.FileRecord;
@@ -104,6 +105,91 @@ public class DataVerticleTest {
                     Assertions.assertEquals(new Version(Start.VERSION), r);
                     testContext.completeNow();
                 })));
+    }
+
+    @Test
+    @DisplayName("Missing thumbnail auto load setting defaults to enabled")
+    void missingThumbnailAutoLoadSettingDefaultsToEnabled(Vertx vertx, VertxTestContext testContext) {
+        DataVerticle.pool.query("DELETE FROM setting_record WHERE key = 'thumbnailAutoLoad'")
+                .execute()
+                .compose(_ -> DataVerticle.settingRepository.<Boolean>getByKey(SettingKey.thumbnailAutoLoad))
+                .onComplete(testContext.succeeding(r -> testContext.verify(() -> {
+                    Assertions.assertTrue(Boolean.FALSE.equals(r), "Expected thumbnailAutoLoad default false, got " + r);
+                    testContext.completeNow();
+                })));
+    }
+
+    @Test
+    @DisplayName("Disabled thumbnail auto load skips thumbnail preload")
+    void disabledThumbnailAutoLoadSkipsThumbnailPreload(Vertx vertx, VertxTestContext testContext) {
+        ScriptedTelegramGateway gateway = new ScriptedTelegramGateway(_ -> new TdApi.Ok());
+        TelegramVerticle telegramVerticle = new TelegramVerticle("/tmp/account-fixture", () -> gateway);
+        telegramVerticle.telegramRecord = new TelegramRecord(42, "test", "test", null);
+
+        TdApi.FoundChatMessages foundChatMessages = new TdApi.FoundChatMessages(
+                1,
+                new TdApi.Message[]{messageWithVideoThumbnail("preload_thumbnail_unique_id", 7)},
+                0
+        );
+
+        DataVerticle.settingRepository.createOrUpdate(SettingKey.thumbnailAutoLoad.name(), "false")
+                .compose(_ -> telegramVerticle.preloadThumbnails(foundChatMessages))
+                .compose(_ -> DataVerticle.fileRepository.getByUniqueId("preload_thumbnail_unique_id"))
+                .onComplete(testContext.succeeding(storedThumbnail -> testContext.verify(() -> {
+                    Assertions.assertNull(storedThumbnail);
+                    Assertions.assertTrue(gateway.requests().isEmpty());
+                    testContext.completeNow();
+                })));
+    }
+
+    @Test
+    @DisplayName("Disabled thumbnail auto load does not block explicit thumbnail download")
+    void disabledThumbnailAutoLoadDoesNotBlockExplicitThumbnailDownload(Vertx vertx, VertxTestContext testContext) {
+        ScriptedTelegramGateway gateway = new ScriptedTelegramGateway(_ -> new TdApi.Ok());
+        TelegramVerticle telegramVerticle = new TelegramVerticle("/tmp/account-fixture", () -> gateway);
+        telegramVerticle.telegramRecord = new TelegramRecord(42, "test", "test", null);
+        telegramVerticle.client = gateway;
+
+        FileRecord thumbnailRecord = new FileRecord(
+                7, "thumbnail_unique_id", 42, 100, 200, 0, 1, false, 1024, 0,
+                "thumbnail", "image/jpeg", "thumbnail.jpg", null, null, "", "{\"width\":120,\"height\":90}",
+                null, FileRecord.DownloadStatus.idle.name(), FileRecord.TransferStatus.idle.name(), 0, null, null, 0, 0, 0
+        );
+
+        DataVerticle.settingRepository.createOrUpdate(SettingKey.thumbnailAutoLoad.name(), "false")
+                .compose(_ -> telegramVerticle.downloadThumbnail(100L, 200L, thumbnailRecord))
+                .onComplete(testContext.succeeding(downloadStarted -> testContext.verify(() -> {
+                    Assertions.assertTrue(downloadStarted);
+                    Assertions.assertEquals(1, gateway.requests().size());
+                    Assertions.assertInstanceOf(TdApi.AddFileToDownloads.class, gateway.requests().getFirst());
+                    testContext.completeNow();
+                })));
+    }
+
+    private static TdApi.Message messageWithVideoThumbnail(String thumbnailUniqueId, int thumbnailFileId) {
+        TdApi.Message message = new TdApi.Message();
+        message.id = 200;
+        message.chatId = 100;
+        message.date = 1;
+
+        TdApi.LocalFile localFile = new TdApi.LocalFile("", true, true, false, false, 0, 0, 0);
+        TdApi.RemoteFile remoteFile = new TdApi.RemoteFile("remote-thumbnail", thumbnailUniqueId, false, true, 0);
+        TdApi.File thumbnailFile = new TdApi.File(thumbnailFileId, 1024, 1024, localFile, remoteFile);
+        TdApi.Thumbnail thumbnail = new TdApi.Thumbnail(new TdApi.ThumbnailFormatJpeg(), 120, 90, thumbnailFile);
+
+        TdApi.RemoteFile videoRemoteFile = new TdApi.RemoteFile("remote-video", "video_unique_id", false, true, 0);
+        TdApi.File videoFile = new TdApi.File(8, 4096, 4096, localFile, videoRemoteFile);
+        TdApi.Video video = new TdApi.Video();
+        video.thumbnail = thumbnail;
+        video.video = videoFile;
+        video.mimeType = "video/mp4";
+
+        TdApi.MessageVideo content = new TdApi.MessageVideo();
+        content.video = video;
+        content.caption = new TdApi.FormattedText();
+        message.content = content;
+
+        return message;
     }
 
     @Test

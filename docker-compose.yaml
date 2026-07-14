@@ -22,6 +22,8 @@ services:
       #NGINX_PORT: 80
       APP_ENV: "prod"
       APP_ROOT: "/app/data"
+      # Keep "true" when serving through HTTPS.
+      HTTP_SECURE_COOKIES: ${HTTP_SECURE_COOKIES:-false}
       TELEGRAM_API_ID: ${TELEGRAM_API_ID}
       TELEGRAM_API_HASH: ${TELEGRAM_API_HASH}
       # Uncomment the following lines to enable database connection, you can see .env.example for more details.
@@ -31,11 +33,41 @@ services:
       #DB_USER: ${DB_USER}
       #DB_PASSWORD: ${DB_PASSWORD}
       #DB_NAME: ${DB_NAME}
+      # Uncomment the following lines to enable the 0.4.0 share/torrent module.
+      #SHARE_ENABLED: ${SHARE_ENABLED:-false}
+      #SEED_PLATFORM_URL: ${SEED_PLATFORM_URL}
+      #SHARED_ROOT: /app/data/shared
+      #PEER_LISTEN_PORT: ${PEER_LISTEN_PORT:-51413}
+      #QBITTORRENT_URL: http://telegram-files-qbittorrent:8080
+      #QBITTORRENT_USERNAME: ${QBITTORRENT_USERNAME:-admin}
+      #QBITTORRENT_PASSWORD: ${QBITTORRENT_PASSWORD}
+      #QBITTORRENT_SHARED_ROOT: /downloads
     ports:
       - "6543:80"
     volumes:
       - ./data:/app/data
       # - ./other-files-for-transfer:/app/other-files-for-transfer
+
+  telegram-files-qbittorrent:
+    container_name: telegram-files-qbittorrent
+    image: lscr.io/linuxserver/qbittorrent:5.1.2
+    restart: always
+    profiles:
+      - share
+    environment:
+      PUID: ${PUID:-1000}
+      PGID: ${PGID:-1000}
+      TZ: ${TZ:-Asia/Shanghai}
+      WEBUI_PORT: 8080
+      TORRENTING_PORT: ${PEER_LISTEN_PORT:-51413}
+    ports:
+      # WebUI is intentionally bound to localhost. Remove 127.0.0.1 only if you need LAN access.
+      - "127.0.0.1:8080:8080"
+      - "${PEER_LISTEN_PORT:-51413}:${PEER_LISTEN_PORT:-51413}"
+      - "${PEER_LISTEN_PORT:-51413}:${PEER_LISTEN_PORT:-51413}/udp"
+    volumes:
+      - ./data/qbittorrent/config:/config
+      - ./data/shared:/downloads
 
 # Uncomment the following lines to enable database services.
 #  telegram-files-postgres:

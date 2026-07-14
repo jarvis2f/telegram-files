@@ -14,7 +14,7 @@ import { useTelegramAccount } from "@/hooks/use-telegram-account";
 import prettyBytes from "pretty-bytes";
 import Link from "next/link";
 import { Drawer as DrawerPrimitive } from "vaul";
-import TelegramIcon from "@/components/telegram-icon";
+import { PlatformTelegramIcon } from "@/components/platform-telegram-icon";
 import { Button } from "@/components/ui/button";
 import {
   Drawer,
@@ -23,7 +23,13 @@ import {
   DrawerTitle,
   DrawerTrigger,
 } from "@/components/ui/drawer";
-import React, { type CSSProperties, useEffect, useState } from "react";
+import React, {
+  type CSSProperties,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import AccountSelect from "@/components/account-select";
 import ChatSelect from "@/components/chat-select";
 import { cn } from "@/lib/utils";
@@ -37,40 +43,106 @@ import { useLocalStorage } from "@/hooks/use-local-storage";
 import { useTelegramChat } from "@/hooks/use-telegram-chat";
 import { useSettings } from "@/hooks/use-settings";
 
+const HEADER_HIDE_DISTANCE = 108;
+const HEADER_SHOW_DISTANCE = 16;
+
 export function MobileHeader() {
   const { accountDownloadSpeed } = useWebsocket();
   const { settings } = useSettings();
   const [hidden, setHidden] = useState(false);
-  const [lastScrollY, setLastScrollY] = useState(0);
+  const [isScrolled, setIsScrolled] = useState(false);
+  const lastScrollYRef = useRef(0);
+  const directionStartYRef = useRef(0);
+  const scrollDirectionRef = useRef<"up" | "down" | null>(null);
+
+  const isOverlayOpen = useCallback(
+    () =>
+      document.querySelector(
+        [
+          "[data-vaul-drawer][data-state='open']",
+          "[role='dialog'][data-state='open']",
+          "[data-radix-popper-content-wrapper]",
+        ].join(","),
+      ) !== null,
+    [],
+  );
 
   useEffect(() => {
+    const initialScrollY = Math.max(0, window.scrollY);
+    lastScrollYRef.current = initialScrollY;
+    directionStartYRef.current = initialScrollY;
+    setIsScrolled(initialScrollY > 8);
+
     const handleScroll = () => {
-      const currentScrollY = window.scrollY;
-      if (currentScrollY === 0) {
-        setHidden(false); // 回到顶部时显示
-      } else {
-        setHidden(currentScrollY > lastScrollY); // 向下滚动时隐藏
+      const currentScrollY = Math.max(0, window.scrollY);
+
+      if (isOverlayOpen()) {
+        setHidden(false);
+        lastScrollYRef.current = currentScrollY;
+        directionStartYRef.current = currentScrollY;
+        scrollDirectionRef.current = null;
+        return;
       }
-      setLastScrollY(currentScrollY);
+
+      if (currentScrollY <= 8) {
+        setHidden(false);
+        setIsScrolled(false);
+        lastScrollYRef.current = 0;
+        directionStartYRef.current = 0;
+        scrollDirectionRef.current = null;
+        return;
+      }
+
+      setIsScrolled(true);
+      const previousScrollY = lastScrollYRef.current;
+
+      if (currentScrollY > previousScrollY) {
+        if (scrollDirectionRef.current !== "down") {
+          scrollDirectionRef.current = "down";
+          directionStartYRef.current = previousScrollY;
+        }
+
+        if (
+          currentScrollY - directionStartYRef.current >=
+          HEADER_HIDE_DISTANCE
+        ) {
+          setHidden(true);
+        }
+      } else if (currentScrollY < previousScrollY) {
+        if (scrollDirectionRef.current !== "up") {
+          scrollDirectionRef.current = "up";
+          directionStartYRef.current = previousScrollY;
+        }
+
+        if (
+          directionStartYRef.current - currentScrollY >=
+          HEADER_SHOW_DISTANCE
+        ) {
+          setHidden(false);
+        }
+      }
+
+      lastScrollYRef.current = currentScrollY;
     };
 
-    window.addEventListener("scroll", handleScroll);
+    window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
-  }, [lastScrollY]);
+  }, [isOverlayOpen]);
 
   return (
     <Card
       className={cn(
-        lastScrollY > 0
-          ? "fixed left-0 top-0 z-50 w-full rounded-none border-none bg-white/30 shadow-md backdrop-blur-md transition-transform duration-300 dark:bg-zinc-900/30 dark:shadow-sm dark:shadow-black/30"
-          : "mb-4",
+        "sticky top-0 z-40 mb-4 transition-transform duration-300",
+        isScrolled
+          ? "-mx-4 w-[calc(100%+2rem)] rounded-none border-none bg-white/30 shadow-md backdrop-blur-md dark:bg-zinc-900/30 dark:shadow-sm dark:shadow-black/30"
+          : "w-full",
         hidden ? "-translate-y-full" : "translate-y-0",
       )}
     >
       <CardContent className="p-4">
         <div className="flex w-full items-center justify-between">
           <Link href={"/"} className="inline-flex">
-            <TelegramIcon className="h-6 w-6" />
+            <PlatformTelegramIcon className="size-6" />
           </Link>
 
           {accountDownloadSpeed !== 0 ? (
@@ -81,7 +153,7 @@ export function MobileHeader() {
               <Download className="h-4 w-4 flex-shrink-0" />
             </div>
           ) : (
-            <h3 className="text-lg font-semibold">Telegram File Manager</h3>
+            <h3 className="text-lg font-semibold">Telegram Files Manager</h3>
           )}
 
           <MenuDrawer />

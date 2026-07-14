@@ -1,0 +1,10 @@
+{
+  "requestId": "req_fixture",
+  "error": {
+    "code": "NODE_REVOKED",
+    "message": "node credential has been revoked",
+    "retryable": false,
+    "retryAfterSeconds": null,
+    "details": {}
+  }
+}

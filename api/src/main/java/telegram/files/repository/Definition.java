@@ -32,16 +32,19 @@ public interface Definition {
         if (migrations.isEmpty()) {
             return Future.succeededFuture();
         }
-        return Future.all(migrations.subMap(lastVersion, false, currentVersion, true).values()
+        boolean fromInclusive = lastVersion.equals(currentVersion);
+        return Future.all(migrations.subMap(lastVersion, fromInclusive, currentVersion, true).values()
                         .stream()
                         .flatMap(arr -> Stream.of(arr)
                                 .map(sql -> sqlClient.query(sql)
                                         .execute()
-                                        .onFailure(e -> log.error("Failed to apply migration: %s".formatted(sql), e)))
+                                        .recover(e -> {
+                                            log.debug("Migration query ignored: {} ({})", sql, e.getMessage());
+                                            return Future.succeededFuture();
+                                        }))
                         )
                         .toList()
                 )
-                .onFailure(err -> log.error("Failed to migrate table: %s".formatted(err.getMessage())))
                 .mapEmpty();
     }
 }

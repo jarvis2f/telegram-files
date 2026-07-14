@@ -31,7 +31,7 @@ export const SettingsDialog: React.FC = () => {
           setIsOpen(!isOpen);
         }}
       >
-        <Button variant="ghost" size="icon">
+        <Button variant="ghost" size="icon" aria-label="Open settings">
           <Settings className="h-4 w-4" />
         </Button>
       </DialogTrigger>

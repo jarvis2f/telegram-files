@@ -1,0 +1,9 @@
+{
+  "nodeName": "fixture-node",
+  "agentVersion": "0.4.0",
+  "contractVersions": ["1.0"],
+  "capabilities": ["TELEGRAM_BOOTSTRAP_V1"],
+  "identityVersion": 1,
+  "installationPublicKey": "MCowBQYDK2VwAyEAZmFrZS1lZDI1NTE5LXB1YmxpYy1rZXktMDE",
+  "installationFingerprint": "ed25519:v1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+}

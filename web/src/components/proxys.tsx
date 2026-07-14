@@ -18,7 +18,15 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Copy, Plus, SquarePen, Trash } from "lucide-react";
+import {
+  Check,
+  Copy,
+  Network,
+  Plus,
+  SquarePen,
+  Trash,
+  Unplug,
+} from "lucide-react";
 import { type Proxy } from "@/lib/types";
 import { cn, parseProxyString } from "@/lib/utils";
 import useSWRMutation from "swr/mutation";
@@ -35,6 +43,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { mutate } from "swr";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 export interface ProxysProps {
   enableSelect?: boolean;
@@ -159,31 +168,63 @@ export default function Proxys({
       onProxyNameChange?.(innerProxyName);
     }
   };
+  const proxyCountLabel = `${proxys.length} ${
+    proxys.length === 1 ? "proxy" : "proxies"
+  }`;
 
   return (
-    <div className="relative h-full">
-      <div className="mb-4 flex items-center justify-between">
-        <div className="flex items-center space-x-2">
-          <h1 className="text-2xl font-bold">Proxys</h1>
-          {telegramId && <ProxyPing accountId={telegramId} />}
+    <div className="relative flex h-full flex-col gap-4 pb-16">
+      <div className="flex flex-col gap-3 rounded-md border bg-card p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex min-w-0 items-start gap-3">
+          <span className="flex size-10 shrink-0 items-center justify-center rounded-md border bg-muted text-muted-foreground">
+            <Network className="size-5" />
+          </span>
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <h1 className="text-xl font-semibold tracking-normal">Proxies</h1>
+              <Badge variant="secondary">{proxyCountLabel}</Badge>
+            </div>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Manage saved proxy profiles for Telegram connections.
+            </p>
+          </div>
         </div>
-        <Button onClick={() => handleOpenDialog()}>
-          <Plus className="mr-2 h-5 w-5" /> Add Proxy
-        </Button>
+        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center">
+          {telegramId && <ProxyPing accountId={telegramId} />}
+          <Button onClick={() => handleOpenDialog()}>
+            <Plus />
+            Add proxy
+          </Button>
+        </div>
       </div>
       {proxys.length === 0 && (
-        <div className="flex h-32 items-center justify-center">
-          <p className="text-center text-gray-500">No proxys added yet</p>
+        <div className="flex min-h-48 flex-col items-center justify-center gap-3 rounded-md border border-dashed bg-muted/30 p-6 text-center">
+          <span className="flex size-12 items-center justify-center rounded-md border bg-background text-muted-foreground">
+            <Unplug className="size-5" />
+          </span>
+          <div>
+            <p className="font-medium">No proxies added yet</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Add a proxy profile or paste one from your clipboard.
+            </p>
+          </div>
         </div>
       )}
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-3 2xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
         {proxys.map((proxy) => (
           <Card
             key={proxy.name}
-            className={cn("relative hover:shadow-lg", {
-              "cursor-pointer": enableSelect,
-            })}
+            className={cn(
+              "relative border bg-card shadow-sm transition-colors hover:bg-accent/40",
+              enableSelect && "cursor-pointer",
+              enableSelect &&
+                innerProxyName === proxy.name &&
+                "border-primary bg-accent/50",
+            )}
             onClick={() => {
+              if (!enableSelect) {
+                return;
+              }
               if (innerProxyName === proxy.name) {
                 setInnerProxyName("");
               } else {
@@ -191,44 +232,56 @@ export default function Proxys({
               }
             }}
           >
-            <CardHeader className="p-3">
-              <CardTitle className="flex items-center justify-between">
-                <span className="font-semibold">{proxy.name}</span>
-                <Checkbox
-                  className="h-4 w-4"
-                  checked={enableSelect && innerProxyName === proxy.name}
-                />
+            <CardHeader className="p-4 pb-2">
+              <CardTitle className="flex items-start justify-between gap-3 text-base">
+                <span className="min-w-0 truncate font-semibold">
+                  {proxy.name}
+                </span>
+                {enableSelect && (
+                  <Checkbox
+                    checked={innerProxyName === proxy.name}
+                    aria-label={`Select ${proxy.name}`}
+                  />
+                )}
               </CardTitle>
             </CardHeader>
-            <CardContent className="p-0 px-3">
-              <div className="flex items-baseline space-x-2">
+            <CardContent className="px-4 pb-3 pt-0">
+              <div className="flex min-w-0 items-center gap-2">
                 <Badge variant="outline">{proxy.type.toUpperCase()}</Badge>
-                <p className="text-sm text-gray-400">{`${proxy.server}:${proxy.port}`}</p>
+                <p className="truncate font-mono text-sm text-muted-foreground">{`${proxy.server}:${proxy.port}`}</p>
               </div>
             </CardContent>
-            <CardFooter className="flex justify-end space-x-2 p-1">
+            <CardFooter className="flex justify-end gap-1 border-t px-2 py-1.5">
               <Button
                 size="icon"
                 variant="ghost"
-                className="h-6 w-6"
-                onClick={() => handleOpenDialog(proxy)}
+                aria-label={`Edit ${proxy.name}`}
+                className="size-8"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  handleOpenDialog(proxy);
+                }}
               >
-                <SquarePen className="h-3 w-3" />
+                <SquarePen />
               </Button>
               <Button
                 size="icon"
                 variant="ghost"
-                className="h-6 w-6"
-                onClick={() => handleDeleteProxy(proxy)}
+                aria-label={`Delete ${proxy.name}`}
+                className="size-8 text-destructive hover:text-destructive"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  handleDeleteProxy(proxy);
+                }}
               >
-                <Trash className="h-3 w-3 text-red-600" />
+                <Trash />
               </Button>
             </CardFooter>
           </Card>
         ))}
       </div>
       {enableSelect && (
-        <div className="absolute bottom-0 flex w-full flex-col-reverse items-center justify-end gap-2 sm:flex-row">
+        <div className="absolute inset-x-0 bottom-0 flex flex-col-reverse items-center justify-end gap-2 border-t bg-background/95 pt-3 backdrop-blur sm:flex-row">
           <DialogClose asChild>
             <Button
               className="w-full md:w-auto"
@@ -243,80 +296,51 @@ export default function Proxys({
             disabled={isToggleProxyMutating}
             onClick={() => handleProxySubmit()}
           >
-            Submit
+            <Check />
+            Apply proxy
           </Button>
         </div>
       )}
       <Dialog open={isDialogOpen} onOpenChange={handleCloseDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>
-              <span className="mr-2">
-                {editingProxy ? "Edit Proxy" : "Add Proxy"}
-              </span>
+            <DialogTitle className="flex items-center gap-2">
+              <span>{editingProxy ? "Edit proxy" : "Add proxy"}</span>
               <ProxyParser onParsed={(proxy) => setFormState(proxy)} />
             </DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
-            {/* Radio buttons for proxy type */}
-            <div>
-              <Label className="mb-2 block">Type</Label>
-              <div className="flex space-x-4">
-                <label className="flex cursor-pointer items-center">
-                  <input
-                    type="radio"
-                    name="type"
-                    value="http"
-                    checked={formState.type === "http"}
-                    onChange={handleInputChange}
-                    className="peer hidden"
-                  />
-                  <div className="mr-2 flex h-5 w-5 items-center justify-center rounded-full border-2 border-gray-300 peer-checked:border-primary peer-checked:bg-primary">
-                    <div className="h-2.5 w-2.5 rounded-full bg-white"></div>
-                  </div>
-                  <span className="text-gray-400 peer-checked:text-primary">
-                    HTTP
-                  </span>
-                </label>
-
-                <label className="flex cursor-pointer items-center">
-                  <input
-                    type="radio"
-                    name="type"
-                    value="socks5"
-                    checked={formState.type === "socks5"}
-                    onChange={handleInputChange}
-                    className="peer hidden"
-                  />
-                  <div className="mr-2 flex h-5 w-5 items-center justify-center rounded-full border-2 border-gray-300 peer-checked:border-primary peer-checked:bg-primary">
-                    <div className="h-2.5 w-2.5 rounded-full bg-white"></div>
-                  </div>
-                  <span className="text-gray-400 peer-checked:text-primary">
-                    SOCKS5
-                  </span>
-                </label>
-
-                <label className="flex cursor-pointer items-center">
-                  <input
-                    type="radio"
-                    name="type"
-                    value="mtproto"
-                    checked={formState.type === "mtproto"}
-                    onChange={handleInputChange}
-                    className="peer hidden"
-                  />
-                  <div className="mr-2 flex h-5 w-5 items-center justify-center rounded-full border-2 border-gray-300 peer-checked:border-primary peer-checked:bg-primary">
-                    <div className="h-2.5 w-2.5 rounded-full bg-white"></div>
-                  </div>
-                  <span className="text-gray-400 peer-checked:text-primary">
-                    MTProto
-                  </span>
-                </label>
-              </div>
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-2">
+              <Label>Type</Label>
+              <RadioGroup
+                value={formState.type}
+                onValueChange={(value) =>
+                  setFormState((prev) => ({
+                    ...prev,
+                    type: value as Proxy["type"],
+                  }))
+                }
+                className="grid grid-cols-3 gap-2"
+              >
+                {["http", "socks5", "mtproto"].map((type) => (
+                  <label
+                    key={type}
+                    className={cn(
+                      "flex cursor-pointer items-center justify-center rounded-md border px-3 py-2 text-sm font-medium transition-colors",
+                      formState.type === type
+                        ? "border-primary bg-accent text-foreground"
+                        : "text-muted-foreground hover:bg-accent/40",
+                    )}
+                  >
+                    <RadioGroupItem value={type} className="sr-only" />
+                    {type.toUpperCase()}
+                  </label>
+                ))}
+              </RadioGroup>
             </div>
 
-            <div>
-              <Label className="mb-2 block">Name</Label>
+            <div className="flex flex-col gap-2">
+              <Label>Name</Label>
               <Input
                 name="name"
                 value={formState.name}
@@ -324,15 +348,13 @@ export default function Proxys({
                 placeholder="Enter proxy name"
               />
             </div>
-            <div>
-              <Label className="mb-2 block">
-                Proxy server address and port number
-              </Label>
-              <div className="flex space-x-4">
-                <div className="flex-1">
-                  <label className="block text-xs font-medium text-gray-500">
+            <div className="flex flex-col gap-2">
+              <Label>Proxy server</Label>
+              <div className="grid gap-3 sm:grid-cols-[1fr_120px]">
+                <div className="flex flex-col gap-1.5">
+                  <Label className="text-xs text-muted-foreground">
                     Server
-                  </label>
+                  </Label>
                   <Input
                     name="server"
                     value={formState.server}
@@ -340,10 +362,8 @@ export default function Proxys({
                     placeholder="Enter server address"
                   />
                 </div>
-                <div className="w-24">
-                  <label className="block text-xs font-medium text-gray-500">
-                    Port
-                  </label>
+                <div className="flex flex-col gap-1.5">
+                  <Label className="text-xs text-muted-foreground">Port</Label>
                   <Input
                     name="port"
                     type="number"
@@ -354,12 +374,10 @@ export default function Proxys({
                 </div>
               </div>
             </div>
-            <Label className="mb-2 block">Authentication (optional)</Label>
+            <Label>Authentication (optional)</Label>
             {formState.type === "mtproto" ? (
-              <div>
-                <label className="block text-xs font-medium text-gray-500">
-                  Secret
-                </label>
+              <div className="flex flex-col gap-1.5">
+                <Label className="text-xs text-muted-foreground">Secret</Label>
                 <Input
                   name="secret"
                   value={formState.secret}
@@ -369,10 +387,10 @@ export default function Proxys({
               </div>
             ) : (
               <>
-                <div>
-                  <label className="block text-xs font-medium text-gray-500">
+                <div className="flex flex-col gap-1.5">
+                  <Label className="text-xs text-muted-foreground">
                     Username
-                  </label>
+                  </Label>
                   <Input
                     name="username"
                     value={formState.username}
@@ -380,10 +398,10 @@ export default function Proxys({
                     placeholder="Enter username"
                   />
                 </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-500">
+                <div className="flex flex-col gap-1.5">
+                  <Label className="text-xs text-muted-foreground">
                     Password
-                  </label>
+                  </Label>
                   <Input
                     name="password"
                     type="password"
@@ -400,7 +418,7 @@ export default function Proxys({
               Cancel
             </Button>
             <Button onClick={handleSaveProxy}>
-              {editingProxy ? "Save" : "Add"}
+              {editingProxy ? "Save proxy" : "Add proxy"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -435,15 +453,15 @@ function ProxyParser({ onParsed }: { onParsed: (proxys: Proxy) => void }) {
       <Tooltip>
         <TooltipTrigger asChild>
           <Button size="xs" variant="ghost" onClick={() => handleParseProxy()}>
-            <Copy className="h-3 w-3" />
+            <Copy />
           </Button>
         </TooltipTrigger>
         <TooltipContent>
-          <div className="flex flex-col space-y-2 p-2">
+          <div className="flex max-w-80 flex-col gap-2 p-2">
             <p className="text-sm font-semibold">
-              Parse the proxy string from the clipboard and add them to the list
+              Parse a proxy string from the clipboard
             </p>
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-muted-foreground">
               The proxy should be in the following format:
               <br />
               <code>http://username:password@server:port</code>

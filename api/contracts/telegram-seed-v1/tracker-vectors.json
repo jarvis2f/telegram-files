@@ -1,0 +1,28 @@
+{
+  "version": "1.0.0",
+  "vectors": [
+    {
+      "name": "announce-v1-started",
+      "rawQuery": "info_hash=%00%01%02%03%04%05%06%07%08%09%0A%0B%0C%0D%0E%0F%10%11%12%13&peer_id=-TS0001-123456789012&port=51413&uploaded=0&downloaded=0&left=1024&compact=1&event=started",
+      "infoHashHex": "000102030405060708090a0b0c0d0e0f10111213",
+      "peerIdHex": "2d5453303030312d313233343536373839303132",
+      "port": 51413
+    },
+    {
+      "name": "failure-response",
+      "bencodeHex": "6431343a6661696c75726520726561736f6e31363a696e76616c69642063726564656e7469616c65"
+    },
+    {
+      "name": "compact-ipv4-peer",
+      "address": "8.8.8.8",
+      "port": 51413,
+      "compactHex": "08080808c8d5"
+    },
+    {
+      "name": "compact-ipv6-peer",
+      "address": "2001:4860:4860::8888",
+      "port": 51413,
+      "compactHex": "20014860486000000000000000008888c8d5"
+    }
+  ]
+}

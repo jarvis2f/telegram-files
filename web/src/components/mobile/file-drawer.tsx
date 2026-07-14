@@ -3,13 +3,13 @@ import React, { useEffect, useState } from "react";
 import { Drawer, DrawerContent, DrawerTitle } from "@/components/ui/drawer";
 import { cn } from "@/lib/utils";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
-import { LoaderPinwheel } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import FileVideo from "@/components/file-video";
 import FileInfo from "@/components/mobile/file-info";
 import { type useFiles } from "@/hooks/use-files";
 import useFileSwitch from "@/hooks/use-file-switch";
 import FileImage from "../file-image";
+import { DotmTriangle2 } from "@/components/ui/dotm-triangle-2";
 
 type FileDrawerProps = {
   open: boolean;
@@ -17,6 +17,7 @@ type FileDrawerProps = {
   file: TelegramFile;
   onFileChange: (file: TelegramFile) => void;
   onFileTagsClick: (file: TelegramFile) => void;
+  initialViewing?: boolean;
 } & ReturnType<typeof useFiles>;
 
 export default function FileDrawer({
@@ -25,11 +26,12 @@ export default function FileDrawer({
   file,
   onFileChange,
   onFileTagsClick,
+  initialViewing = false,
   hasMore,
   handleLoadMore,
   isLoading,
 }: FileDrawerProps) {
-  const [viewing, setViewing] = useState(false);
+  const [viewing, setViewing] = useState(initialViewing);
 
   // 防止在下载状态变化时意外调用onFileChange导致drawer关闭
   const handleFileChange = (newFile: TelegramFile) => {
@@ -45,6 +47,12 @@ export default function FileDrawer({
     hasMore,
     handleLoadMore,
   });
+
+  useEffect(() => {
+    if (open) {
+      setViewing(initialViewing);
+    }
+  }, [file.id, initialViewing, open]);
 
   useEffect(() => {
     if (
@@ -78,6 +86,11 @@ export default function FileDrawer({
         }
 
         if (viewing && Math.abs(dy) > Math.abs(dx) && dy > 0) {
+          if (initialViewing) {
+            onOpenChange(false);
+            document.removeEventListener("touchend", handleTouchEnd);
+            return;
+          }
           setViewing(false);
         }
         document.removeEventListener("touchend", handleTouchEnd);
@@ -86,7 +99,7 @@ export default function FileDrawer({
     };
     document.addEventListener("touchstart", handleTouchStart);
     return () => document.removeEventListener("touchstart", handleTouchStart);
-  }, [handleNavigation, file, viewing]);
+  }, [handleNavigation, file, initialViewing, onOpenChange, viewing]);
 
   const slideVariants = {
     enter: (direction: number) => ({
@@ -112,6 +125,10 @@ export default function FileDrawer({
       open={open}
       onOpenChange={(open) => {
         if (!open && viewing) {
+          if (initialViewing) {
+            onOpenChange(false);
+            return;
+          }
           setViewing(false);
           return;
         }
@@ -134,9 +151,14 @@ export default function FileDrawer({
         </VisuallyHidden>
         {isLoading && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center">
-            <LoaderPinwheel
-              className="h-8 w-8 animate-spin"
-              style={{ strokeWidth: "0.8px" }}
+            <DotmTriangle2
+              size={32}
+              dotSize={4}
+              speed={1.4}
+              opacityBase={0.1}
+              opacityMid={0.4}
+              opacityPeak={0.95}
+              ariaLabel="Loading file details"
             />
           </div>
         )}

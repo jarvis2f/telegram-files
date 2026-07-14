@@ -172,8 +172,6 @@ function MobileParseLinkDrawer({
       repositionInputs={false}
     >
       <DrawerContent className="w-full md:w-2/3" aria-describedby={undefined}>
-        <div className="mx-auto mt-4 h-2 w-[100px] rounded-full bg-muted" />
-
         <div className="p-4">
           <DrawerTitle className="mb-4">Parse Link</DrawerTitle>
           <p className="mb-2 text-sm text-muted-foreground">

@@ -60,5 +60,8 @@ export function split(separator: string, str?: string): string[] {
   if (!str || str.length === 0) {
     return [];
   }
-  return str.split(separator).map((item) => item.trim());
+  return str
+    .split(separator)
+    .map((item) => item.trim())
+    .filter((item) => item.length > 0);
 }

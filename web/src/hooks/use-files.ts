@@ -18,6 +18,7 @@ const DEFAULT_FILTERS: FileFilter = {
   downloadStatus: undefined,
   transferStatus: undefined,
   offline: false,
+  seedOnly: false,
   tags: [],
 };
 
@@ -25,6 +26,8 @@ type FileResponse = {
   files: TelegramFile[];
   count: number;
   nextFromMessageId: number;
+  nextSeedOffset?: number;
+  hasMore?: boolean;
 };
 
 export function useFiles(
@@ -49,6 +52,18 @@ export function useFiles(
         downloadedSize: number;
         transferStatus?: TransferStatus;
         thumbnailFile?: Thumbnail;
+        torrentStatus?: string;
+        sharedByMe?: boolean;
+        shareStatus?: TelegramFile["shareStatus"];
+        sharedSourceId?: string;
+        sharedResourceId?: string;
+        shareTitle?: string;
+        shareDescription?: string | null;
+        shareTags?: string[];
+        shareCategory?: string | null;
+        shareAccessScope?: TelegramFile["shareAccessScope"];
+        sharePublicMessageUrl?: string | null;
+        shareErrorCode?: string;
         removed?: boolean;
       }
     >
@@ -66,6 +81,7 @@ export function useFiles(
       ...(filters.downloadStatus && { downloadStatus: filters.downloadStatus }),
       ...(filters.transferStatus && { transferStatus: filters.transferStatus }),
       ...(filters.offline && { offline: "true" }),
+      ...(noAccountSpecified && filters.seedOnly && { seedOnly: "true" }),
       ...(filters.tags.length > 0 && {
         tags: filters.tags.join(","),
       }),
@@ -87,7 +103,17 @@ export function useFiles(
       return null;
     }
 
-    params.set("fromMessageId", previousPageData.nextFromMessageId.toString());
+    if (noAccountSpecified && filters.seedOnly) {
+      params.set(
+        "seedOffset",
+        (previousPageData.nextSeedOffset ?? 0).toString(),
+      );
+    } else {
+      params.set(
+        "fromMessageId",
+        previousPageData.nextFromMessageId.toString(),
+      );
+    }
     if (filters.offline && previousPageData.files.length > 0) {
       const lastFile =
         previousPageData.files[previousPageData.files.length - 1];
@@ -141,8 +167,20 @@ export function useFiles(
       downloadedSize: number;
       transferStatus?: TransferStatus;
       thumbnailFile?: Thumbnail;
+      torrentStatus?: string;
       removed?: boolean;
       type?: string;
+      sharedByMe?: boolean;
+      shareStatus?: TelegramFile["shareStatus"];
+      sharedSourceId?: string;
+      sharedResourceId?: string;
+      shareTitle?: string;
+      shareDescription?: string | null;
+      shareTags?: string[];
+      shareCategory?: string | null;
+      shareAccessScope?: TelegramFile["shareAccessScope"];
+      sharePublicMessageUrl?: string | null;
+      shareErrorCode?: string;
     };
 
     if (data.type === "thumbnail") {
@@ -180,9 +218,29 @@ export function useFiles(
         transferStatus:
           data.transferStatus ?? prev[data.uniqueId]?.transferStatus,
         thumbnailFile: data.thumbnailFile ?? prev[data.uniqueId]?.thumbnailFile,
+        torrentStatus: data.torrentStatus ?? prev[data.uniqueId]?.torrentStatus,
+        sharedByMe: data.sharedByMe ?? prev[data.uniqueId]?.sharedByMe,
+        shareStatus: data.shareStatus ?? prev[data.uniqueId]?.shareStatus,
+        sharedSourceId:
+          data.sharedSourceId ?? prev[data.uniqueId]?.sharedSourceId,
+        sharedResourceId:
+          data.sharedResourceId ?? prev[data.uniqueId]?.sharedResourceId,
+        shareTitle: data.shareTitle ?? prev[data.uniqueId]?.shareTitle,
+        shareDescription:
+          data.shareDescription ?? prev[data.uniqueId]?.shareDescription,
+        shareTags: data.shareTags ?? prev[data.uniqueId]?.shareTags,
+        shareCategory:
+          data.shareCategory ?? prev[data.uniqueId]?.shareCategory,
+        shareAccessScope:
+          data.shareAccessScope ?? prev[data.uniqueId]?.shareAccessScope,
+        sharePublicMessageUrl:
+          data.sharePublicMessageUrl ??
+          prev[data.uniqueId]?.sharePublicMessageUrl,
+        shareErrorCode:
+          data.shareErrorCode ?? prev[data.uniqueId]?.shareErrorCode,
       },
     }));
-  }, [lastJsonMessage]);
+  }, [debouncedThumbnailRefetch, lastJsonMessage]);
 
   useEffect(() => {
     if (noAccountSpecified && !filters.offline) {
@@ -221,6 +279,38 @@ export function useFiles(
           thumbnailFile:
             latestFilesStatus[file.uniqueId]?.thumbnailFile ??
             file.thumbnailFile,
+          torrentStatus:
+            latestFilesStatus[file.uniqueId]?.torrentStatus ??
+            file.torrentStatus,
+          sharedByMe:
+            latestFilesStatus[file.uniqueId]?.sharedByMe ?? file.sharedByMe,
+          shareStatus:
+            latestFilesStatus[file.uniqueId]?.shareStatus ?? file.shareStatus,
+          sharedSourceId:
+            latestFilesStatus[file.uniqueId]?.sharedSourceId ??
+            file.sharedSourceId,
+          sharedResourceId:
+            latestFilesStatus[file.uniqueId]?.sharedResourceId ??
+            file.sharedResourceId,
+          shareTitle:
+            latestFilesStatus[file.uniqueId]?.shareTitle ?? file.shareTitle,
+          shareDescription:
+            latestFilesStatus[file.uniqueId]?.shareDescription ??
+            file.shareDescription,
+          shareTags:
+            latestFilesStatus[file.uniqueId]?.shareTags ?? file.shareTags,
+          shareCategory:
+            latestFilesStatus[file.uniqueId]?.shareCategory ??
+            file.shareCategory,
+          shareAccessScope:
+            latestFilesStatus[file.uniqueId]?.shareAccessScope ??
+            file.shareAccessScope,
+          sharePublicMessageUrl:
+            latestFilesStatus[file.uniqueId]?.sharePublicMessageUrl ??
+            file.sharePublicMessageUrl,
+          shareErrorCode:
+            latestFilesStatus[file.uniqueId]?.shareErrorCode ??
+            file.shareErrorCode,
         };
         // Live WebSocket updates can change a row's status after it was fetched. When a status
         // filter is active, drop rows that no longer match so the filtered view stays consistent
@@ -259,10 +349,22 @@ export function useFiles(
     const lastPage = pages[pages.length - 1];
     let hasMore = false;
     if (lastPage) {
+      if (lastPage.hasMore !== undefined) return lastPage.hasMore;
       const count = lastPage.count;
       hasMore = count > fetchedCount && lastPage.nextFromMessageId !== 0;
     }
     return hasMore;
+  }, [pages]);
+
+  const totalCount = useMemo(() => {
+    if (!pages || pages.length === 0) return undefined;
+    for (let index = pages.length - 1; index >= 0; index -= 1) {
+      const count = pages[index]?.count;
+      if (count !== undefined) {
+        return count;
+      }
+    }
+    return undefined;
   }, [pages]);
 
   const handleLoadMore = async () => {
@@ -288,6 +390,84 @@ export function useFiles(
     uniqueId: string,
     patch: Partial<TelegramFile>,
   ) => {
+    setLatestFileStatus((prev) => {
+      const existing = prev[uniqueId];
+      const currentFile = pages
+        ?.flatMap((p) => p.files)
+        .find((f) => f.uniqueId === uniqueId);
+      return {
+        ...prev,
+        [uniqueId]: {
+          fileId: patch.id ?? existing?.fileId ?? currentFile?.id ?? 0,
+          downloadStatus:
+            patch.downloadStatus ??
+            existing?.downloadStatus ??
+            currentFile?.downloadStatus ??
+            "completed",
+          localPath:
+            patch.localPath ?? existing?.localPath ?? currentFile?.localPath,
+          completionDate:
+            patch.completionDate ??
+            existing?.completionDate ??
+            currentFile?.completionDate,
+          downloadedSize:
+            patch.downloadedSize ??
+            existing?.downloadedSize ??
+            currentFile?.downloadedSize ??
+            0,
+          transferStatus:
+            patch.transferStatus ??
+            existing?.transferStatus ??
+            currentFile?.transferStatus,
+          thumbnailFile:
+            patch.thumbnailFile ??
+            existing?.thumbnailFile ??
+            currentFile?.thumbnailFile,
+          torrentStatus:
+            patch.torrentStatus ??
+            existing?.torrentStatus ??
+            currentFile?.torrentStatus,
+          sharedByMe:
+            patch.sharedByMe ?? existing?.sharedByMe ?? currentFile?.sharedByMe,
+          shareStatus:
+            patch.shareStatus ??
+            existing?.shareStatus ??
+            currentFile?.shareStatus,
+          sharedSourceId:
+            patch.sharedSourceId ??
+            existing?.sharedSourceId ??
+            currentFile?.sharedSourceId,
+          sharedResourceId:
+            patch.sharedResourceId ??
+            existing?.sharedResourceId ??
+            currentFile?.sharedResourceId,
+          shareTitle:
+            patch.shareTitle ?? existing?.shareTitle ?? currentFile?.shareTitle,
+          shareDescription:
+            patch.shareDescription ??
+            existing?.shareDescription ??
+            currentFile?.shareDescription,
+          shareTags:
+            patch.shareTags ?? existing?.shareTags ?? currentFile?.shareTags,
+          shareCategory:
+            patch.shareCategory ??
+            existing?.shareCategory ??
+            currentFile?.shareCategory,
+          shareAccessScope:
+            patch.shareAccessScope ??
+            existing?.shareAccessScope ??
+            currentFile?.shareAccessScope,
+          sharePublicMessageUrl:
+            patch.sharePublicMessageUrl ??
+            existing?.sharePublicMessageUrl ??
+            currentFile?.sharePublicMessageUrl,
+          shareErrorCode:
+            patch.shareErrorCode ??
+            existing?.shareErrorCode ??
+            currentFile?.shareErrorCode,
+        },
+      };
+    });
     await mutate((pages) => {
       if (!pages) return [];
 
@@ -313,5 +493,7 @@ export function useFiles(
     clearFilters,
     handleLoadMore,
     hasMore,
+    loadedCount: files.length,
+    totalCount,
   };
 }

@@ -1,5 +1,4 @@
-import { LoaderPinwheel } from "lucide-react";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useFiles } from "@/hooks/use-files";
 import { useWindowVirtualizer } from "@tanstack/react-virtual";
 import { FileCard } from "@/components/mobile/file-card";
@@ -8,10 +7,10 @@ import FileDrawer from "@/components/mobile/file-drawer";
 import type { TelegramFile } from "@/lib/types";
 import { isEqual } from "lodash";
 import FileFilters from "@/components/file-filters";
-import DraggableElement from "@/components/ui/draggable-element";
 import { useLocalStorage } from "@/hooks/use-local-storage";
 import FileNotFount from "@/components/file-not-found";
 import { MobileFileTagsDrawer } from "@/components/file-tags";
+import { DotmTriangle2 } from "@/components/ui/dotm-triangle-2";
 
 interface FileListProps {
   accountId: string;
@@ -28,6 +27,7 @@ export default function FileList({ accountId, chatId, link }: FileListProps) {
     TelegramFile | undefined
   >();
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [openDrawerInViewer, setOpenDrawerInViewer] = useState(false);
   const [isTagsDrawerOpen, setIsTagsDrawerOpen] = useState(false);
   const [layout] = useLocalStorage<"detailed" | "gallery">(
     "telegramFileLayout",
@@ -46,15 +46,36 @@ export default function FileList({ accountId, chatId, link }: FileListProps) {
     handleLoadMore,
   } = useFilesProps;
 
+  const canPreviewFile = (file: TelegramFile) =>
+    file.downloadStatus === "completed" &&
+    (file.type === "photo" || file.type === "video");
+
+  const fileHeightSignature = useMemo(
+    () =>
+      files
+        .map((file) =>
+          layout === "detailed"
+            ? `${file.id}:${file.uniqueId}:detailed`
+            : `${file.id}:${file.uniqueId}:${file.thumbnail ? "thumbnail" : "plain"}`,
+        )
+        .join("|"),
+    [files, layout],
+  );
+
   const rowVirtual = useWindowVirtualizer({
+    useFlushSync: false,
     count: hasMore ? files.length + 1 : files.length,
+    getItemKey: (index) => {
+      const file = files[index];
+      return file ? `${file.id}-${file.uniqueId}-${index}` : `loader-${index}`;
+    },
     estimateSize: (index) => {
       const file = files[index];
       if (!file) {
         return 90;
       }
       if (layout === "detailed") {
-        return 90;
+        return 108;
       }
       return !file.thumbnail ? 116 : 340;
     },
@@ -65,7 +86,7 @@ export default function FileList({ accountId, chatId, link }: FileListProps) {
 
   useEffect(() => {
     rowVirtual.measure();
-  }, [layout, rowVirtual]);
+  }, [fileHeightSignature, rowVirtual]);
 
   useEffect(() => {
     const [lastItem] = [...rowVirtual.getVirtualItems()].reverse();
@@ -100,26 +121,33 @@ export default function FileList({ accountId, chatId, link }: FileListProps) {
   return (
     <div className="space-y-4">
       {!link && (
-        <DraggableElement>
-          <FileFilters
-            telegramId={accountId}
-            chatId={chatId}
-            filters={filters}
-            onFiltersChange={handleFilterChange}
-            clearFilters={clearFilters}
-          />
-        </DraggableElement>
+        <FileFilters
+          telegramId={accountId}
+          chatId={chatId}
+          filters={filters}
+          onFiltersChange={handleFilterChange}
+          clearFilters={clearFilters}
+          showMobileLayoutToggle={
+            accountId === "-1" && chatId === "-1" && !link
+          }
+        />
       )}
       {currentViewFile && (
         <FileDrawer
           open={isDrawerOpen}
-          onOpenChange={setIsDrawerOpen}
+          onOpenChange={(open) => {
+            setIsDrawerOpen(open);
+            if (!open) {
+              setOpenDrawerInViewer(false);
+            }
+          }}
           file={currentViewFile}
           onFileChange={setCurrentViewFile}
           onFileTagsClick={(file) => {
             setCurrentTagsFile(file);
             setIsTagsDrawerOpen(true);
           }}
+          initialViewing={openDrawerInViewer}
           {...useFilesProps}
         />
       )}
@@ -144,9 +172,14 @@ export default function FileList({ accountId, chatId, link }: FileListProps) {
       >
         {size === 1 && isLoading && (
           <div className="fixed left-0 top-0 flex h-full w-full items-center justify-center">
-            <LoaderPinwheel
-              className="h-8 w-8 animate-spin"
-              style={{ strokeWidth: "0.8px" }}
+            <DotmTriangle2
+              size={32}
+              dotSize={4}
+              speed={1.4}
+              opacityBase={0.1}
+              opacityMid={0.4}
+              opacityPeak={0.95}
+              ariaLabel="Loading files"
             />
           </div>
         )}
@@ -166,9 +199,14 @@ export default function FileList({ accountId, chatId, link }: FileListProps) {
                   key="loader"
                 >
                   {hasMore ? (
-                    <LoaderPinwheel
-                      className="h-8 w-8 animate-spin"
-                      style={{ strokeWidth: "0.8px" }}
+                    <DotmTriangle2
+                      size={32}
+                      dotSize={4}
+                      speed={1.4}
+                      opacityBase={0.1}
+                      opacityMid={0.4}
+                      opacityPeak={0.95}
+                      ariaLabel="Loading more files"
                     />
                   ) : (
                     <p className="text-muted-foreground">No more files</p>
@@ -178,7 +216,7 @@ export default function FileList({ accountId, chatId, link }: FileListProps) {
             }
             return (
               <FileCard
-                key={`${file.id}-${file.uniqueId}-${virtualRow.index}`}
+                key={virtualRow.key}
                 index={virtualRow.index}
                 className={cn("absolute left-0 top-0 flex w-full items-center")}
                 style={{
@@ -188,6 +226,9 @@ export default function FileList({ accountId, chatId, link }: FileListProps) {
                 ref={rowVirtual.measureElement}
                 file={file}
                 onFileClick={() => {
+                  setOpenDrawerInViewer(
+                    layout === "gallery" && canPreviewFile(file),
+                  );
                   setCurrentViewFile(file);
                   setIsDrawerOpen(true);
                 }}

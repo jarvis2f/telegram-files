@@ -1,6 +1,7 @@
 package telegram.files;
 
 import cn.hutool.core.util.ArrayUtil;
+import cn.hutool.core.convert.Convert;
 import cn.hutool.core.util.StrUtil;
 import io.vertx.core.Future;
 import io.vertx.core.json.JsonObject;
@@ -13,10 +14,23 @@ import java.util.stream.Collectors;
 public class FileRecordRetriever {
 
     public static Future<JsonObject> getFiles(long chatId, Map<String, String> filter) {
+        if (chatId == 0 && Convert.toBool(filter.get("seedOnly"), false)) {
+            return DataVerticle.torrentRepository.listSeedOnly(filter).map(page -> {
+                int offset = Math.max(0, Convert.toInt(filter.get("seedOffset"), 0));
+                int nextOffset = offset + page.v1.size();
+                return new JsonObject()
+                        .put("files", TelegramConverter.convertSeedOnlyFiles(page.v1))
+                        .put("nextFromMessageId", 0)
+                        .put("nextSeedOffset", nextOffset)
+                        .put("hasMore", nextOffset < page.v2)
+                        .put("count", page.v2)
+                        .put("size", page.v1.size());
+            });
+        }
         return DataVerticle.fileRepository.getFiles(chatId, filter)
                 .compose(r -> getTdMessages(r.v1).map(r::concat))
                 .compose(r -> getThumbnails(r.v1).map(r::concat))
-                .map(r -> {
+                .compose(r -> {
                     Map<String, TdApi.Message> messageMap = r.v4;
                     Map<String, FileRecord> thumbnailMap = r.v5;
                     List<JsonObject> fileRecords = r.v1.stream()
@@ -27,11 +41,12 @@ public class FileRecordRetriever {
                             ))
                             .filter(Objects::nonNull)
                             .toList();
-                    return new JsonObject()
-                            .put("files", fileRecords)
-                            .put("nextFromMessageId", r.v2)
-                            .put("count", r.v3)
-                            .put("size", fileRecords.size());
+                    return TelegramConverter.enrichSeedAssociations(fileRecords).map(enriched ->
+                            new JsonObject()
+                                    .put("files", enriched)
+                                    .put("nextFromMessageId", r.v2)
+                                    .put("count", r.v3)
+                                    .put("size", enriched.size()));
                 });
     }
 
@@ -158,7 +173,7 @@ public class FileRecordRetriever {
             return Future.failedFuture("Telegram verticle not found，unable to get the message. telegramId: " + telegramId);
         }
 
-        TelegramClient telegramClient = telegramVerticleOptional.get().client;
+        TelegramGateway telegramClient = telegramVerticleOptional.get().client;
 
         TdApi.SearchChatMessages searchChatMessages = new TdApi.SearchChatMessages();
         searchChatMessages.chatId = message.chatId;

@@ -3,7 +3,7 @@ import Files from "@/components/files";
 import { Card, CardContent } from "@/components/ui/card";
 import ThemeToggleButton from "@/components/theme-toggle-button";
 import Link from "next/link";
-import TelegramIcon from "@/components/telegram-icon";
+import { PlatformTelegramIcon } from "@/components/platform-telegram-icon";
 
 export default function AccountPage() {
   return (
@@ -12,10 +12,10 @@ export default function AccountPage() {
         <CardContent className="p-4">
           <div className="relative flex items-center justify-between gap-4">
             <Link href={"/"} className="inline-flex">
-              <TelegramIcon className="h-6 w-6" />
+              <PlatformTelegramIcon className="size-6" />
             </Link>
 
-            <h3 className="text-lg font-semibold">Telegram File Manager</h3>
+            <h3 className="text-lg font-semibold">Telegram Files Manager</h3>
 
             <ThemeToggleButton />
           </div>

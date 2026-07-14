@@ -106,8 +106,8 @@ export default function DebugTelegramMethod() {
     try {
       setParameters(JSON.parse(value));
       setError("");
-    } catch (e) {
-      setError("Invalid JSON format");
+    } catch (error) {
+      setError("Invalid JSON format" + (error instanceof Error ? `: ${error.message}` : ""));
     }
   };
 

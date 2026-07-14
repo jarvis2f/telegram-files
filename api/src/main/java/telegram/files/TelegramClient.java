@@ -4,22 +4,21 @@ import cn.hutool.core.util.TypeUtil;
 import cn.hutool.log.Log;
 import cn.hutool.log.LogFactory;
 import io.vertx.core.Future;
-import io.vertx.core.Promise;
-import io.vertx.core.Vertx;
 import org.drinkless.tdlib.Client;
 import org.drinkless.tdlib.TdApi;
 
 import java.io.IOError;
 import java.io.IOException;
 import java.nio.file.Path;
-import java.util.concurrent.TimeoutException;
+import java.util.ArrayList;
+import java.util.List;
 
-public class TelegramClient {
+public class TelegramClient implements TelegramGateway {
     private static final Log log = LogFactory.get();
 
     private Client client;
 
-    private boolean initialized = false;
+    private volatile boolean initialized = false;
 
     static {
         Client.setLogMessageHandler(0, new LogMessageHandler());
@@ -33,23 +32,54 @@ public class TelegramClient {
         }
     }
 
+    @Override
     public void initialize(Client.ResultHandler updateHandler,
                            Client.ExceptionHandler updateExceptionHandler,
                            Client.ExceptionHandler defaultExceptionHandler) {
+        List<TdApi.Object> pendingUpdates = new ArrayList<>();
+        Client.ResultHandler bufferedUpdateHandler = updateHandler == null
+                ? null
+                : object -> {
+                    synchronized (pendingUpdates) {
+                        if (!initialized || !pendingUpdates.isEmpty()) {
+                            pendingUpdates.add(object);
+                            return;
+                        }
+                    }
+                    updateHandler.onResult(object);
+                };
+
         synchronized (this) {
             if (!initialized) {
-                client = Client.create(updateHandler, updateExceptionHandler, defaultExceptionHandler);
+                client = Client.create(bufferedUpdateHandler, updateExceptionHandler, defaultExceptionHandler);
                 initialized = true;
+            }
+        }
+
+        while (true) {
+            TdApi.Object object;
+            synchronized (pendingUpdates) {
+                if (pendingUpdates.isEmpty()) {
+                    return;
+                }
+                object = pendingUpdates.remove(0);
+            }
+            try {
+                updateHandler.onResult(object);
+            } catch (Throwable cause) {
+                handleException(cause, updateExceptionHandler, defaultExceptionHandler);
             }
         }
     }
 
     @SuppressWarnings("unchecked")
+    @Override
     public <R extends TdApi.Object> Future<R> execute(TdApi.Function<R> method) {
         return execute(method, false);
     }
 
     @SuppressWarnings("unchecked")
+    @Override
     public <R extends TdApi.Object> Future<R> execute(TdApi.Function<R> method, boolean ignoreException) {
         log.trace("Execute method: %s".formatted(TypeUtil.getTypeArgument(method.getClass())));
         if (!initialized) {
@@ -68,32 +98,23 @@ public class TelegramClient {
         }));
     }
 
-    public <R extends TdApi.Object> Future<R> execute(TdApi.Function<R> method, long timeoutMs, Vertx vertx) {
-        Promise<R> promise = Promise.promise();
-
-        long timerId = vertx.setTimer(timeoutMs, _ -> {
-            if (!promise.future().isComplete()) {
-                promise.fail(new TimeoutException("Operation timed out after " + timeoutMs + " ms"));
-            }
-        });
-
-        execute(method).onComplete(ar -> {
-            vertx.cancelTimer(timerId);
-            if (promise.future().isComplete()) {
-                return;
-            }
-            if (ar.succeeded()) {
-                promise.complete(ar.result());
-            } else {
-                promise.fail(ar.cause());
-            }
-        });
-
-        return promise.future();
+    @Override
+    public void send(TdApi.Function<?> method, Client.ResultHandler resultHandler) {
+        if (!initialized) {
+            throw new IllegalStateException("Client is not initialized");
+        }
+        client.send(method, resultHandler);
     }
 
-    public Client getNativeClient() {
-        return client;
+    private static void handleException(Throwable cause,
+                                        Client.ExceptionHandler exceptionHandler,
+                                        Client.ExceptionHandler defaultExceptionHandler) {
+        Client.ExceptionHandler handler = exceptionHandler != null ? exceptionHandler : defaultExceptionHandler;
+        if (handler == null) return;
+        try {
+            handler.onException(cause);
+        } catch (Throwable ignored) {
+        }
     }
 
     private static class LogMessageHandler implements Client.LogMessageHandler {

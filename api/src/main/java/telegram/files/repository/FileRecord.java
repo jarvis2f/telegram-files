@@ -3,11 +3,14 @@ package telegram.files.repository;
 import cn.hutool.core.convert.Convert;
 import cn.hutool.core.lang.Version;
 import cn.hutool.core.map.MapUtil;
+import io.vertx.core.Future;
+import io.vertx.sqlclient.SqlClient;
 import io.vertx.sqlclient.templates.RowMapper;
 import io.vertx.sqlclient.templates.TupleMapper;
 import org.drinkless.tdlib.TdApi;
 import telegram.files.Config;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.TreeMap;
@@ -81,6 +84,21 @@ public record FileRecord(int id, //file id will change
             )
             """;
 
+    private static final List<String> INDEXES = List.of(
+            indexSql("idx_file_unique_id", "(unique_id)"),
+            indexSql("idx_file_message", "(message_id)"),
+            indexSql("idx_file_chat_message_plain", "(chat_id, message_id)"),
+            indexSql("idx_file_chat_message", "(chat_id, type, message_id)"),
+            indexSql("idx_file_telegram_type_status", "(telegram_id, type, download_status)"),
+            indexSql("idx_file_telegram_completion", "(telegram_id, type, completion_date)"),
+            indexSql("idx_file_album", "(media_album_id)"),
+            indexSql("idx_file_thread", "(telegram_id, thread_chat_id, message_thread_id, type)"),
+            indexSql("idx_file_type_size_message", "(type, size, message_id)"),
+            indexSql("idx_file_type_date_message", "(type, date, message_id)"),
+            indexSql("idx_file_type_completion_message", "(type, completion_date, message_id)"),
+            indexSql("idx_file_type_reaction_message", "(type, reaction_count, message_id)")
+    );
+
     public static final TreeMap<Version, String[]> MIGRATIONS = new TreeMap<>(MapUtil.ofEntries(
             MapUtil.entry(new Version("0.1.7"), new String[]{
                     "ALTER TABLE file_record ADD COLUMN start_date BIGINT;",
@@ -103,7 +121,8 @@ public record FileRecord(int id, //file id will change
             }),
             MapUtil.entry(new Version("0.2.4"), new String[]{
                     "ALTER TABLE file_record ADD COLUMN reaction_count BIGINT DEFAULT 0;",
-            })
+            }),
+            MapUtil.entry(new Version("0.4.0"), INDEXES.toArray(String[]::new))
     ));
 
     public static class FileRecordDefinition implements Definition {
@@ -116,6 +135,21 @@ public record FileRecord(int id, //file id will change
         public TreeMap<Version, String[]> getMigrations() {
             return MIGRATIONS;
         }
+
+        @Override
+        public Future<Void> createTable(SqlClient sqlClient) {
+            return Definition.super.createTable(sqlClient).compose(_ -> Future.all(
+                    INDEXES.stream()
+                            .map(sql -> sqlClient.query(sql).execute()
+                                    .recover(_ -> Future.succeededFuture()))
+                            .toList()
+            ).mapEmpty());
+        }
+    }
+
+    private static String indexSql(String name, String columns) {
+        String ifNotExists = Config.isMysql() ? "" : "IF NOT EXISTS ";
+        return "CREATE INDEX %s%s ON file_record %s".formatted(ifNotExists, name, columns);
     }
 
     public static RowMapper<FileRecord> ROW_MAPPER = row ->
@@ -206,4 +240,3 @@ public record FileRecord(int id, //file id will change
         return transferStatus != null && TransferStatus.valueOf(transferStatus) == status;
     }
 }
-

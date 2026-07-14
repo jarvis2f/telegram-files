@@ -18,9 +18,17 @@ import io.vertx.sqlclient.SqlConnectOptions;
 import org.jooq.lambda.tuple.Tuple;
 import telegram.files.repository.*;
 import telegram.files.repository.impl.FileRepositoryImpl;
+import telegram.files.repository.impl.InstallationIdentityRepositoryImpl;
+import telegram.files.repository.impl.NodeTaskRepositoryImpl;
+import telegram.files.repository.impl.ShareRepositoryImpl;
+import telegram.files.repository.impl.ShareSourceRepositoryImpl;
+import telegram.files.repository.impl.SeedNodeIdentityRepositoryImpl;
 import telegram.files.repository.impl.SettingRepositoryImpl;
 import telegram.files.repository.impl.StatisticRepositoryImpl;
 import telegram.files.repository.impl.TelegramRepositoryImpl;
+import telegram.files.repository.impl.TorrentRepositoryImpl;
+import telegram.files.repository.impl.TorrentStatisticEventRepositoryImpl;
+import telegram.files.repository.impl.TorrentUploadSessionRepositoryImpl;
 
 import java.io.File;
 import java.util.List;
@@ -38,6 +46,22 @@ public class DataVerticle extends AbstractVerticle {
     public static SettingRepository settingRepository;
 
     public static StatisticRepository statisticRepository;
+
+    public static ShareRepository shareRepository;
+
+    public static SeedNodeIdentityRepository seedNodeIdentityRepository;
+
+    public static InstallationIdentityRepository installationIdentityRepository;
+
+    public static ShareSourceRepository shareSourceRepository;
+
+    public static NodeTaskRepository nodeTaskRepository;
+
+    public static TorrentRepository torrentRepository;
+
+    public static TorrentStatisticEventRepository torrentStatisticEventRepository;
+
+    public static TorrentUploadSessionRepository torrentUploadSessionRepository;
 
     private static SqlConnectOptions sqlConnectOptions;
 
@@ -58,7 +82,21 @@ public class DataVerticle extends AbstractVerticle {
                 new SettingRecord.SettingRecordDefinition(),
                 new TelegramRecord.TelegramRecordDefinition(),
                 new FileRecord.FileRecordDefinition(),
-                new StatisticRecord.StatisticRecordDefinition()
+                new StatisticRecord.StatisticRecordDefinition(),
+                new AdminAccountRecord.AdminAccountRecordDefinition(),
+                new AdminSessionRecord.AdminSessionRecordDefinition(),
+                new AdminBootstrapTokenRecord.AdminBootstrapTokenRecordDefinition(),
+                new AdminRecoveryTokenRecord.AdminRecoveryTokenRecordDefinition(),
+                new AdminSecurityEventRecord.AdminSecurityEventRecordDefinition(),
+                new ShareJobRecord.ShareJobRecordDefinition(),
+                new SeedNodeIdentityRecord.SeedNodeIdentityRecordDefinition(),
+                new InstallationIdentityRecord.InstallationIdentityRecordDefinition(),
+                new ShareSourceRecord.ShareSourceRecordDefinition(),
+                new NodeTaskExecutionRecord.NodeTaskExecutionRecordDefinition(),
+                new DiskReservationRecord.DiskReservationRecordDefinition(),
+                new TorrentRecord.TorrentRecordDefinition(),
+                new TorrentStatisticEventRecord.TorrentStatisticEventRecordDefinition(),
+                new TorrentUploadSessionRecord.TorrentUploadSessionRecordDefinition()
         );
     }
 
@@ -68,18 +106,26 @@ public class DataVerticle extends AbstractVerticle {
         telegramRepository = new TelegramRepositoryImpl(pool);
         fileRepository = new FileRepositoryImpl(pool);
         statisticRepository = new StatisticRepositoryImpl(pool);
+        shareRepository = new ShareRepositoryImpl(pool);
+        seedNodeIdentityRepository = new SeedNodeIdentityRepositoryImpl(pool);
+        installationIdentityRepository = new InstallationIdentityRepositoryImpl(pool);
+        shareSourceRepository = new ShareSourceRepositoryImpl(pool);
+        nodeTaskRepository = new NodeTaskRepositoryImpl(pool);
+        torrentRepository = new TorrentRepositoryImpl(pool);
+        torrentStatisticEventRepository = new TorrentStatisticEventRepositoryImpl(pool);
+        torrentUploadSessionRepository = new TorrentUploadSessionRepositoryImpl(pool);
         isCompletelyNewInitialization()
-                .compose(isNew -> Future.all(definitions.stream().map(d -> d.createTable(pool)).toList()).map(isNew))
+                .compose(isNew -> createTablesSequentially().map(isNew))
                 .compose(isNew -> settingRepository.<Version>getByKey(SettingKey.version).map(version -> Tuple.tuple(isNew, version)))
                 .compose(tuple -> {
                     if (tuple.v1) return Future.succeededFuture();
 
                     Version version = tuple.v2 == null ? new Version("0.0.0") : tuple.v2;
-                    return Future.all(definitions.stream().map(d -> d.migrate(pool, version, new Version(Start.VERSION))).toList());
+                    return migrateSequentially(version, new Version(BuildInfo.VERSION));
                 })
-                .compose(r ->
-                        settingRepository.createOrUpdate(SettingKey.version.name(), Start.VERSION))
-                .onSuccess(r -> {
+                .compose(_ ->
+                        settingRepository.createOrUpdate(SettingKey.version.name(), BuildInfo.VERSION))
+                .onSuccess(_ -> {
                     log.info("Database {} initialized.", Config.DB_TYPE);
                     stopPromise.complete();
                 })
@@ -91,16 +137,18 @@ public class DataVerticle extends AbstractVerticle {
 
     @Override
     public void stop(Promise<Void> stopPromise) throws Exception {
-        if (pool != null) {
-            pool.close().onComplete(r -> {
-                if (r.succeeded()) {
-                    log.debug("Data verticle stopped!");
-                } else {
-                    log.error("Failed to close data verticle: %s".formatted(r.cause().getMessage()));
-                }
-                stopPromise.complete();
-            });
+        if (pool == null) {
+            stopPromise.complete();
+            return;
         }
+        pool.close().onComplete(r -> {
+            if (r.succeeded()) {
+                log.debug("Data verticle stopped!");
+            } else {
+                log.error("Failed to close data verticle: %s".formatted(r.cause().getMessage()));
+            }
+            stopPromise.complete();
+        });
     }
 
     public static String getDataPath() {
@@ -113,8 +161,9 @@ public class DataVerticle extends AbstractVerticle {
     private Pool buildSqlClient() {
         PoolOptions poolOptions = new PoolOptions()
                 .setShared(true)
-                .setMaxSize(8)
+                .setMaxSize(Config.isSqlite() ? 1 : 8)
                 .setName("pool-tf")
+                .setConnectionTimeout(60000)
                 .setIdleTimeout(300000)
                 .setPoolCleanerPeriod(300000);
 
@@ -288,5 +337,21 @@ public class DataVerticle extends AbstractVerticle {
         } else {
             throw new VertxException("Unsupported database type");
         }
+    }
+
+    private Future<Void> createTablesSequentially() {
+        Future<Void> future = Future.succeededFuture();
+        for (Definition definition : definitions) {
+            future = future.compose(_ -> definition.createTable(pool));
+        }
+        return future;
+    }
+
+    private Future<Void> migrateSequentially(Version version, Version targetVersion) {
+        Future<Void> future = Future.succeededFuture();
+        for (Definition definition : definitions) {
+            future = future.compose(_ -> definition.migrate(pool, version, targetVersion));
+        }
+        return future;
     }
 }

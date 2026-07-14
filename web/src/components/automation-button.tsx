@@ -31,7 +31,7 @@ const AutomationButton = React.forwardRef<
           <button
             ref={ref}
             className={cn(
-              "group relative w-32 cursor-pointer overflow-hidden rounded border bg-background p-1 text-center font-semibold",
+              "group relative w-32 cursor-pointer overflow-hidden rounded border bg-background p-1 text-center font-semibold shadow-sm",
               isMobile && "h-10 w-full",
               className,
             )}

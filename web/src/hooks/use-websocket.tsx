@@ -20,8 +20,6 @@ import { getWsUrl } from "@/lib/api";
 import { useSearchParams } from "next/navigation";
 import { useSWRConfig } from "swr";
 
-const WS_URL = `${getWsUrl()}`;
-
 interface WebsocketContextType {
   sendMessage: (message: WebSocketMessage) => void;
   lastJsonMessage: WebSocketMessage | null;
@@ -43,6 +41,7 @@ interface WebSocketProviderProps {
 export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({
   children,
 }) => {
+  const wsUrl = getWsUrl();
   const searchParams = useSearchParams();
   const [isReady, setIsReady] = useState(false);
   const [accountDownloadSpeed, setAccountDownloadSpeed] = useState({
@@ -62,9 +61,9 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({
     string | null
   >(null);
 
-  const { sendMessage, lastJsonMessage, readyState } =
+  const { sendMessage, lastJsonMessage, readyState, getWebSocket } =
     useWebSocket<WebSocketMessage>(
-      `${WS_URL}?telegramId=${searchParams.get("id") ?? ""}&_r=${reconnectNonce}`,
+      `${wsUrl}?telegramId=${searchParams.get("id") ?? ""}&_r=${reconnectNonce}`,
       {
         // Keep retrying (essentially) forever with exponential backoff capped at 30s, and also
         // retry on error events — so a transient outage recovers on its own instead of giving up.
@@ -76,8 +75,22 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({
       },
     );
 
+  useEffect(() => {
+    if (readyState !== ReadyState.CONNECTING) return;
+
+    // A failed WebSocket handshake can leave Chromium in CONNECTING without an
+    // error/close event. Rotate the URL so the hook tears down that socket and
+    // retries after the API becomes available.
+    const timeout = window.setTimeout(() => {
+      if (getWebSocket()?.readyState === WebSocket.CONNECTING) {
+        setReconnectNonce((nonce) => nonce + 1);
+      }
+    }, 10000);
+    return () => window.clearTimeout(timeout);
+  }, [getWebSocket, readyState]);
+
   // Force a fresh connection (resets the backoff/attempt counter); used by the manual
-  // "reconnect" affordance and when the network/focus comes back.
+  // "reconnect" affordance and when the network comes back.
   const reconnect = useCallback(() => {
     setReconnectNonce((n) => n + 1);
   }, []);
@@ -92,10 +105,8 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({
       }
     };
     window.addEventListener("online", maybeReconnect);
-    window.addEventListener("focus", maybeReconnect);
     return () => {
       window.removeEventListener("online", maybeReconnect);
-      window.removeEventListener("focus", maybeReconnect);
     };
   }, [readyState]);
 

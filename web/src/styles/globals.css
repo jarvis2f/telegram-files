@@ -22,12 +22,15 @@
     --border: 0 0% 89.8%;
     --input: 0 0% 89.8%;
     --ring: 0 0% 3.9%;
+    --telegram-flow-1: 195 95% 52%;
+    --telegram-flow-2: 252 90% 67%;
+    --telegram-flow-3: 326 88% 61%;
     --chart-1: 12 76% 61%;
     --chart-2: 173 58% 39%;
     --chart-3: 197 37% 24%;
     --chart-4: 43 74% 66%;
     --chart-5: 27 87% 67%;
-    --radius: 0.5rem
+    --radius: 0.5rem;
   }
   .dark {
     --background: 0 0% 3.9%;
@@ -49,11 +52,14 @@
     --border: 0 0% 14.9%;
     --input: 0 0% 14.9%;
     --ring: 0 0% 83.1%;
+    --telegram-flow-1: 190 95% 62%;
+    --telegram-flow-2: 258 92% 72%;
+    --telegram-flow-3: 326 90% 68%;
     --chart-1: 220 70% 50%;
     --chart-2: 160 60% 45%;
     --chart-3: 30 80% 55%;
     --chart-4: 280 65% 60%;
-    --chart-5: 340 75% 55%
+    --chart-5: 340 75% 55%;
   }
 }
 @layer base {
@@ -65,8 +71,43 @@
   }
 }
 
-.before\:w-progress::before {
-  width: var(--tw-progress-width);
+.download-progress {
+  isolation: isolate;
+  overflow: hidden;
+  border: 1px solid hsl(var(--foreground) / 0.08);
+  background: hsl(var(--foreground) / 0.07);
+  box-shadow:
+    inset 0 1px 2px hsl(var(--foreground) / 0.1),
+    0 1px 0 hsl(var(--background) / 0.72);
+}
+
+.download-progress::after {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  border-radius: inherit;
+  box-shadow: inset 0 0 0 1px hsl(var(--background) / 0.12);
+  content: "";
+  pointer-events: none;
+}
+
+.download-progress__indicator {
+  position: relative;
+  z-index: 1;
+  border-radius: inherit;
+  background: linear-gradient(
+    180deg,
+    hsl(var(--foreground) / 0.82),
+    hsl(var(--foreground)) 68%,
+    hsl(var(--foreground) / 0.9)
+  );
+  box-shadow:
+    inset 0 1px 0 hsl(var(--background) / 0.2),
+    1px 0 2px hsl(var(--foreground) / 0.18);
+}
+
+.download-progress[data-download-state="paused"] .download-progress__indicator {
+  opacity: 0.42;
 }
 
 .no-scrollbar::-webkit-scrollbar {
@@ -76,4 +117,41 @@
 .no-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
+}
+
+@keyframes telegram-gradient-flow {
+  0%,
+  100% {
+    stop-color: hsl(var(--telegram-flow-1));
+  }
+  33% {
+    stop-color: hsl(var(--telegram-flow-2));
+  }
+  66% {
+    stop-color: hsl(var(--telegram-flow-3));
+  }
+}
+
+.telegram-gradient-stop {
+  animation: telegram-gradient-flow 5.4s linear infinite;
+}
+
+.telegram-gradient-stop-1 {
+  stop-color: hsl(var(--telegram-flow-1));
+}
+
+.telegram-gradient-stop-2 {
+  animation-delay: -1.8s;
+  stop-color: hsl(var(--telegram-flow-2));
+}
+
+.telegram-gradient-stop-3 {
+  animation-delay: -3.6s;
+  stop-color: hsl(var(--telegram-flow-3));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .telegram-gradient-stop {
+    animation: none;
+  }
 }

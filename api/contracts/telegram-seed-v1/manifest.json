@@ -1,0 +1,46 @@
+{
+  "contractVersion": "1.0.0",
+  "schemaVersion": "1.0",
+  "files": {
+    "openapi.yaml": {
+      "sha256": "2250f2e4f4953772dd20f3469289a8d5692414e4f91aacb5e27b25ff219a8b73",
+      "bytes": 23701
+    },
+    "schema.json": {
+      "sha256": "dcacfc1ee399e98daf1e1b97d809612f0f5f0797dd7c6e0cea0c8ff903365e17",
+      "bytes": 33705
+    },
+    "error-codes.json": {
+      "sha256": "d363a45860c0a380bc5bae2138cd95ae2d919692dc4d013274ae29b0b745738e",
+      "bytes": 2086
+    },
+    "state-machines.json": {
+      "sha256": "334f34ac981c83081b96e4b70257dc64d096da29196e06481529cb8bfe9cae3b",
+      "bytes": 1196
+    },
+    "tracker-vectors.json": {
+      "sha256": "f1c8ba1664246940dec595df99222a9da166309e3e199d5d8b9dc079bad2b60b",
+      "bytes": 883
+    },
+    "fixtures/device-authorize.json": {
+      "sha256": "e8b2a8a48bd579901aa27fa4491487fcd58e8765b3789e81b3a94e30fa4f8a2e",
+      "bytes": 329
+    },
+    "fixtures/error.json": {
+      "sha256": "dc48505866164461f40925a08c9ec84a0a133d3a25c9b6bd6f1f189e849927fc",
+      "bytes": 203
+    },
+    "fixtures/heartbeat.json": {
+      "sha256": "9210bacb51f69d35ca0c05235086aa1be8b11b50802d1dc50737fa5fb1773572",
+      "bytes": 567
+    },
+    "fixtures/resource-private.json": {
+      "sha256": "63c09ddbdc670569af597919a8f4a1da8275cde7fee884a8a827855ec913e083",
+      "bytes": 548
+    },
+    "fixtures/task-envelope.json": {
+      "sha256": "f618c253ffb7e39dcbaa26407044d15fa0974b191300a26cd721a60d365d966b",
+      "bytes": 580
+    }
+  }
+}

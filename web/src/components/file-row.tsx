@@ -14,6 +14,7 @@ import FileImage from "./file-image";
 import FileTags from "@/components/file-tags";
 import { Badge } from "@/components/ui/badge";
 import { TooltipWrapper } from "@/components/ui/tooltip";
+import { FileSharing, FileSource } from "@/components/file-provenance";
 
 type FileRowProps = {
   index: number;
@@ -82,6 +83,39 @@ export default function FileRow({
       </div>
     ),
     size: <span className="text-sm">{prettyBytes(file.size)}</span>,
+    source: <FileSource file={file} />,
+    sharing: <FileSharing file={file} />,
+    seeding:
+      file.torrentStatus || file.sharedByMe ? (
+        <div className="flex flex-col items-center justify-center py-0.5 text-xs leading-tight">
+          <Badge
+            variant={
+              file.torrentStatus === "SEEDING"
+                ? "default"
+                : file.torrentStatus === "PAUSED"
+                  ? "outline"
+                  : "secondary"
+            }
+            className="mb-0.5 h-4 px-1.5 text-[10px] uppercase tracking-wider"
+          >
+            {file.torrentStatus ?? (file.sharedByMe ? "PUBLISHED" : "IDLE")}
+          </Badge>
+          <div className="flex flex-col items-center whitespace-nowrap font-mono text-[10px] text-muted-foreground">
+            <span>
+              ↑ {prettyBytes(file.torrentUploadSpeed ?? 0)}/s · ↓{" "}
+              {prettyBytes(file.torrentDownloadSpeed ?? 0)}/s
+            </span>
+            <span>
+              Up: {prettyBytes(file.torrentUploadedBytes ?? 0)} · Ratio:{" "}
+              {(file.torrentRatio ?? 0).toFixed(2)}
+            </span>
+          </div>
+        </div>
+      ) : (
+        <span className="block text-center text-xs text-muted-foreground">
+          —
+        </span>
+      ),
     status: <FileStatus file={file} />,
     tags: (
       <FileTags
@@ -97,6 +131,7 @@ export default function FileRow({
         file={file}
         downloadSpeed={downloadSpeed}
         hovered={hovered}
+        updateField={updateField}
       />
     ),
   };
@@ -129,10 +164,12 @@ export default function FileRow({
         )}
       </div>
       {downloadProgress > 0 && downloadProgress !== 100 && (
-        <div className="flex w-full items-end justify-between gap-2">
+        <div className="flex w-full items-end justify-between gap-2 px-2 pb-1">
           <Progress
             value={downloadProgress}
-            className="flex-1 rounded-none md:w-32"
+            variant="download"
+            data-download-state={file.downloadStatus}
+            className="flex-1 md:w-32"
           />
         </div>
       )}

@@ -1,6 +1,8 @@
 .idea/
 **/*.iml
 *.iws
+.DS_Store
+**/.DS_Store
 
 out/
 */.gradle
@@ -8,6 +10,8 @@ out/
 
 /app/
 /app-test/
+/files/
+/.docker-artifacts/
 
 **/*.log
 api.log.lck

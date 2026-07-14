@@ -1,0 +1,110 @@
+{
+  "version": "1.0.0",
+  "errors": [
+    {
+      "code": "VALIDATION_FAILED",
+      "httpStatus": 400,
+      "retryable": false
+    },
+    {
+      "code": "UNAUTHENTICATED",
+      "httpStatus": 401,
+      "retryable": false
+    },
+    {
+      "code": "FORBIDDEN",
+      "httpStatus": 403,
+      "retryable": false
+    },
+    {
+      "code": "RATE_LIMITED",
+      "httpStatus": 429,
+      "retryable": true
+    },
+    {
+      "code": "IDEMPOTENCY_CONFLICT",
+      "httpStatus": 409,
+      "retryable": false
+    },
+    {
+      "code": "NODE_REVOKED",
+      "httpStatus": 401,
+      "retryable": false
+    },
+    {
+      "code": "NODE_OFFLINE",
+      "httpStatus": 409,
+      "retryable": true
+    },
+    {
+      "code": "NO_REACHABLE_PEER",
+      "httpStatus": 409,
+      "retryable": true
+    },
+    {
+      "code": "UNSUPPORTED_SCHEMA_VERSION",
+      "httpStatus": 422,
+      "retryable": false
+    },
+    {
+      "code": "UNSUPPORTED_TASK_TYPE",
+      "httpStatus": 422,
+      "retryable": false
+    },
+    {
+      "code": "TASK_TERMINAL",
+      "httpStatus": 409,
+      "retryable": false
+    },
+    {
+      "code": "LEASE_EXPIRED",
+      "httpStatus": 409,
+      "retryable": false
+    },
+    {
+      "code": "LEASE_MISMATCH",
+      "httpStatus": 409,
+      "retryable": false
+    },
+    {
+      "code": "SOURCE_UNAVAILABLE",
+      "httpStatus": 409,
+      "retryable": true
+    },
+    {
+      "code": "SOURCE_PERMISSION_DENIED",
+      "httpStatus": 403,
+      "retryable": false
+    },
+    {
+      "code": "INSUFFICIENT_DISK",
+      "httpStatus": 409,
+      "retryable": true
+    },
+    {
+      "code": "HASH_MISMATCH",
+      "httpStatus": 422,
+      "retryable": false
+    },
+    {
+      "code": "TORRENT_INVALID",
+      "httpStatus": 422,
+      "retryable": false
+    },
+    {
+      "code": "RESOURCE_BLOCKED",
+      "httpStatus": 451,
+      "retryable": false
+    },
+    {
+      "code": "STORAGE_LAYOUT_UNSUPPORTED",
+      "httpStatus": 422,
+      "retryable": false
+    },
+    {
+      "code": "INTERNAL_RETRYABLE",
+      "httpStatus": 503,
+      "retryable": true
+    }
+  ]
+}

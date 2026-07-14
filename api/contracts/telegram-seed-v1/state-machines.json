@@ -1,0 +1,33 @@
+{
+  "version": "1.0.0",
+  "nodeTask": {
+    "initial": "CREATED",
+    "terminal": ["COMPLETED", "FAILED", "CANCELLED"],
+    "transitions": {
+      "CREATED": ["CLAIMED", "CANCELLED"],
+      "CLAIMED": ["ACKED", "CREATED", "CANCELLED"],
+      "ACKED": ["RUNNING", "FAILED", "CANCELLED"],
+      "RUNNING": ["RUNNING", "COMPLETED", "FAILED", "CANCELLED"],
+      "COMPLETED": [],
+      "FAILED": [],
+      "CANCELLED": []
+    }
+  },
+  "resource": {
+    "initial": "DRAFT",
+    "governanceTerminal": ["BLOCKED", "REMOVED"],
+    "transitions": {
+      "DRAFT": ["REMOTE_ONLY", "REMOVED"],
+      "REMOTE_ONLY": ["FETCH_QUEUED", "REMOVED", "BLOCKED"],
+      "FETCH_QUEUED": ["FETCHING_TELEGRAM", "REMOTE_ONLY", "REMOVED", "BLOCKED"],
+      "FETCHING_TELEGRAM": ["HASHING", "REMOTE_ONLY", "REMOVED", "BLOCKED"],
+      "HASHING": ["CREATING_TORRENT", "REMOTE_ONLY", "REMOVED", "BLOCKED"],
+      "CREATING_TORRENT": ["SEEDING", "REMOTE_ONLY", "REMOVED", "BLOCKED"],
+      "SEEDING": ["PT_AVAILABLE", "NO_SEEDER", "REMOVED", "BLOCKED"],
+      "PT_AVAILABLE": ["NO_SEEDER", "REMOVED", "BLOCKED"],
+      "NO_SEEDER": ["PT_AVAILABLE", "REMOVED", "BLOCKED"],
+      "BLOCKED": [],
+      "REMOVED": []
+    }
+  }
+}

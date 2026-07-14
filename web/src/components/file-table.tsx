@@ -1,8 +1,14 @@
 "use client";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
-import { LoaderPinwheel, SquareChevronLeft, WandSparkles } from "lucide-react";
+import { SquareChevronLeft, WandSparkles } from "lucide-react";
 import { useFiles } from "@/hooks/use-files";
 import {
   getRowHeightPX,
@@ -21,6 +27,14 @@ import FileViewer from "@/components/file-viewer";
 import FileFilters from "./file-filters";
 import { Badge } from "@/components/ui/badge";
 import FileBatchControl from "@/components/file-batch-control";
+import { useLocalStorage } from "@/hooks/use-local-storage";
+import {
+  applyColumnPreferences,
+  type ColumnPreference,
+} from "@/lib/column-preferences";
+import { useShareEnabled } from "@/hooks/use-share-enabled";
+import { TooltipWrapper } from "@/components/ui/tooltip";
+import { DotmTriangle2 } from "@/components/ui/dotm-triangle-2";
 
 const COLUMNS: Column[] = [
   {
@@ -37,6 +51,27 @@ const COLUMNS: Column[] = [
     className: "w-20 text-center",
   },
   {
+    id: "source",
+    label: "Source",
+    isVisible: true,
+    className: "w-20 text-center",
+    tooltip: "The file's original source and how it was downloaded",
+  },
+  {
+    id: "sharing",
+    label: "Sharing",
+    isVisible: true,
+    className: "w-20 text-center",
+    tooltip: "The file's resource sharing and publication status",
+  },
+  {
+    id: "seeding",
+    label: "Seeding",
+    isVisible: true,
+    className: "w-40 text-center",
+    tooltip: "qBittorrent seeding status, traffic speeds, share ratio and uploaded total",
+  },
+  {
     id: "status",
     label: "Status",
     isVisible: true,
@@ -45,7 +80,7 @@ const COLUMNS: Column[] = [
   {
     id: "tags",
     label: "Tags",
-    isVisible: true,
+    isVisible: false,
     className: "w-32",
   },
   {
@@ -58,7 +93,7 @@ const COLUMNS: Column[] = [
     id: "actions",
     label: "Actions",
     isVisible: true,
-    className: "text-center w-40 min-w-40",
+    className: "w-36 min-w-36 text-center",
   },
 ];
 
@@ -76,8 +111,24 @@ export function FileTable({
   link,
 }: FileTableProps) {
   const [selectedFiles, setSelectedFiles] = useState<Set<number>>(new Set());
-  const tableParentRef = useRef(null);
-  const [columns, setColumns] = useState<Column[]>(COLUMNS);
+  const tableParentRef = useRef<HTMLDivElement>(null);
+  const shareEnabled = useShareEnabled();
+  const defaultColumns = useMemo(() => {
+    return COLUMNS.map((col) => {
+      if (col.id === "source" || col.id === "sharing" || col.id === "seeding") {
+        return { ...col, isVisible: shareEnabled };
+      }
+      return col;
+    });
+  }, [shareEnabled]);
+
+  const [columnPreferences, setColumnPreferences] = useLocalStorage<
+    ColumnPreference[]
+  >("telegramFileListColumns", []);
+  const columns = useMemo(
+    () => applyColumnPreferences(defaultColumns, columnPreferences),
+    [defaultColumns, columnPreferences],
+  );
   const [rowHeight, setRowHeight] = useRowHeightLocalStorage(
     "telegramFileList",
     "m",
@@ -92,12 +143,15 @@ export function FileTable({
     size,
     files,
     handleLoadMore,
+    loadedCount,
+    totalCount,
   } = useFilesProps;
   const [currentViewFile, setCurrentViewFile] = useState<
     TelegramFile | undefined
   >();
   const [viewerOpen, setViewerOpen] = useState(false);
   const rowVirtual = useVirtualizer({
+    useFlushSync: false,
     count: files.length,
     getScrollElement: () => tableParentRef.current,
     estimateSize: (index) => {
@@ -116,22 +170,41 @@ export function FileTable({
     paddingStart: 1,
     paddingEnd: 1,
   });
+  const virtualItems = rowVirtual.getVirtualItems();
 
   useEffect(() => {
     rowVirtual.measure();
   }, [rowHeight, rowVirtual]);
 
-  useEffect(() => {
-    const [lastItem] = [...rowVirtual.getVirtualItems()].reverse();
-    if (!lastItem) {
+  const maybeLoadMore = useCallback(() => {
+    const element = tableParentRef.current;
+    if (!element) {
       return;
     }
 
-    if (lastItem.index >= files.length - 1) {
+    const distanceFromBottom =
+      element.scrollHeight - element.scrollTop - element.clientHeight;
+    const preloadDistance = Math.max(getRowHeightPX(rowHeight) * 6, 480);
+    if (distanceFromBottom <= preloadDistance) {
       void handleLoadMore();
     }
-    //eslint-disable-next-line
-  }, [files.length, handleLoadMore, rowVirtual.getVirtualItems()]);
+  }, [handleLoadMore, rowHeight]);
+
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(maybeLoadMore);
+    return () => window.cancelAnimationFrame(frame);
+  }, [files.length, isLoading, maybeLoadMore]);
+
+  useEffect(() => {
+    const lastItem = virtualItems[virtualItems.length - 1];
+    if (!lastItem || files.length === 0) {
+      return;
+    }
+
+    if (lastItem.index >= files.length - 8) {
+      void handleLoadMore();
+    }
+  }, [files.length, handleLoadMore, virtualItems]);
 
   useEffect(() => {
     if (files.length === 0 || !currentViewFile) {
@@ -221,10 +294,18 @@ export function FileTable({
             </>
           )}
         </div>
-        <div className="hidden gap-4 md:flex">
+        <div className="hidden items-center gap-4 md:flex">
+          <span className="text-sm text-muted-foreground">
+            Loaded {loadedCount}
+            {totalCount === undefined ? "" : ` / ${totalCount}`}
+          </span>
           <TableColumnFilter
             columns={columns}
-            onColumnConfigChange={setColumns}
+            onColumnConfigChange={(nextColumns) => {
+              setColumnPreferences(
+                nextColumns.map(({ id, isVisible }) => ({ id, isVisible })),
+              );
+            }}
           />
           <TableRowHeightSwitch
             rowHeight={rowHeight}
@@ -252,6 +333,7 @@ export function FileTable({
         <div
           className="no-scrollbar relative h-full overflow-auto rounded-md border"
           ref={tableParentRef}
+          onScroll={maybeLoadMore}
         >
           <div className="sticky top-0 z-20 flex h-10 items-center border-b bg-background/90 text-sm text-muted-foreground backdrop-blur-sm">
             <div className="w-[30px] text-center">
@@ -270,16 +352,29 @@ export function FileTable({
                     col.id === "content" ? dynamicClass.contentCell : "",
                   )}
                 >
-                  {col.label}
+                  {col.tooltip ? (
+                    <TooltipWrapper content={col.tooltip}>
+                      <span className="cursor-help border-b border-dotted border-muted-foreground/60">
+                        {col.label}
+                      </span>
+                    </TooltipWrapper>
+                  ) : (
+                    col.label
+                  )}
                 </div>
               ) : null,
             )}
           </div>
           {size === 1 && isLoading && (
             <div className="sticky left-1/2 top-0 z-10 flex h-full w-full items-center justify-center bg-accent">
-              <LoaderPinwheel
-                className="h-8 w-8 animate-spin"
-                style={{ strokeWidth: "0.8px" }}
+              <DotmTriangle2
+                size={32}
+                dotSize={4}
+                speed={1.4}
+                opacityBase={0.1}
+                opacityMid={0.4}
+                opacityPeak={0.95}
+                ariaLabel="Loading files"
               />
             </div>
           )}
@@ -289,7 +384,7 @@ export function FileTable({
               style={{ height: `${rowVirtual.getTotalSize()}px` }}
             >
               {files.length !== 0 &&
-                rowVirtual.getVirtualItems().map((virtualRow) => {
+                virtualItems.map((virtualRow) => {
                   const file = files[virtualRow.index]!;
                   return (
                     <FileRow

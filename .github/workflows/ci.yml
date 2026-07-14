@@ -6,10 +6,24 @@ on:
     branches: [ "dev", "main" ]
     paths:
       - 'api/**'
+      - 'web/**'
+      - '.github/workflows/ci.yml'
+      - '.env.example'
+      - 'Dockerfile'
+      - 'entrypoint.sh'
+      - 'nginx.conf.template'
+      - 'VERSION'
   pull_request:
     branches: [ "main", "dev" ]
     paths:
       - 'api/**'
+      - 'web/**'
+      - '.github/workflows/ci.yml'
+      - '.env.example'
+      - 'Dockerfile'
+      - 'entrypoint.sh'
+      - 'nginx.conf.template'
+      - 'VERSION'
 
 jobs:
   build:
@@ -30,29 +44,31 @@ jobs:
           distribution: 'temurin'
 
       - name: Setup Gradle
-        uses: gradle/gradle-build-action@v2
+        uses: gradle/actions/setup-gradle@v4
 
-      - name: Cache tdlib and config
+      - name: Cache tdlib
         id: cache-tdlib
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: |
             ../libs
-            ../.env.test
           key: ${{ runner.os }}-tdlib-1.15.0
 
-      - name: Download tdlib and create .env.test file
+      - name: Download tdlib
         if: steps.cache-tdlib.outputs.cache-hit != 'true'
         run: |
           cd ../ && \
           wget --no-check-certificate -q -O libs.zip https://github.com/p-vorobyev/spring-boot-starter-telegram/releases/download/1.15.0/libs.zip && \
-          unzip -q libs.zip && \
-          cat <<EOF > .env.test
+          unzip -q libs.zip
+
+      - name: Create test configuration
+        run: |
+          cat <<EOF > ../.env.test
           TDLIB_PATH=../libs/linux_x64
           APP_ENV=prod
           APP_ROOT=${{ github.workspace }}/data
-          TELEGRAM_API_ID=94575
-          TELEGRAM_API_HASH=a3406de8d171bb422bb6ddf3bbd800e2
+          TELEGRAM_API_ID=1
+          TELEGRAM_API_HASH=test-only-placeholder
           LOG_LEVEL=FINE
           EOF
 
@@ -63,10 +79,10 @@ jobs:
         run: ./gradlew build
 
       - name: Run tests
-        run: ./gradlew test
+        run: ./gradlew test jacocoTestReport
 
       - name: Cache Gradle packages
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: |
             ~/.gradle/caches
@@ -79,3 +95,29 @@ jobs:
         uses: codecov/codecov-action@v5
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+  web:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    env:
+      NEXT_PUBLIC_API_URL: http://localhost:8080
+      NEXT_PUBLIC_WS_URL: ws://localhost:8080/ws
+      NEXT_PUBLIC_SCAN: 'false'
+      NEXT_PUBLIC_MOCK_DATA: 'false'
+    defaults:
+      run:
+        working-directory: ./web
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+#      - run: npm audit --omit=dev --audit-level=high
+      - run: npm run check
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+      - run: npm run build

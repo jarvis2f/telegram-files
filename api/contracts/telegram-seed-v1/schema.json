@@ -1,0 +1,1183 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://telegram-seed.example/contracts/v1.schema.json",
+  "title": "telegram-seed API v1",
+  "type": "object",
+  "$defs": {
+    "DecimalString": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]*)$"
+    },
+    "NonEmptyString": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1024
+    },
+    "ErrorCode": {
+      "type": "string",
+      "enum": [
+        "VALIDATION_FAILED",
+        "UNAUTHENTICATED",
+        "FORBIDDEN",
+        "RATE_LIMITED",
+        "IDEMPOTENCY_CONFLICT",
+        "NODE_REVOKED",
+        "NODE_OFFLINE",
+        "NO_REACHABLE_PEER",
+        "UNSUPPORTED_SCHEMA_VERSION",
+        "UNSUPPORTED_TASK_TYPE",
+        "TASK_TERMINAL",
+        "LEASE_EXPIRED",
+        "LEASE_MISMATCH",
+        "SOURCE_UNAVAILABLE",
+        "SOURCE_PERMISSION_DENIED",
+        "INSUFFICIENT_DISK",
+        "HASH_MISMATCH",
+        "TORRENT_INVALID",
+        "RESOURCE_BLOCKED",
+        "STORAGE_LAYOUT_UNSUPPORTED",
+        "INTERNAL_RETRYABLE"
+      ]
+    },
+    "ErrorResponse": {
+      "type": "object",
+      "required": ["requestId", "error"],
+      "additionalProperties": false,
+      "properties": {
+        "requestId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "error": {
+          "type": "object",
+          "required": ["code", "message", "retryable", "retryAfterSeconds", "details"],
+          "additionalProperties": false,
+          "properties": {
+            "code": {
+              "$ref": "#/$defs/ErrorCode"
+            },
+            "message": {
+              "type": "string",
+              "maxLength": 512
+            },
+            "retryable": {
+              "type": "boolean"
+            },
+            "retryAfterSeconds": {
+              "type": ["integer", "null"],
+              "minimum": 0
+            },
+            "details": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          }
+        }
+      }
+    },
+    "DeviceAuthorizeRequest": {
+      "type": "object",
+      "required": [
+        "nodeName",
+        "agentVersion",
+        "contractVersions",
+        "capabilities",
+        "identityVersion",
+        "installationPublicKey",
+        "installationFingerprint"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "nodeName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "agentVersion": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "contractVersions": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[0-9]+\\.[0-9]+$"
+          }
+        },
+        "capabilities": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64
+          }
+        },
+        "identityVersion": { "const": 1 },
+        "installationPublicKey": { "type": "string", "minLength": 32, "maxLength": 1024 },
+        "installationFingerprint": { "type": "string", "pattern": "^ed25519:v1:[A-Za-z0-9_-]{43}$" }
+      }
+    },
+    "DeviceAuthorizeResponse": {
+      "type": "object",
+      "required": [
+        "authorizationId",
+        "deviceCode",
+        "userCode",
+        "verificationUri",
+        "verificationUriComplete",
+        "expiresIn",
+        "interval",
+        "challenge",
+        "challengeExpiresAt",
+        "signatureAlgorithm",
+        "canonicalizationVersion"
+      ],
+      "additionalProperties": true,
+      "properties": {
+        "authorizationId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "deviceCode": {
+          "type": "string",
+          "minLength": 32
+        },
+        "userCode": {
+          "type": "string",
+          "minLength": 4,
+          "maxLength": 16
+        },
+        "verificationUri": {
+          "type": "string",
+          "format": "uri"
+        },
+        "verificationUriComplete": {
+          "type": "string",
+          "format": "uri"
+        },
+        "expiresIn": {
+          "type": "integer",
+          "minimum": 60,
+          "maximum": 1800
+        },
+        "interval": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 60
+        },
+        "challenge": { "type": "string", "minLength": 32, "maxLength": 1024 },
+        "challengeExpiresAt": { "type": "string", "format": "date-time" },
+        "signatureAlgorithm": { "const": "Ed25519" },
+        "canonicalizationVersion": { "const": "telegram-seed-device-authorization:v1" }
+      }
+    },
+    "DeviceSignatureRequest": {
+      "type": "object",
+      "required": ["authorizationId", "challenge", "installationSignature"],
+      "additionalProperties": false,
+      "properties": {
+        "authorizationId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "challenge": { "type": "string", "minLength": 32, "maxLength": 1024 },
+        "installationSignature": { "type": "string", "minLength": 64, "maxLength": 1024 }
+      }
+    },
+    "DeviceTokenRequest": {
+      "type": "object",
+      "required": ["grantType"],
+      "additionalProperties": false,
+      "properties": {
+        "grantType": {
+          "type": "string",
+          "enum": ["device_code", "refresh_token"]
+        },
+        "deviceCode": {
+          "type": "string",
+          "minLength": 32
+        },
+        "authorizationId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "challenge": { "type": "string", "minLength": 32, "maxLength": 1024 },
+        "installationSignature": { "type": "string", "minLength": 64, "maxLength": 1024 },
+        "refreshToken": {
+          "type": "string",
+          "minLength": 32
+        },
+        "requireTrackerCredential": {
+          "type": "boolean",
+          "default": false
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "grantType": {
+                "const": "device_code"
+              }
+            }
+          },
+          "then": {
+            "required": ["deviceCode", "authorizationId", "challenge", "installationSignature"]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "grantType": {
+                "const": "refresh_token"
+              }
+            }
+          },
+          "then": {
+            "required": ["refreshToken"]
+          }
+        }
+      ]
+    },
+    "DeviceTokenResponse": {
+      "type": "object",
+      "required": ["status"],
+      "additionalProperties": true,
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": ["pending", "slow_down", "denied", "expired", "approved"]
+        },
+        "nodeId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "accessToken": {
+          "type": "string",
+          "minLength": 32
+        },
+        "accessTokenExpiresIn": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "refreshToken": {
+          "type": "string",
+          "minLength": 32
+        },
+        "trackerCredential": {
+          "type": "string",
+          "minLength": 32
+        },
+        "interval": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "DeviceDecisionRequest": {
+      "type": "object",
+      "required": ["userCode", "action"],
+      "additionalProperties": false,
+      "properties": {
+        "userCode": {
+          "type": "string",
+          "minLength": 6,
+          "maxLength": 32
+        },
+        "action": {
+          "type": "string",
+          "enum": ["approve", "deny"]
+        }
+      }
+    },
+    "NodeRenameRequest": {
+      "type": "object",
+      "required": ["name"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        }
+      }
+    },
+    "PeerNetwork": {
+      "type": "object",
+      "required": [
+        "listenPort",
+        "ipv4Reachable",
+        "ipv6Reachable",
+        "mappingMethod",
+        "lastCheckedAt"
+      ],
+      "additionalProperties": true,
+      "properties": {
+        "listenPort": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535
+        },
+        "ipv4Reachable": {
+          "type": "boolean"
+        },
+        "ipv6Reachable": {
+          "type": "boolean"
+        },
+        "mappingMethod": {
+          "type": "string",
+          "enum": ["NONE", "MANUAL", "UPNP", "NAT_PMP", "PCP", "IPV6", "OVERLAY"]
+        },
+        "lastCheckedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "HeartbeatRequest": {
+      "type": "object",
+      "required": [
+        "nodeId",
+        "agentVersion",
+        "contractVersions",
+        "taskCapabilities",
+        "torrentCapabilities",
+        "telegramAvailable",
+        "torrentEnabled",
+        "freeDiskBytes",
+        "reservedDiskBytes",
+        "activeTelegramDownloads",
+        "activeTorrentDownloads",
+        "activeSeeds",
+        "peerNetwork"
+      ],
+      "additionalProperties": true,
+      "properties": {
+        "nodeId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "agentVersion": {
+          "type": "string",
+          "minLength": 1
+        },
+        "contractVersions": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string"
+          }
+        },
+        "taskCapabilities": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string"
+          }
+        },
+        "torrentCapabilities": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string"
+          }
+        },
+        "telegramAvailable": {
+          "type": "boolean"
+        },
+        "torrentEnabled": {
+          "type": "boolean"
+        },
+        "freeDiskBytes": {
+          "$ref": "#/$defs/DecimalString"
+        },
+        "reservedDiskBytes": {
+          "$ref": "#/$defs/DecimalString"
+        },
+        "activeTelegramDownloads": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "activeTorrentDownloads": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "activeSeeds": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "peerNetwork": {
+          "$ref": "#/$defs/PeerNetwork"
+        }
+      }
+    },
+    "TaskType": {
+      "type": "string",
+      "enum": [
+        "TELEGRAM_BOOTSTRAP_V1",
+        "TORRENT_DOWNLOAD_V1",
+        "PAUSE_V1",
+        "RESUME_V1",
+        "CANCEL_V1",
+        "RECHECK_V1",
+        "SET_UPLOAD_LIMIT_V1",
+        "ROTATE_TRACKER_CREDENTIAL_V1"
+      ]
+    },
+    "TaskEnvelope": {
+      "type": "object",
+      "allOf": [
+        {
+          "if": {
+            "required": ["type"],
+            "properties": { "type": { "const": "TELEGRAM_BOOTSTRAP_V1" } }
+          },
+          "then": {
+            "properties": {
+              "payload": { "$ref": "#/$defs/TelegramBootstrapTaskPayload" }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": ["type"],
+            "properties": { "type": { "const": "TORRENT_DOWNLOAD_V1" } }
+          },
+          "then": {
+            "properties": {
+              "payload": { "$ref": "#/$defs/TorrentDownloadTaskPayload" }
+            }
+          }
+        }
+      ],
+      "required": [
+        "taskId",
+        "attemptId",
+        "type",
+        "schemaVersion",
+        "leaseToken",
+        "deadlineAt",
+        "payload",
+        "createdAt"
+      ],
+      "additionalProperties": true,
+      "properties": {
+        "taskId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "attemptId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "type": {
+          "$ref": "#/$defs/TaskType"
+        },
+        "schemaVersion": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "leaseToken": {
+          "type": "string",
+          "minLength": 16
+        },
+        "deadlineAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "payload": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "TaskAttemptCommand": {
+      "type": "object",
+      "required": ["attemptId", "leaseToken"],
+      "additionalProperties": true,
+      "properties": {
+        "attemptId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "leaseToken": {
+          "type": "string",
+          "minLength": 16
+        }
+      }
+    },
+    "TelegramBootstrapTaskPayload": {
+      "type": "object",
+      "required": [
+        "resourceId",
+        "sourceId",
+        "fileUniqueId",
+        "fileSize",
+        "accessScope",
+        "reservedBytes",
+        "opaqueSourceToken"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "resourceId": { "type": "string", "minLength": 1 },
+        "sourceId": { "type": "string", "minLength": 1 },
+        "fileUniqueId": { "type": "string", "minLength": 1 },
+        "fileName": { "type": "string", "minLength": 1, "maxLength": 255 },
+        "fileSize": { "$ref": "#/$defs/DecimalString" },
+        "accessScope": { "$ref": "#/$defs/AccessScope" },
+        "reservedBytes": { "$ref": "#/$defs/DecimalString" },
+        "opaqueSourceToken": { "type": "string", "minLength": 22 }
+      }
+    },
+    "TorrentDownloadTaskPayload": {
+      "type": "object",
+      "required": [
+        "resourceId",
+        "torrentId",
+        "torrentBase64",
+        "infoHashV1",
+        "contentSha256",
+        "fileName",
+        "fileSize",
+        "reservedBytes",
+        "trackerBaseUrl"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "resourceId": { "type": "string", "minLength": 1 },
+        "torrentId": { "type": "string", "minLength": 1 },
+        "torrentBase64": { "type": "string", "contentEncoding": "base64" },
+        "infoHashV1": { "type": "string", "pattern": "^[a-f0-9]{40}$" },
+        "contentSha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "fileName": { "type": "string", "minLength": 1, "maxLength": 255 },
+        "fileSize": { "$ref": "#/$defs/DecimalString" },
+        "reservedBytes": { "$ref": "#/$defs/DecimalString" },
+        "trackerBaseUrl": { "type": "string", "format": "uri", "pattern": "^https?://" }
+      }
+    },
+    "TaskProgress": {
+      "type": "object",
+      "required": [
+        "attemptId",
+        "leaseToken",
+        "sequence",
+        "phase",
+        "percent",
+        "completedBytes",
+        "totalBytes"
+      ],
+      "additionalProperties": true,
+      "properties": {
+        "attemptId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "leaseToken": {
+          "type": "string",
+          "minLength": 16
+        },
+        "sequence": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "phase": {
+          "type": "string",
+          "enum": [
+            "FETCH_QUEUED",
+            "FETCHING_TELEGRAM",
+            "HASHING",
+            "STORING",
+            "CREATING_TORRENT",
+            "CHECKING_TORRENT",
+            "DOWNLOADING_TORRENT",
+            "SEEDING"
+          ]
+        },
+        "percent": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "completedBytes": {
+          "$ref": "#/$defs/DecimalString"
+        },
+        "totalBytes": {
+          "$ref": "#/$defs/DecimalString"
+        },
+        "message": {
+          "type": "string",
+          "maxLength": 512
+        }
+      }
+    },
+    "TaskComplete": {
+      "allOf": [
+        { "$ref": "#/$defs/TaskAttemptCommand" },
+        {
+          "type": "object",
+          "required": ["sha256", "fileSize"],
+          "properties": {
+            "sha256": { "type": "string", "pattern": "^[A-Fa-f0-9]{64}$" },
+            "fileSize": { "$ref": "#/$defs/DecimalString" },
+            "infoHashV1": { "type": "string", "pattern": "^[a-f0-9]{40}$" }
+          }
+        }
+      ]
+    },
+    "TaskFailure": {
+      "allOf": [
+        { "$ref": "#/$defs/TaskAttemptCommand" },
+        {
+          "type": "object",
+          "required": ["errorCode", "retryable"],
+          "properties": {
+            "errorCode": { "$ref": "#/$defs/ErrorCode" },
+            "retryable": { "type": "boolean" }
+          }
+        }
+      ]
+    },
+    "AccessScope": {
+      "type": "string",
+      "enum": ["PUBLIC", "MEMBER_ACCESS", "OWNER_ONLY"]
+    },
+    "ResourceSource": {
+      "type": "object",
+      "required": [
+        "ownerNodeId",
+        "opaqueSourceToken",
+        "accessScope",
+        "publicMessageUrl",
+        "fileUniqueId",
+        "fileName",
+        "fileSize",
+        "mimeType",
+        "fileType"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "ownerNodeId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "opaqueSourceToken": {
+          "type": "string",
+          "minLength": 22
+        },
+        "accessScope": {
+          "$ref": "#/$defs/AccessScope"
+        },
+        "publicMessageUrl": {
+          "type": ["string", "null"],
+          "format": "uri"
+        },
+        "fileUniqueId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512
+        },
+        "sourceFingerprint": {
+          "type": "string",
+          "pattern": "^v1:[a-f0-9]{64}$"
+        },
+        "fileName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255
+        },
+        "fileSize": {
+          "$ref": "#/$defs/DecimalString"
+        },
+        "mimeType": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255
+        },
+        "fileType": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "downloaded": {
+          "type": "boolean",
+          "default": false
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "accessScope": {
+                "const": "PUBLIC"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "publicMessageUrl": {
+                "type": "string",
+                "format": "uri"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "publicMessageUrl": {
+                "type": "null"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "FileAvailabilityRequest": {
+      "type": "object",
+      "required": ["files"],
+      "additionalProperties": false,
+      "properties": {
+        "files": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 200,
+          "items": {
+            "type": "object",
+            "required": ["sourceFingerprint", "fileSize"],
+            "additionalProperties": false,
+            "properties": {
+              "sourceFingerprint": { "type": "string", "pattern": "^v1:[a-f0-9]{64}$" },
+              "fileSize": { "$ref": "#/$defs/DecimalString" }
+            }
+          }
+        }
+      }
+    },
+    "FileAvailabilityResponse": {
+      "type": "object",
+      "required": ["files"],
+      "properties": {
+        "files": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "sourceFingerprint",
+              "fileSize",
+              "resourceId",
+              "ptAvailable",
+              "seederCount",
+              "sharedByCurrentUser",
+              "alreadyPresentOnNode"
+            ],
+            "properties": {
+              "sourceFingerprint": { "type": "string" },
+              "fileSize": { "$ref": "#/$defs/DecimalString" },
+              "resourceId": { "type": ["string", "null"] },
+              "ptAvailable": { "type": "boolean" },
+              "seederCount": { "type": "integer", "minimum": 0 },
+              "sharedByCurrentUser": { "type": "boolean" },
+              "alreadyPresentOnNode": { "type": "boolean" }
+            }
+          }
+        }
+      }
+    },
+    "ResourcePublicationPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "immediateReseed": {
+          "type": "boolean",
+          "default": false
+        },
+        "indexOnly": {
+          "type": "boolean",
+          "default": true
+        },
+        "autoDownloadOnDemand": {
+          "type": "boolean",
+          "default": false
+        },
+        "uploadLimitBytesPerSecond": {
+          "oneOf": [{ "$ref": "#/$defs/DecimalString" }, { "type": "null" }]
+        },
+        "minimumSeedSeconds": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 315360000
+        }
+      }
+    },
+    "ResourceSharingPolicy": {
+      "type": "object",
+      "required": ["defaultDecision", "defaultCategoryId", "categories", "shareRules"],
+      "additionalProperties": false,
+      "properties": {
+        "defaultDecision": { "type": "string", "enum": ["ALLOW", "DENY"] },
+        "defaultCategoryId": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "categories": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["id", "label", "defaultForFileTypes"],
+            "additionalProperties": false,
+            "properties": {
+              "id": { "type": "string", "minLength": 1, "maxLength": 64 },
+              "label": { "type": "string", "minLength": 1, "maxLength": 64 },
+              "defaultForFileTypes": {
+                "type": "array",
+                "uniqueItems": true,
+                "items": { "type": "string", "minLength": 1, "maxLength": 64 }
+              }
+            }
+          }
+        },
+        "shareRules": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "decision", "reason", "match"],
+            "additionalProperties": false,
+            "properties": {
+              "id": { "type": "string", "minLength": 1, "maxLength": 64 },
+              "decision": { "type": "string", "enum": ["ALLOW", "DENY"] },
+              "reason": { "type": "string", "minLength": 1, "maxLength": 255 },
+              "match": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "fileTypes": {
+                    "type": "array",
+                    "uniqueItems": true,
+                    "items": { "type": "string", "minLength": 1, "maxLength": 64 }
+                  },
+                  "mimeTypes": {
+                    "type": "array",
+                    "uniqueItems": true,
+                    "items": { "type": "string", "minLength": 1, "maxLength": 255 }
+                  },
+                  "mimeTypePrefixes": {
+                    "type": "array",
+                    "uniqueItems": true,
+                    "items": { "type": "string", "minLength": 1, "maxLength": 255 }
+                  },
+                  "minFileSizeBytes": { "type": "integer", "minimum": 0 },
+                  "maxFileSizeBytes": { "type": "integer", "minimum": 0 }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "ResourceCreateRequest": {
+      "type": "object",
+      "required": ["title", "source"],
+      "additionalProperties": true,
+      "properties": {
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 4096
+        },
+        "tags": {
+          "type": "array",
+          "uniqueItems": true,
+          "maxItems": 32,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64
+          }
+        },
+        "category": {
+          "type": ["string", "null"],
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "source": {
+          "$ref": "#/$defs/ResourceSource"
+        },
+        "publicationPolicy": {
+          "$ref": "#/$defs/ResourcePublicationPolicy"
+        }
+      }
+    },
+    "ResourceUpdateRequest": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": false,
+      "properties": {
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255
+        },
+        "description": {
+          "type": ["string", "null"],
+          "maxLength": 4096
+        },
+        "tags": {
+          "type": "array",
+          "uniqueItems": true,
+          "maxItems": 32,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64
+          }
+        },
+        "category": {
+          "type": ["string", "null"],
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "publicationPolicy": {
+          "$ref": "#/$defs/ResourcePublicationPolicy"
+        }
+      }
+    },
+    "TorrentReport": {
+      "type": "object",
+      "required": [
+        "torrentBase64",
+        "contentSha256",
+        "fileSize",
+        "torrentVersion",
+        "nodeId",
+        "attemptId",
+        "leaseToken"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "torrentBase64": {
+          "type": "string",
+          "contentEncoding": "base64"
+        },
+        "contentSha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "fileSize": {
+          "$ref": "#/$defs/DecimalString"
+        },
+        "torrentVersion": {
+          "type": "string",
+          "enum": ["V1_PRIVATE"]
+        },
+        "nodeId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "attemptId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "leaseToken": {
+          "type": "string",
+          "minLength": 16
+        }
+      }
+    },
+    "SeedStatusReport": {
+      "type": "object",
+      "required": ["attemptId", "leaseToken", "infoHashV1", "state", "progressPermille"],
+      "additionalProperties": false,
+      "properties": {
+        "attemptId": { "type": "string", "minLength": 1 },
+        "leaseToken": { "type": "string", "minLength": 16 },
+        "infoHashV1": { "type": "string", "pattern": "^[a-f0-9]{40}$" },
+        "state": {
+          "type": "string",
+          "enum": ["CHECKING", "SEEDING", "PAUSED", "ERROR", "STOPPED"]
+        },
+        "progressPermille": { "type": "integer", "minimum": 0, "maximum": 1000 }
+      }
+    },
+    "UserDownloadsResponse": {
+      "type": "object",
+      "required": ["items"],
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "id",
+              "resourceId",
+              "title",
+              "resourceStatus",
+              "nodeId",
+              "nodeName",
+              "method",
+              "status",
+              "fileSize",
+              "taskId",
+              "taskStatus",
+              "progressPhase",
+              "createdAt",
+              "completedAt",
+              "errorCode"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "id": { "type": "string" },
+              "resourceId": { "type": "string" },
+              "title": { "type": "string" },
+              "resourceStatus": { "type": "string" },
+              "nodeId": { "type": "string" },
+              "nodeName": { "type": "string" },
+              "method": { "enum": ["TELEGRAM", "PT"] },
+              "status": { "enum": ["PENDING", "DISPATCHED", "COMPLETED", "FAILED", "CANCELLED"] },
+              "fileSize": { "$ref": "#/$defs/DecimalString" },
+              "taskId": { "type": ["string", "null"] },
+              "taskStatus": { "type": ["string", "null"] },
+              "progressPhase": { "type": ["string", "null"] },
+              "createdAt": { "type": "string", "format": "date-time" },
+              "completedAt": { "type": ["string", "null"], "format": "date-time" },
+              "errorCode": { "type": ["string", "null"] }
+            }
+          }
+        }
+      }
+    },
+    "UserTransferStatisticsResponse": {
+      "type": "object",
+      "required": ["source", "notice", "generatedAt", "delaySeconds", "totals", "nodes"],
+      "additionalProperties": false,
+      "properties": {
+        "source": { "const": "CLIENT_DECLARED" },
+        "notice": { "type": "string" },
+        "generatedAt": { "type": "string", "format": "date-time" },
+        "delaySeconds": { "type": ["integer", "null"], "minimum": 0 },
+        "totals": {
+          "type": "object",
+          "required": [
+            "uploadedBytes",
+            "downloadedBytes",
+            "shareRatio",
+            "currentSeedCount",
+            "cumulativeSeedSeconds",
+            "firstSeedCount",
+            "completedDownloadCount",
+            "activeDownloadCount",
+            "activeUploadCount",
+            "completedUploadCount",
+            "uploadCount",
+            "cumulativeUploadSeconds",
+            "cumulativeDownloadSeconds"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "uploadedBytes": { "$ref": "#/$defs/DecimalString" },
+            "downloadedBytes": { "$ref": "#/$defs/DecimalString" },
+            "shareRatio": { "type": "string" },
+            "currentSeedCount": { "type": "integer", "minimum": 0 },
+            "cumulativeSeedSeconds": { "$ref": "#/$defs/DecimalString" },
+            "firstSeedCount": { "type": "integer", "minimum": 0 },
+            "completedDownloadCount": { "type": "integer", "minimum": 0 },
+            "activeDownloadCount": { "type": "integer", "minimum": 0 },
+            "activeUploadCount": { "type": "integer", "minimum": 0 },
+            "completedUploadCount": { "type": "integer", "minimum": 0 },
+            "uploadCount": { "type": "integer", "minimum": 0 },
+            "cumulativeUploadSeconds": { "$ref": "#/$defs/DecimalString" },
+            "cumulativeDownloadSeconds": { "$ref": "#/$defs/DecimalString" }
+          }
+        },
+        "nodes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "nodeId",
+              "name",
+              "status",
+              "uploadedBytes",
+              "downloadedBytes",
+              "shareRatio",
+              "currentSeedCount",
+              "cumulativeSeedSeconds",
+              "completedDownloadCount",
+              "activeUploadCount",
+              "completedUploadCount",
+              "cumulativeUploadSeconds",
+              "cumulativeDownloadSeconds",
+              "lastEventAt",
+              "lastHeartbeatAt"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "nodeId": { "type": "string" },
+              "name": { "type": "string" },
+              "status": { "type": "string" },
+              "uploadedBytes": { "$ref": "#/$defs/DecimalString" },
+              "downloadedBytes": { "$ref": "#/$defs/DecimalString" },
+              "shareRatio": { "type": "string" },
+              "currentSeedCount": { "type": "integer", "minimum": 0 },
+              "cumulativeSeedSeconds": { "$ref": "#/$defs/DecimalString" },
+              "completedDownloadCount": { "type": "integer", "minimum": 0 },
+              "activeUploadCount": { "type": "integer", "minimum": 0 },
+              "completedUploadCount": { "type": "integer", "minimum": 0 },
+              "cumulativeUploadSeconds": { "$ref": "#/$defs/DecimalString" },
+              "cumulativeDownloadSeconds": { "$ref": "#/$defs/DecimalString" },
+              "lastEventAt": { "type": ["string", "null"], "format": "date-time" },
+              "lastHeartbeatAt": { "type": ["string", "null"], "format": "date-time" }
+            }
+          }
+        }
+      }
+    },
+    "TorrentUploadSession": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sessionKey",
+        "counterEpoch",
+        "startedAt",
+        "lastObservedAt",
+        "endedAt",
+        "uploadedBytes",
+        "status"
+      ],
+      "properties": {
+        "sessionKey": { "type": "string", "pattern": "^[A-Za-z0-9_-]{32,128}$" },
+        "counterEpoch": { "type": "integer", "minimum": 0 },
+        "startedAt": { "type": "string", "format": "date-time" },
+        "lastObservedAt": { "type": "string", "format": "date-time" },
+        "endedAt": { "type": ["string", "null"], "format": "date-time" },
+        "uploadedBytes": { "$ref": "#/$defs/DecimalString" },
+        "status": { "enum": ["ACTIVE", "ENDED"] }
+      }
+    },
+    "IdResponse": {
+      "type": "object",
+      "required": ["id"],
+      "additionalProperties": true,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "SuccessResponse": {
+      "type": "object",
+      "required": ["requestId", "success"],
+      "additionalProperties": true,
+      "properties": {
+        "requestId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "success": {
+          "const": true
+        }
+      }
+    }
+  }
+}

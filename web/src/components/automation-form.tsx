@@ -26,7 +26,15 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Check, ChevronsUpDown, X } from "lucide-react";
+import {
+  Check,
+  ChevronsUpDown,
+  Download,
+  ExternalLink,
+  FolderSync,
+  PackageSearch,
+  X,
+} from "lucide-react";
 import {
   Popover,
   PopoverContent,
@@ -54,86 +62,123 @@ interface AutomationFormProps {
   onChange: (auto: Auto) => void;
 }
 
+function AutomationToggleSection({
+  id,
+  title,
+  description,
+  checked,
+  icon,
+  onCheckedChange,
+  children,
+}: React.PropsWithChildren<{
+  id: string;
+  title: string;
+  description: string;
+  checked: boolean;
+  icon: React.ReactNode;
+  onCheckedChange: (checked: boolean) => void;
+}>) {
+  return (
+    <section className="rounded-lg border bg-card p-4 shadow-sm">
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex min-w-0 gap-3">
+          <div className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+            {icon}
+          </div>
+          <div className="min-w-0">
+            <Label htmlFor={id} className="font-semibold">
+              {title}
+            </Label>
+            <p className="mt-1 text-sm text-muted-foreground">{description}</p>
+          </div>
+        </div>
+        <Switch id={id} checked={checked} onCheckedChange={onCheckedChange} />
+      </div>
+      {children && <div className="mt-4 flex flex-col gap-4">{children}</div>}
+    </section>
+  );
+}
+
+function HintPanel({ children }: React.PropsWithChildren) {
+  return (
+    <div className="rounded-md border bg-muted/30 p-4 text-sm text-muted-foreground">
+      <div className="flex flex-col gap-3">{children}</div>
+    </div>
+  );
+}
+
+function HintLine({ children }: React.PropsWithChildren) {
+  return (
+    <div className="flex items-start gap-3">
+      <span className="mt-2 size-1.5 shrink-0 rounded-full bg-primary" />
+      <div className="leading-6">{children}</div>
+    </div>
+  );
+}
+
 export default function AutomationForm({
   auto,
   onChange,
 }: AutomationFormProps) {
   return (
-    <div className="space-y-4">
-      <div className="space-y-4 rounded-md border border-gray-200 p-4 dark:border-gray-700">
-        <div className="flex items-center justify-between">
-          <Label htmlFor="enable-preload">Enable Preload</Label>
-          <Switch
-            id="enable-preload"
-            checked={auto.preload.enabled}
-            onCheckedChange={(checked) => {
-              onChange({
-                ...auto,
-                preload: {
-                  ...auto.preload,
-                  enabled: checked,
-                },
-              });
-            }}
-          />
-        </div>
+    <div className="flex flex-col gap-4">
+      <AutomationToggleSection
+        id="enable-preload"
+        title="Enable Preload"
+        description="Index chat files in advance so they can be searched offline."
+        checked={auto.preload.enabled}
+        icon={<PackageSearch />}
+        onCheckedChange={(checked) => {
+          onChange({
+            ...auto,
+            preload: {
+              ...auto.preload,
+              enabled: checked,
+            },
+          });
+        }}
+      >
         {auto.preload.enabled && (
-          <div className="space-y-4 rounded-md border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800">
-            <div className="flex items-start">
-              <span className="mr-3 mt-1.5 h-3 w-2 flex-shrink-0 rounded-full bg-cyan-400"></span>
-              <p className="text-sm leading-6 text-gray-700 dark:text-gray-300">
-                This will enable preload for this chat. All files will be
-                loaded, but not downloaded, then you can search offline.
-              </p>
-            </div>
-          </div>
+          <HintPanel>
+            <HintLine>
+              All files will be loaded into the index but not downloaded.
+            </HintLine>
+          </HintPanel>
         )}
-      </div>
-      <div className="space-y-4 rounded-md border border-gray-200 p-4 dark:border-gray-700">
-        <div className="flex items-center justify-between">
-          <Label htmlFor="enable-auto-download">Enable Auto Download</Label>
-          <Switch
-            id="enable-auto-download"
-            checked={auto.download.enabled}
-            onCheckedChange={(checked) => {
-              onChange({
-                ...auto,
-                download: {
-                  ...auto.download,
-                  enabled: checked,
-                },
-              });
-            }}
-          />
-        </div>
+      </AutomationToggleSection>
+      <AutomationToggleSection
+        id="enable-auto-download"
+        title="Enable Auto Download"
+        description="Automatically download files that match the configured rules."
+        checked={auto.download.enabled}
+        icon={<Download />}
+        onCheckedChange={(checked) => {
+          onChange({
+            ...auto,
+            download: {
+              ...auto.download,
+              enabled: checked,
+            },
+          });
+        }}
+      >
         {auto.download.enabled && (
           <>
-            <div className="space-y-4 rounded-md border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800">
-              <div className="flex items-start">
-                <span className="mr-3 mt-1.5 h-3 w-2 flex-shrink-0 rounded-full bg-cyan-400"></span>
-                <p className="text-sm leading-6 text-gray-700 dark:text-gray-300">
-                  This will enable auto download for this chat. Files will be
-                  downloaded automatically.
-                </p>
-              </div>
-              <div className="flex items-start">
-                <span className="mr-3 mt-1.5 h-3 w-2 flex-shrink-0 rounded-full bg-cyan-400"></span>
-                <p className="text-sm leading-6 text-gray-700 dark:text-gray-300">
-                  If you enable download history, the files in historical
-                  messages will be downloaded first, and then files in new
-                  messages will be downloaded automatically.
-                </p>
-              </div>
-              <div className="flex items-start">
-                <span className="mr-3 mt-1.5 h-3 w-2 flex-shrink-0 rounded-full bg-cyan-400"></span>
-                <p className="text-sm leading-6 text-gray-700 dark:text-gray-300">
-                  Download Order:
-                  <span className="ml-1 rounded bg-blue-100 px-2 text-blue-700 dark:bg-blue-800 dark:text-blue-200">
-                    {"Photo -> Video -> Audio -> File"}
-                  </span>
-                </p>
-              </div>
-            </div>
+            <HintPanel>
+              <HintLine>
+                Matched files will be downloaded automatically.
+              </HintLine>
+              <HintLine>
+                If download history is enabled, historical messages are handled
+                before new incoming files.
+              </HintLine>
+              <HintLine>
+                Download order:
+                <Badge variant="secondary" className="ml-1 font-normal">
+                  {"Photo -> Video -> Audio -> File"}
+                </Badge>
+              </HintLine>
+            </HintPanel>
             <DownloadRule
               value={auto.download.rule}
               onChange={(value) => {
@@ -148,35 +193,30 @@ export default function AutomationForm({
             />
           </>
         )}
-      </div>
-      <div className="space-y-4 rounded-md border border-gray-200 p-4 dark:border-gray-700">
-        <div className="flex items-center justify-between">
-          <Label htmlFor="enable-transfer">Enable Transfer</Label>
-          <Switch
-            id="enable-transfer"
-            checked={auto.transfer.enabled}
-            onCheckedChange={(checked) => {
-              onChange({
-                ...auto,
-                transfer: {
-                  ...auto.transfer,
-                  enabled: checked,
-                },
-              });
-            }}
-          />
-        </div>
+      </AutomationToggleSection>
+      <AutomationToggleSection
+        id="enable-transfer"
+        title="Enable Transfer"
+        description="Move downloaded files to a destination folder automatically."
+        checked={auto.transfer.enabled}
+        icon={<FolderSync />}
+        onCheckedChange={(checked) => {
+          onChange({
+            ...auto,
+            transfer: {
+              ...auto.transfer,
+              enabled: checked,
+            },
+          });
+        }}
+      >
         {auto.transfer.enabled && (
           <>
-            <div className="space-y-4 rounded-md border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800">
-              <div className="flex items-start">
-                <span className="mr-3 mt-1.5 h-3 w-2 flex-shrink-0 rounded-full bg-cyan-400"></span>
-                <p className="text-sm leading-6 text-gray-700 dark:text-gray-300">
-                  This will enable auto transfer for this chat. Downloaded files
-                  will be transferred to the specified location automatically.
-                </p>
-              </div>
-            </div>
+            <HintPanel>
+              <HintLine>
+                Downloaded files will be transferred to the specified location.
+              </HintLine>
+            </HintPanel>
             <TransferRule
               value={auto.transfer.rule}
               onChange={(value) => {
@@ -191,7 +231,7 @@ export default function AutomationForm({
             />
           </>
         )}
-      </div>
+      </AutomationToggleSection>
     </div>
   );
 }
@@ -237,14 +277,14 @@ function DownloadRule({ value, onChange }: DownloadRuleProps) {
   };
 
   return (
-    <Accordion type="single" collapsible>
-      <AccordionItem value="advanced">
+    <Accordion type="single" collapsible className="rounded-lg border bg-card">
+      <AccordionItem value="advanced" className="border-none px-4">
         <AccordionTrigger className="hover:no-underline">
           Advanced
         </AccordionTrigger>
         <AccordionContent>
-          <div className="flex flex-col space-y-4 rounded-md border p-4 shadow">
-            <div className="flex flex-col space-y-2">
+          <div className="flex flex-col gap-4 rounded-md border bg-muted/20 p-4">
+            <div className="flex flex-col gap-2">
               <Label htmlFor="query-keyword">Query Keyword</Label>
               <Input
                 id="query-keyword"
@@ -255,28 +295,29 @@ function DownloadRule({ value, onChange }: DownloadRuleProps) {
                 onChange={handleQueryChange}
               />
             </div>
-            <div className="flex flex-col space-y-2">
+            <div className="flex flex-col gap-2">
               <Label htmlFor="filter-expr">
                 Filter Expression
                 <Link
                   href="https://github.com/jarvis2f/telegram-files/blob/main/misc/filter-expression-guide.md"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="ml-2 text-sm text-blue-600 hover:underline"
+                  className="ml-2 inline-flex items-center gap-1 text-sm text-primary hover:underline"
                 >
-                  (Learn more)
+                  Learn more
+                  <ExternalLink className="size-3" />
                 </Link>
               </Label>
               <Textarea
                 id="filter-expr"
-                className="w-full"
+                className="min-h-24 w-full"
                 placeholder="Enter a filter expression (e.g., str:contains(content.text.text, 'Hello') and id > 1000)"
                 value={value.filterExpr}
                 onChange={handleFilterExprChange}
               />
             </div>
 
-            <div className="flex flex-col space-y-2">
+            <div className="flex flex-col gap-2">
               <Label htmlFor="fileTypes">Filter File Types</Label>
               <Select onValueChange={handleFileTypeSelect}>
                 <SelectTrigger id="fileTypes">
@@ -291,24 +332,34 @@ function DownloadRule({ value, onChange }: DownloadRuleProps) {
                 </SelectContent>
               </Select>
 
-              <div className="mt-2 flex flex-wrap gap-2">
-                {value.fileTypes.map((type) => (
-                  <Badge
-                    key={type}
-                    className="flex items-center gap-1 px-2 py-1"
-                    variant="secondary"
-                  >
-                    {type}
-                    <X
-                      className="h-3 w-3 cursor-pointer"
-                      onClick={() => removeFileType(type)}
-                    />
-                  </Badge>
-                ))}
+              <div className="flex min-h-8 flex-wrap gap-2">
+                {value.fileTypes.length > 0 ? (
+                  value.fileTypes.map((type) => (
+                    <Badge
+                      key={type}
+                      className="flex items-center gap-1 px-2 py-1 capitalize"
+                      variant="secondary"
+                    >
+                      {type}
+                      <button
+                        type="button"
+                        aria-label={`Remove ${type}`}
+                        className="rounded-sm text-muted-foreground transition hover:text-foreground"
+                        onClick={() => removeFileType(type)}
+                      >
+                        <X className="size-3" />
+                      </button>
+                    </Badge>
+                  ))
+                ) : (
+                  <span className="text-sm text-muted-foreground">
+                    No file types selected
+                  </span>
+                )}
               </div>
             </div>
 
-            <div className="rounded-md border p-4">
+            <div className="rounded-md border bg-background p-4">
               <div className="flex items-center justify-between">
                 <Label htmlFor="download-history">Download History</Label>
                 <Switch
@@ -327,7 +378,7 @@ function DownloadRule({ value, onChange }: DownloadRuleProps) {
                 only new files will be downloaded.
               </p>
             </div>
-            <div className="rounded-md border p-4">
+            <div className="rounded-md border bg-background p-4">
               <div className="flex items-center justify-between">
                 <Label htmlFor="download-comment-files">
                   Download comment files
@@ -366,14 +417,14 @@ function TransferRule({ value, onChange }: TransferRuleProps) {
   };
 
   return (
-    <Accordion type="single" collapsible>
-      <AccordionItem value="advanced">
+    <Accordion type="single" collapsible className="rounded-lg border bg-card">
+      <AccordionItem value="advanced" className="border-none px-4">
         <AccordionTrigger className="hover:no-underline">
           Advanced
         </AccordionTrigger>
         <AccordionContent>
-          <div className="flex flex-col space-y-4 rounded-md border p-4 shadow">
-            <div className="flex flex-col space-y-2">
+          <div className="flex flex-col gap-4 rounded-md border bg-muted/20 p-4">
+            <div className="flex flex-col gap-2">
               <Label htmlFor="destination">
                 Destination folder for auto transfer
               </Label>
@@ -389,7 +440,7 @@ function TransferRule({ value, onChange }: TransferRuleProps) {
               />
             </div>
 
-            <div className="flex flex-col space-y-2">
+            <div className="flex flex-col gap-2">
               <Label htmlFor="transfer-policy">Transfer Policy</Label>
               <PolicySelect
                 policyType="transfer"
@@ -403,13 +454,13 @@ function TransferRule({ value, onChange }: TransferRuleProps) {
             </div>
 
             {value.transferPolicy === "GROUP_BY_AI" && (
-              <div className="flex flex-col space-y-2">
+              <div className="flex flex-col gap-2">
                 <Label htmlFor="prompt-template">
                   AI Classification Prompt Template
                 </Label>
                 <Textarea
                   id="prompt-template"
-                  className="w-full"
+                  className="min-h-28 w-full"
                   rows={4}
                   placeholder="Enter a prompt template to guide AI classification"
                   value={value.extra.promptTemplate || ""}
@@ -425,7 +476,7 @@ function TransferRule({ value, onChange }: TransferRuleProps) {
               </div>
             )}
 
-            <div className="flex flex-col space-y-2">
+            <div className="flex flex-col gap-2">
               <Label htmlFor="duplication-policy">Duplication Policy</Label>
               <PolicySelect
                 policyType="duplication"
@@ -438,7 +489,7 @@ function TransferRule({ value, onChange }: TransferRuleProps) {
               />
             </div>
 
-            <div className="rounded-md border p-4">
+            <div className="rounded-md border bg-background p-4">
               <div className="flex items-center justify-between">
                 <Label htmlFor="transfer-history">Transfer History</Label>
                 <Switch
@@ -455,7 +506,7 @@ function TransferRule({ value, onChange }: TransferRuleProps) {
               </p>
             </div>
 
-            <div className="rounded-md border p-4">
+            <div className="rounded-md border bg-background p-4">
               <div className="flex items-center justify-between">
                 <Label htmlFor={captionNameId}>Add caption to file name</Label>
                 <Switch
@@ -493,12 +544,12 @@ const PolicyLegends: Record<
   GROUP_BY_CHAT: {
     title: "Group by Chat",
     description: (
-      <div className="space-y-2">
+      <div className="flex flex-col gap-2">
         <p className="text-sm">
           Transfer files to folders based on the chat name.
         </p>
         <p className="text-xs text-muted-foreground">Example:</p>
-        <p className="inline-block rounded bg-gray-100 p-1 text-xs text-muted-foreground dark:bg-gray-800 dark:text-gray-300">
+        <p className="inline-block rounded bg-muted px-2 py-1 text-xs text-muted-foreground">
           {"/${Destination Folder}/${Telegram Id}/${Chat Id}/${file}"}
         </p>
       </div>
@@ -507,13 +558,13 @@ const PolicyLegends: Record<
   GROUP_BY_TYPE: {
     title: "Group by Type",
     description: (
-      <div className="space-y-2">
+      <div className="flex flex-col gap-2">
         <p className="text-sm">
           Transfer files to folders based on the file type. <br />
           All account files will be transferred to the same folder.
         </p>
         <p className="text-xs text-muted-foreground">Example:</p>
-        <p className="inline-block rounded bg-gray-100 p-1 text-xs text-muted-foreground dark:bg-gray-800 dark:text-gray-300">
+        <p className="inline-block rounded bg-muted px-2 py-1 text-xs text-muted-foreground">
           {"/${Destination Folder}/${File Type}/${file}"}
         </p>
       </div>
@@ -522,7 +573,7 @@ const PolicyLegends: Record<
   GROUP_BY_AI: {
     title: "Group by AI",
     description: (
-      <div className="space-y-2">
+      <div className="flex flex-col gap-2">
         <p className="text-sm">
           Use AI to classify files and transfer them to different folders based
           on their content.
@@ -530,7 +581,7 @@ const PolicyLegends: Record<
         <p className="text-sm">
           You can write a prompt to guide the AI in classifying the files. Like:
         </p>
-        <p className="inline-block rounded bg-gray-100 p-1 text-xs text-muted-foreground dark:bg-gray-800 dark:text-gray-300">
+        <p className="inline-block rounded bg-muted px-2 py-1 text-xs text-muted-foreground">
           Classify the following file into one of the categories: Work,
           Personal, Important, Others. <br />
           File name: {"{file_name}"} <br />
@@ -595,15 +646,15 @@ function PolicySelect({ policyType, value, onChange }: PolicySelectProps) {
           <ChevronsUpDown className="opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent align="start" className="w-[250px] p-0" modal={true}>
+      <PopoverContent align="start" className="w-[280px] p-0" modal={true}>
         <HoverCard>
           <HoverCardContent
             side="top"
             align="start"
             forceMount
-            className="min-h-[150px] w-auto min-w-64 max-w-[380px]"
+            className="min-h-[150px] w-auto min-w-64 max-w-[380px] border bg-popover"
           >
-            <div className="grid gap-2">
+            <div className="flex flex-col gap-2">
               <h4 className="font-medium leading-none">
                 {peekPolicyLegend?.title}
               </h4>
@@ -668,7 +719,7 @@ function PolicyItem({ policy, isSelected, onSelect, onPeek }: PolicyItemProps) {
       key={policy}
       onSelect={onSelect}
       ref={ref}
-      className="data-[selected=true]:bg-primary data-[selected=true]:text-primary-foreground"
+      className="data-[selected=true]:bg-accent data-[selected=true]:text-accent-foreground"
     >
       {policy}
       <Check
