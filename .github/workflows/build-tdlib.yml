@@ -32,22 +32,68 @@ jobs:
         uses: actions/checkout@v5
 
       - name: Set up JDK 23
+        if: inputs.platform == 'macos_silicon'
         uses: actions/setup-java@v5
         with:
           java-version: '23'
           distribution: temurin
 
-      - name: Install Linux dependencies
+      - name: Build Linux TDLib JNI in Alpine
         if: startsWith(inputs.platform, 'linux_')
+        env:
+          TDLIB_REF: ${{ inputs.tdlib_ref }}
         run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            build-essential \
-            cmake \
-            gperf \
-            libssl-dev \
-            php-cli \
-            zlib1g-dev
+          set -euo pipefail
+
+          docker run --rm \
+            -e HOST_GID="$(id -g)" \
+            -e HOST_UID="$(id -u)" \
+            -e PLATFORM="$PLATFORM" \
+            -e TDLIB_REF="$TDLIB_REF" \
+            -v "$PWD:/work" \
+            -w /work \
+            alpine:3.19 \
+            sh -euxc '
+              apk add --no-cache \
+                alpine-sdk \
+                cmake \
+                file \
+                git \
+                gperf \
+                linux-headers \
+                openjdk17 \
+                openssl-dev \
+                php \
+                zlib-dev
+
+              rm -rf td-src
+              git init td-src
+              git -C td-src remote add origin https://github.com/tdlib/td.git
+              git -C td-src fetch --depth 1 origin "$TDLIB_REF"
+              git -C td-src checkout --detach FETCH_HEAD
+
+              cmake -S td-src -B td-src/build \
+                -DCMAKE_BUILD_TYPE=Release \
+                -DJAVA_HOME=/usr/lib/jvm/java-17-openjdk \
+                -DCMAKE_INSTALL_PREFIX:PATH=../example/java/td \
+                -DTD_ENABLE_JNI=ON
+              cmake --build td-src/build --target install --parallel "$(nproc)"
+
+              cmake -S td-src/example/java -B td-src/example/java/build \
+                -DCMAKE_BUILD_TYPE=Release \
+                -DJAVA_HOME=/usr/lib/jvm/java-17-openjdk \
+                -DCMAKE_INSTALL_PREFIX:PATH=../../../tdlib \
+                -DTd_DIR:PATH=/work/td-src/example/java/td/lib/cmake/Td
+              cmake --build td-src/example/java/build --target install --parallel "$(nproc)"
+
+              output_dir="tdlib/${PLATFORM}"
+              mkdir -p "$output_dir"
+              cp td-src/tdlib/bin/libtdjni.so "$output_dir/"
+              file "$output_dir/libtdjni.so"
+              ls -lh "$output_dir"
+              chown -R "$HOST_UID:$HOST_GID" "$output_dir"
+              rm -rf td-src
+            '
 
       - name: Install macOS dependencies
         if: inputs.platform == 'macos_silicon'
@@ -56,6 +102,7 @@ jobs:
           brew install cmake coreutils gperf openssl@3
 
       - name: Checkout TDLib
+        if: inputs.platform == 'macos_silicon'
         env:
           TDLIB_REF: ${{ inputs.tdlib_ref }}
         run: |
@@ -65,6 +112,7 @@ jobs:
           git -C td checkout --detach FETCH_HEAD
 
       - name: Build TDLib JNI
+        if: inputs.platform == 'macos_silicon'
         env:
           OPENSSL_ROOT_DIR: ${{ inputs.platform == 'macos_silicon' && '/opt/homebrew/opt/openssl@3' || '' }}
         run: |
@@ -97,6 +145,7 @@ jobs:
           cmake --build td/example/java/build --target install --parallel "$(getconf _NPROCESSORS_ONLN 2>/dev/null || sysctl -n hw.ncpu)"
 
       - name: Package TDLib
+        if: inputs.platform == 'macos_silicon'
         run: |
           set -euo pipefail
 
