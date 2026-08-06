@@ -1,0 +1,140 @@
+name: Build TDLib
+
+on:
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: Target platform
+        required: true
+        type: choice
+        options:
+          - linux_amd64
+          - linux_arm64
+          - macos_silicon
+      tdlib_ref:
+        description: TDLib git ref to build
+        required: true
+        default: master
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: ${{ inputs.platform }}
+    runs-on: ${{ inputs.platform == 'linux_arm64' && 'ubuntu-24.04-arm' || inputs.platform == 'macos_silicon' && 'macos-14' || 'ubuntu-24.04' }}
+    env:
+      PLATFORM: ${{ inputs.platform }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Set up JDK 23
+        uses: actions/setup-java@v5
+        with:
+          java-version: '23'
+          distribution: temurin
+
+      - name: Install Linux dependencies
+        if: startsWith(inputs.platform, 'linux_')
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            cmake \
+            gperf \
+            libssl-dev \
+            php-cli \
+            zlib1g-dev
+
+      - name: Install macOS dependencies
+        if: inputs.platform == 'macos_silicon'
+        run: |
+          brew update
+          brew install cmake coreutils gperf openssl@3
+
+      - name: Checkout TDLib
+        env:
+          TDLIB_REF: ${{ inputs.tdlib_ref }}
+        run: |
+          git init td
+          git -C td remote add origin https://github.com/tdlib/td.git
+          git -C td fetch --depth 1 origin "$TDLIB_REF"
+          git -C td checkout --detach FETCH_HEAD
+
+      - name: Build TDLib JNI
+        env:
+          OPENSSL_ROOT_DIR: ${{ inputs.platform == 'macos_silicon' && '/opt/homebrew/opt/openssl@3' || '' }}
+        run: |
+          set -euo pipefail
+
+          cmake_args=(
+            -DCMAKE_BUILD_TYPE=Release
+            -DJAVA_HOME="$JAVA_HOME"
+            -DCMAKE_INSTALL_PREFIX:PATH=../example/java/td
+            -DTD_ENABLE_JNI=ON
+          )
+          if [ -n "${OPENSSL_ROOT_DIR}" ]; then
+            cmake_args+=(-DOPENSSL_ROOT_DIR="$OPENSSL_ROOT_DIR")
+          fi
+
+          cmake -S td -B td/build "${cmake_args[@]}"
+          cmake --build td/build --target install --parallel "$(getconf _NPROCESSORS_ONLN 2>/dev/null || sysctl -n hw.ncpu)"
+
+          java_args=(
+            -DCMAKE_BUILD_TYPE=Release
+            -DJAVA_HOME="$JAVA_HOME"
+            -DCMAKE_INSTALL_PREFIX:PATH=../../../tdlib
+            -DTd_DIR:PATH="$(pwd)/td/example/java/td/lib/cmake/Td"
+          )
+          if [ -n "${OPENSSL_ROOT_DIR}" ]; then
+            java_args+=(-DOPENSSL_ROOT_DIR="$OPENSSL_ROOT_DIR")
+          fi
+
+          cmake -S td/example/java -B td/example/java/build "${java_args[@]}"
+          cmake --build td/example/java/build --target install --parallel "$(getconf _NPROCESSORS_ONLN 2>/dev/null || sysctl -n hw.ncpu)"
+
+      - name: Package TDLib
+        run: |
+          set -euo pipefail
+
+          library_name="libtdjni.so"
+          if [ "$PLATFORM" = "macos_silicon" ]; then
+            library_name="libtdjni.dylib"
+          fi
+
+          output_dir="tdlib/${PLATFORM}"
+          mkdir -p "$output_dir"
+          cp "td/tdlib/bin/${library_name}" "$output_dir/"
+
+          file "$output_dir/$library_name"
+          ls -lh "$output_dir"
+
+      - name: Verify library architecture
+        run: |
+          set -euo pipefail
+
+          library_name="libtdjni.so"
+          expected_file_output="ELF 64-bit LSB shared object, x86-64"
+          if [ "$PLATFORM" = "linux_arm64" ]; then
+            expected_file_output="ELF 64-bit LSB shared object, ARM aarch64"
+          elif [ "$PLATFORM" = "macos_silicon" ]; then
+            library_name="libtdjni.dylib"
+            expected_file_output="Mach-O 64-bit dynamically linked shared library arm64"
+          fi
+
+          actual="$(file "tdlib/${PLATFORM}/${library_name}")"
+          echo "$actual"
+          if [[ "$actual" != *"$expected_file_output"* ]]; then
+            echo "Expected file output to contain: $expected_file_output" >&2
+            exit 1
+          fi
+
+      - name: Upload TDLib artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.platform == 'linux_amd64' && 'tdlib-linux-amd64' || inputs.platform == 'linux_arm64' && 'tdlib-linux-arm64' || 'tdlib-macos-silicon' }}
+          path: tdlib/${{ inputs.platform }}
+          if-no-files-found: error
