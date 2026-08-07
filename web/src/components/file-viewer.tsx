@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import useFileSwitch from "@/hooks/use-file-switch";
 import FileImage from "./file-image";
 import { DotmTriangle2 } from "@/components/ui/dotm-triangle-2";
+import FileTags from "./file-tags";
 
 type FileViewerProps = {
   open: boolean;
@@ -213,14 +214,27 @@ export default function FileViewer({
                 {isPlayableVideo ? (
                   <FileVideo
                     file={file}
+                    onFileChange={onFileChange}
                     onControlsVisibilityChange={setShowVideoChrome}
                   />
                 ) : (
-                  <FileImage
-                    file={file}
-                    className="max-h-[calc(100vh-8rem)] rounded-md shadow-2xl ring-1 ring-white/10"
-                    isFullPreview
-                  />
+                  <>
+                    <FileImage
+                      file={file}
+                      className="max-h-[calc(100vh-8rem)] rounded-md shadow-2xl ring-1 ring-white/10"
+                      isFullPreview
+                    />
+                    {showPreviewChrome && (
+                      <FileTags
+                        file={file}
+                        onFileChange={onFileChange}
+                        isPreviewOverlay={true}
+                        className="fixed bottom-5 left-5 z-[120]"
+                        side="top"
+                        align="start"
+                      />
+                    )}
+                  </>
                 )}
               </motion.div>
             </AnimatePresence>

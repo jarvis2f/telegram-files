@@ -4,10 +4,12 @@
  */
 import "./src/env.js";
 
+const origins = process.env.ALLOWED_DEV_ORIGINS?.split(",") || ["127.0.0.1"];
+
 /** @type {import("next").NextConfig} */
 const config = {
   output: "export",
-  allowedDevOrigins: ["127.0.0.1"],
+  allowedDevOrigins: origins,
 };
 
 export default config;

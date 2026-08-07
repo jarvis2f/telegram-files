@@ -1,5 +1,5 @@
 import * as React from "react";
-import { type CSSProperties, useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { format } from "date-fns";
 import {
   ArrowDownNarrowWide,
@@ -25,14 +25,12 @@ import {
 import { Button } from "./ui/button";
 import {
   Drawer,
+  DrawerContent,
   DrawerDescription,
   DrawerFooter,
-  DrawerOverlay,
-  DrawerPortal,
   DrawerTitle,
   DrawerTrigger,
 } from "./ui/drawer";
-import { Drawer as DrawerPrimitive } from "vaul";
 import {
   Select,
   SelectContent,
@@ -720,220 +718,324 @@ export default function FileFilters({
     setOpen(false);
   };
 
+  const [btnPos, setBtnPos] = useLocalStorage<{ x: number; y: number } | null>(
+    "mobile_filter_btn_pos",
+    null,
+  );
+  const [isDraggingBtn, setIsDraggingBtn] = useState(false);
+  const dragRef = useRef<{
+    startX: number;
+    startY: number;
+    initialX: number;
+    initialY: number;
+    hasMoved: boolean;
+    timer: ReturnType<typeof setTimeout> | null;
+  }>({
+    startX: 0,
+    startY: 0,
+    initialX: 0,
+    initialY: 0,
+    hasMoved: false,
+    timer: null,
+  });
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (!isMobile) return;
+    const touch = e.touches[0];
+    if (!touch) return;
+
+    const rect = e.currentTarget.getBoundingClientRect();
+    const currentX = btnPos ? btnPos.x : rect.left;
+    const currentY = btnPos ? btnPos.y : rect.top;
+
+    dragRef.current = {
+      startX: touch.clientX,
+      startY: touch.clientY,
+      initialX: currentX,
+      initialY: currentY,
+      hasMoved: false,
+      timer: setTimeout(() => {
+        setIsDraggingBtn(true);
+      }, 200),
+    };
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!isMobile) return;
+    const touch = e.touches[0];
+    if (!touch) return;
+
+    const dx = touch.clientX - dragRef.current.startX;
+    const dy = touch.clientY - dragRef.current.startY;
+    const dist = Math.hypot(dx, dy);
+
+    if (dist > 10) {
+      dragRef.current.hasMoved = true;
+    }
+
+    if (isDraggingBtn) {
+      const btnSize = 44;
+      const pad = 12;
+      const maxX = window.innerWidth - btnSize - pad;
+      const maxY = window.innerHeight - btnSize - pad;
+
+      const newX = Math.min(Math.max(pad, dragRef.current.initialX + dx), maxX);
+      const newY = Math.min(Math.max(pad, dragRef.current.initialY + dy), maxY);
+
+      setBtnPos({ x: newX, y: newY });
+    }
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (dragRef.current.timer) {
+      clearTimeout(dragRef.current.timer);
+    }
+    if (dragRef.current.hasMoved || isDraggingBtn) {
+      if (e.cancelable) {
+        e.preventDefault();
+      }
+      e.stopPropagation();
+
+      const preventGhostClick = (evt: MouseEvent) => {
+        evt.preventDefault();
+        evt.stopPropagation();
+      };
+      window.addEventListener("click", preventGhostClick, {
+        capture: true,
+        once: true,
+      });
+      setTimeout(() => {
+        window.removeEventListener("click", preventGhostClick, { capture: true });
+      }, 350);
+    }
+    setTimeout(() => {
+      setIsDraggingBtn(false);
+      dragRef.current.hasMoved = false;
+    }, 300);
+  };
+
+  const handleTriggerClick = (e: React.MouseEvent) => {
+    if (dragRef.current.hasMoved || isDraggingBtn) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  };
+
   return (
     <Drawer
       open={open}
       onOpenChange={setOpen}
-      direction={isMobile ? "bottom" : "left"}
-      shouldScaleBackground={false}
+      swipeDirection={isMobile ? "down" : "left"}
       modal
     >
-      <DrawerTrigger asChild>
-        <Button
-          variant="outline"
-          className={cn(
-            "relative gap-2",
-            isMobile &&
-              "fixed bottom-[max(1rem,env(safe-area-inset-bottom))] right-4 z-40 size-11",
-          )}
-          aria-label={isMobile ? "Open filters" : undefined}
-        >
-          <Filter />
-          {!isMobile && "Filters"}
-          {filterCount > 0 && (
-            <span className="absolute left-0 top-0 -ml-1 -mt-1 flex size-6 items-center justify-center rounded-full bg-red-500 text-xs text-white">
-              {filterCount}
-            </span>
-          )}
-        </Button>
-      </DrawerTrigger>
-      <DrawerPortal>
-        <DrawerOverlay className="bg-black/30 dark:bg-black/50" />
-        <DrawerPrimitive.Content
-          className={cn(
-            isMobile
-              ? "fixed inset-x-0 bottom-0 z-50 mt-24 flex h-[min(92dvh,calc(100dvh-1rem))] max-h-[calc(100dvh-1rem)] flex-col overflow-hidden rounded-t-[10px] border bg-background"
-              : "fixed bottom-2 left-2 top-2 z-50 flex w-[380px] outline-none",
-          )}
-          style={
-            isMobile
-              ? {}
-              : ({ "--initial-transform": "calc(100% + 8px)" } as CSSProperties)
-          }
-        >
-          {isMobile && (
-            <div className="mx-auto mt-4 h-2 w-[100px] rounded-full bg-muted" />
-          )}
-          <div className="flex min-h-0 w-full grow flex-col rounded-[16px] bg-background shadow-lg">
-            <div
-              className="no-scrollbar min-h-0 flex-1 touch-pan-y overflow-y-auto overscroll-contain p-6"
-              data-vaul-no-drag={isMobile ? "true" : undefined}
-            >
-              <DrawerTitle>
-                <div className="flex items-center justify-between">
-                  <span className="text-xl font-semibold text-zinc-900 dark:text-zinc-100">
-                    Filters
-                  </span>
-                  {!noAccountSpecified && (
-                    <div className="flex items-center space-x-2">
-                      <Label
-                        htmlFor="offline"
-                        className="cursor-pointer text-zinc-500"
-                      >
-                        Offline
-                      </Label>
-                      <Switch
-                        id="offline"
-                        checked={localFilters.offline}
-                        onCheckedChange={(checked) => {
-                          setLocalFilters((prev) => ({
-                            ...prev,
-                            offline: checked,
-                          }));
-                        }}
-                      />
-                    </div>
-                  )}
-                  {noAccountSpecified && (
-                    <div className="flex items-center space-x-2">
-                      <Label
-                        htmlFor="seedOnly"
-                        className="cursor-pointer text-zinc-500"
-                      >
-                        Seed only
-                      </Label>
-                      <Switch
-                        id="seedOnly"
-                        checked={localFilters.seedOnly}
-                        onCheckedChange={(checked) => {
-                          setLocalFilters((prev) => ({
-                            ...prev,
-                            seedOnly: checked,
-                            type: checked ? "all" : prev.type,
-                          }));
-                        }}
-                      />
-                    </div>
-                  )}
+      <DrawerTrigger
+        render={
+          <Button
+            variant="outline"
+            className={cn(
+              "relative gap-2 touch-none select-none",
+              isMobile
+                ? cn(
+                    "fixed z-40 size-11 rounded-full shadow-lg transition-transform active:scale-95",
+                    isDraggingBtn && "scale-110 shadow-2xl ring-4 ring-primary/40",
+                    !btnPos &&
+                      "bottom-[max(1rem,env(safe-area-inset-bottom))] right-4",
+                  )
+                : "",
+            )}
+            style={
+              isMobile && btnPos
+                ? {
+                    left: `${btnPos.x}px`,
+                    top: `${btnPos.y}px`,
+                    position: "fixed",
+                  }
+                : undefined
+            }
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+            onClick={handleTriggerClick}
+            aria-label={isMobile ? "Open filters" : undefined}
+          >
+            <Filter />
+            {!isMobile && "Filters"}
+            {filterCount > 0 && (
+              <span className="absolute left-0 top-0 -ml-1 -mt-1 flex size-6 items-center justify-center rounded-full bg-red-500 text-xs text-white">
+                {filterCount}
+              </span>
+            )}
+          </Button>
+        }
+      />
+      <DrawerContent
+        className={cn(
+          isMobile
+            ? "h-[min(92dvh,calc(100dvh-1rem))] max-h-[calc(100dvh-1rem)]"
+            : "w-[380px]",
+        )}
+      >
+        <div className="no-scrollbar min-h-0 flex-1 touch-pan-y overflow-y-auto overscroll-contain p-6">
+          <DrawerTitle>
+            <div className="flex items-center justify-between">
+              <span className="text-xl font-semibold text-zinc-900 dark:text-zinc-100">
+                Filters
+              </span>
+              {!noAccountSpecified && (
+                <div className="flex items-center space-x-2">
+                  <Label
+                    htmlFor="offline"
+                    className="cursor-pointer text-zinc-500"
+                  >
+                    Offline
+                  </Label>
+                  <Switch
+                    id="offline"
+                    checked={localFilters.offline}
+                    onCheckedChange={(checked) => {
+                      setLocalFilters((prev) => ({
+                        ...prev,
+                        offline: checked,
+                      }));
+                    }}
+                  />
                 </div>
-              </DrawerTitle>
-              <DrawerDescription className="mb-3">
-                Default search by Telegram Client, you can choose offline to
-                search by local database.
-              </DrawerDescription>
-
-              <div className="space-y-4 p-0.5">
-                {isMobile && showMobileLayoutToggle && (
-                  <div className="rounded-xl border bg-card p-3 shadow-sm">
-                    <div className="mb-2 flex items-center justify-between gap-3">
-                      <div>
-                        <Label className="text-sm font-semibold">Layout</Label>
-                        <p className="text-xs text-muted-foreground">
-                          Switch how files are shown in the list.
-                        </p>
-                      </div>
-                      <Toggle
-                        className="h-10 shrink-0 gap-2 border px-3"
-                        pressed={layout === "gallery"}
-                        onPressedChange={(pressed) => {
-                          setLayout(pressed ? "gallery" : "detailed");
-                        }}
-                        aria-label="Toggle file list layout"
-                      >
-                        {layout === "detailed" ? (
-                          <>
-                            <List className="h-4 w-4" />
-                            <span className="text-xs font-medium">Detailed</span>
-                          </>
-                        ) : (
-                          <>
-                            <GalleryHorizontal className="h-4 w-4" />
-                            <span className="text-xs font-medium">Gallery</span>
-                          </>
-                        )}
-                      </Toggle>
-                    </div>
-                  </div>
-                )}
-
-                <SearchFilter
-                  search={localFilters.search}
-                  onChange={handleSearchChange}
-                />
-
-                <FileTypeFilter
-                  offline={localFilters.offline}
-                  telegramId={telegramId}
-                  chatId={chatId}
-                  type={filters.type}
-                  seedOnly={localFilters.seedOnly}
-                  onChange={handleTypeChange}
-                />
-
-                {!localFilters.offline && (
-                  <div className="flex items-center justify-between rounded-md border bg-gray-100/50 px-2 py-3 dark:bg-gray-600/50">
-                    <Label htmlFor="notDownload">Filter Not Download</Label>
-                    <Switch
-                      id="notDownload"
-                      checked={localFilters.downloadStatus === "idle"}
-                      onCheckedChange={(checked) => {
-                        setLocalFilters((prev) => ({
-                          ...prev,
-                          downloadStatus: checked ? "idle" : undefined,
-                        }));
-                      }}
-                      aria-label="Not Download"
-                    />
-                  </div>
-                )}
-
-                {localFilters.offline && (
-                  <>
-                    <FileStatusFilter
-                      downloadStatus={localFilters.downloadStatus}
-                      transferStatus={localFilters.transferStatus}
-                      onChange={handleStatusChange}
-                    />
-
-                    <TagsFilter
-                      tags={localFilters.tags}
-                      onChange={handleTagsChange}
-                    />
-
-                    <DateFilter
-                      dateType={localFilters.dateType}
-                      dateRange={localFilters.dateRange}
-                      onChange={handleDateChange}
-                    />
-
-                    <SizeFilter
-                      sizeRange={localFilters.sizeRange}
-                      sizeUnit={localFilters.sizeUnit}
-                      onChange={handleSizeChange}
-                    />
-
-                    <SortFilter
-                      sort={localFilters.sort}
-                      order={localFilters.order}
-                      onChange={handleSortChange}
-                    />
-                  </>
-                )}
-              </div>
+              )}
+              {noAccountSpecified && (
+                <div className="flex items-center space-x-2">
+                  <Label
+                    htmlFor="seedOnly"
+                    className="cursor-pointer text-zinc-500"
+                  >
+                    Seed only
+                  </Label>
+                  <Switch
+                    id="seedOnly"
+                    checked={localFilters.seedOnly}
+                    onCheckedChange={(checked) => {
+                      setLocalFilters((prev) => ({
+                        ...prev,
+                        seedOnly: checked,
+                        type: checked ? "all" : prev.type,
+                      }));
+                    }}
+                  />
+                </div>
+              )}
             </div>
+          </DrawerTitle>
+          <DrawerDescription className="mb-3">
+            Default search by Telegram Client, you can choose offline to
+            search by local database.
+          </DrawerDescription>
 
-            <DrawerFooter
-              className="shrink-0 border-t bg-background pb-[max(1rem,env(safe-area-inset-bottom))]"
-              data-vaul-no-drag={isMobile ? "true" : undefined}
-            >
-              <Button onClick={handleApply}>Apply Filters</Button>
-              <Button variant="outline" onClick={handleClear}>
-                Clear Filters
-              </Button>
-            </DrawerFooter>
+          <div className="space-y-4 p-0.5">
+            {isMobile && showMobileLayoutToggle && (
+              <div className="rounded-xl border bg-card p-3 shadow-sm">
+                <div className="mb-2 flex items-center justify-between gap-3">
+                  <div>
+                    <Label className="text-sm font-semibold">Layout</Label>
+                    <p className="text-xs text-muted-foreground">
+                      Switch how files are shown in the list.
+                    </p>
+                  </div>
+                  <Toggle
+                    className="h-10 shrink-0 gap-2 border px-3"
+                    pressed={layout === "gallery"}
+                    onPressedChange={(pressed) => {
+                      setLayout(pressed ? "gallery" : "detailed");
+                    }}
+                    aria-label="Toggle file list layout"
+                  >
+                    {layout === "detailed" ? (
+                      <>
+                        <List className="h-4 w-4" />
+                        <span className="text-xs font-medium">Detailed</span>
+                      </>
+                    ) : (
+                      <>
+                        <GalleryHorizontal className="h-4 w-4" />
+                        <span className="text-xs font-medium">Gallery</span>
+                      </>
+                    )}
+                  </Toggle>
+                </div>
+              </div>
+            )}
+
+            <SearchFilter
+              search={localFilters.search}
+              onChange={handleSearchChange}
+            />
+
+            <FileTypeFilter
+              offline={localFilters.offline}
+              telegramId={telegramId}
+              chatId={chatId}
+              type={filters.type}
+              seedOnly={localFilters.seedOnly}
+              onChange={handleTypeChange}
+            />
+
+            {!localFilters.offline && (
+              <div className="flex items-center justify-between rounded-md border bg-gray-100/50 px-2 py-3 dark:bg-gray-600/50">
+                <Label htmlFor="notDownload">Filter Not Download</Label>
+                <Switch
+                  id="notDownload"
+                  checked={localFilters.downloadStatus === "idle"}
+                  onCheckedChange={(checked) => {
+                    setLocalFilters((prev) => ({
+                      ...prev,
+                      downloadStatus: checked ? "idle" : undefined,
+                    }));
+                  }}
+                  aria-label="Not Download"
+                />
+              </div>
+            )}
+
+            {localFilters.offline && (
+              <>
+                <FileStatusFilter
+                  downloadStatus={localFilters.downloadStatus}
+                  transferStatus={localFilters.transferStatus}
+                  onChange={handleStatusChange}
+                />
+
+                <TagsFilter
+                  tags={localFilters.tags}
+                  onChange={handleTagsChange}
+                />
+
+                <DateFilter
+                  dateType={localFilters.dateType}
+                  dateRange={localFilters.dateRange}
+                  onChange={handleDateChange}
+                />
+
+                <SizeFilter
+                  sizeRange={localFilters.sizeRange}
+                  sizeUnit={localFilters.sizeUnit}
+                  onChange={handleSizeChange}
+                />
+
+                <SortFilter
+                  sort={localFilters.sort}
+                  order={localFilters.order}
+                  onChange={handleSortChange}
+                />
+              </>
+            )}
           </div>
-        </DrawerPrimitive.Content>
-      </DrawerPortal>
+        </div>
+
+        <DrawerFooter className="shrink-0 border-t bg-background pb-[max(1rem,env(safe-area-inset-bottom))]">
+          <Button onClick={handleApply}>Apply Filters</Button>
+          <Button variant="outline" onClick={handleClear}>
+            Clear Filters
+          </Button>
+        </DrawerFooter>
+      </DrawerContent>
     </Drawer>
   );
 }

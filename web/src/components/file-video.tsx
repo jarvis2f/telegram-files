@@ -20,8 +20,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { cn } from "@/lib/utils";
 import useIsMobile from "@/hooks/use-is-mobile";
 import * as SliderPrimitive from "@radix-ui/react-slider";
-import { SafeBottomWrapper } from "@/components/safe-bottom-wrapper";
 import prettyBytes from "pretty-bytes";
+import { MobilePreviewTagOverlay } from "@/components/mobile/mobile-preview-tag-overlay";
 
 // 检测浏览器是否支持特定视频格式
 const checkVideoSupport = (mimeType: string): "probably" | "maybe" | "" => {
@@ -333,7 +333,7 @@ const MobileControls = ({
   };
 
   return (
-    <div className="space-y-2" onClick={(e) => e.stopPropagation()}>
+    <div className="pb-safe" onClick={(e) => e.stopPropagation()}>
       <div className="flex items-center justify-between px-4">
         <span className="rounded-full bg-white/10 px-2.5 py-1 text-xs font-medium text-white">
           {formatTime(currentTime)}
@@ -400,12 +400,14 @@ const FileVideo = ({
   onTimeUpdate,
   onVolumeChange,
   onControlsVisibilityChange,
+  onFileChange,
   className,
 }: {
   file: TelegramFile;
   onTimeUpdate?: (time: number) => void;
   onVolumeChange?: (volume: number) => void;
   onControlsVisibilityChange?: (visible: boolean) => void;
+  onFileChange?: (file: TelegramFile) => void;
   className?: string;
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -885,6 +887,11 @@ const FileVideo = ({
       <AnimatePresence>
         {showControls && (
           <>
+            <MobilePreviewTagOverlay
+              file={file}
+              onFileChange={onFileChange}
+              bottomOffset={isMobile ? "bottom-44" : "bottom-24"}
+            />
             {showLoadingSpeed && (
               <motion.div
                 initial={{ opacity: 0, y: -10 }}
@@ -911,21 +918,19 @@ const FileVideo = ({
               exit={{ opacity: 0, y: 20 }}
               className={cn(
                 "absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 via-black/55 to-transparent p-4 pt-14",
-                isMobile && "bg-black/40 pt-6",
+                isMobile && "bg-black/40 pt-3",
               )}
             >
               {isMobile ? (
-                <SafeBottomWrapper>
-                  <MobileControls
-                    isPlaying={isPlaying}
-                    currentTime={currentTime}
-                    duration={duration}
-                    onPlayPause={togglePlay}
-                    onSeek={handleSeek}
-                    onSkipForward={handleSkipForward}
-                    onSkipBackward={handleSkipBackward}
-                  />
-                </SafeBottomWrapper>
+                <MobileControls
+                  isPlaying={isPlaying}
+                  currentTime={currentTime}
+                  duration={duration}
+                  onPlayPause={togglePlay}
+                  onSeek={handleSeek}
+                  onSkipForward={handleSkipForward}
+                  onSkipBackward={handleSkipBackward}
+                />
               ) : (
                 <DesktopControls
                   isPlaying={isPlaying}

@@ -40,6 +40,10 @@ export default async function RootLayout({
           href="/apple-touch-icon.png"
         />
         <meta name="apple-mobile-web-app-title" content="TeleFiles" />
+        <meta
+          name="viewport"
+          content="width=device-width, initial-scale=1, viewport-fit=cover"
+        />
         <link rel="manifest" href="/site.webmanifest" />
       </head>
       <body className="font-sans">
@@ -60,7 +64,9 @@ export default async function RootLayout({
                 <SWRProvider>
                   <WebSocketProvider>
                     <SettingsProvider>
-                      <TelegramAccountProvider>{children}</TelegramAccountProvider>
+                      <TelegramAccountProvider>
+                        {children}
+                      </TelegramAccountProvider>
                     </SettingsProvider>
                   </WebSocketProvider>
                 </SWRProvider>

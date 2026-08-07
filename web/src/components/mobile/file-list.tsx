@@ -9,7 +9,6 @@ import { isEqual } from "lodash";
 import FileFilters from "@/components/file-filters";
 import { useLocalStorage } from "@/hooks/use-local-storage";
 import FileNotFount from "@/components/file-not-found";
-import { MobileFileTagsDrawer } from "@/components/file-tags";
 import { DotmTriangle2 } from "@/components/ui/dotm-triangle-2";
 
 interface FileListProps {
@@ -23,12 +22,8 @@ export default function FileList({ accountId, chatId, link }: FileListProps) {
   const [currentViewFile, setCurrentViewFile] = useState<
     TelegramFile | undefined
   >();
-  const [currentTagsFile, setCurrentTagsFile] = useState<
-    TelegramFile | undefined
-  >();
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [openDrawerInViewer, setOpenDrawerInViewer] = useState(false);
-  const [isTagsDrawerOpen, setIsTagsDrawerOpen] = useState(false);
   const [layout] = useLocalStorage<"detailed" | "gallery">(
     "telegramFileLayout",
     "detailed",
@@ -103,7 +98,9 @@ export default function FileList({ accountId, chatId, link }: FileListProps) {
     if (files.length === 0 || !currentViewFile) {
       return;
     }
-    const index = files.findIndex((f) => f.id === currentViewFile.id);
+    const index = files.findIndex(
+      (f) => f.id === currentViewFile.id || f.uniqueId === currentViewFile.uniqueId,
+    );
     if (index === -1) {
       // 只有在drawer关闭时才清除currentViewFile，避免下载完成时意外关闭
       if (!isDrawerOpen) {
@@ -142,25 +139,12 @@ export default function FileList({ accountId, chatId, link }: FileListProps) {
             }
           }}
           file={currentViewFile}
-          onFileChange={setCurrentViewFile}
-          onFileTagsClick={(file) => {
-            setCurrentTagsFile(file);
-            setIsTagsDrawerOpen(true);
+          onFileChange={(newFile) => {
+            setCurrentViewFile(newFile);
+            void updateField(newFile.uniqueId, { tags: newFile.tags });
           }}
           initialViewing={openDrawerInViewer}
           {...useFilesProps}
-        />
-      )}
-      {currentTagsFile && (
-        <MobileFileTagsDrawer
-          file={currentTagsFile}
-          onTagsUpdate={(tags) => {
-            void updateField(currentTagsFile.uniqueId, {
-              tags: tags.join(","),
-            });
-          }}
-          open={isTagsDrawerOpen}
-          onOpenChange={setIsTagsDrawerOpen}
         />
       )}
       <div
@@ -232,9 +216,8 @@ export default function FileList({ accountId, chatId, link }: FileListProps) {
                   setCurrentViewFile(file);
                   setIsDrawerOpen(true);
                 }}
-                onFileTagsClick={() => {
-                  setCurrentTagsFile(file);
-                  setIsTagsDrawerOpen(true);
+                onFileChange={(updatedFile) => {
+                  void updateField(updatedFile.uniqueId, { tags: updatedFile.tags });
                 }}
                 layout={layout}
                 {...useFilesProps}

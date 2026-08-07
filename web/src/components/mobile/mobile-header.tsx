@@ -13,18 +13,15 @@ import { useWebsocket } from "@/hooks/use-websocket";
 import { useTelegramAccount } from "@/hooks/use-telegram-account";
 import prettyBytes from "pretty-bytes";
 import Link from "next/link";
-import { Drawer as DrawerPrimitive } from "vaul";
 import { PlatformTelegramIcon } from "@/components/platform-telegram-icon";
 import { Button } from "@/components/ui/button";
 import {
   Drawer,
-  DrawerOverlay,
-  DrawerPortal,
+  DrawerContent,
   DrawerTitle,
   DrawerTrigger,
 } from "@/components/ui/drawer";
 import React, {
-  type CSSProperties,
   useCallback,
   useEffect,
   useRef,
@@ -59,8 +56,8 @@ export function MobileHeader() {
     () =>
       document.querySelector(
         [
-          "[data-vaul-drawer][data-state='open']",
           "[role='dialog'][data-state='open']",
+          "[data-popup-open]",
           "[data-radix-popper-content-wrapper]",
         ].join(","),
       ) !== null,
@@ -174,98 +171,78 @@ function MenuDrawer() {
   );
 
   return (
-    <Drawer
-      direction="left"
-      shouldScaleBackground={true}
-      preventScrollRestoration={true}
-    >
-      <DrawerTrigger asChild>
-        <Button size="xs" variant="ghost">
-          <Ellipsis className="h-4 w-4" />
-        </Button>
-      </DrawerTrigger>
-      <DrawerPortal>
-        <DrawerOverlay className="bg-black/30 dark:bg-black/50" />
-        <DrawerPrimitive.Content
-          className={cn(
-            "fixed bottom-2 left-2 top-2 z-50 flex w-4/5 outline-none",
-          )}
-          style={{ "--initial-transform": "calc(100% + 8px)" } as CSSProperties}
-          aria-describedby={undefined}
-        >
-          <div className="flex h-full w-full grow flex-col rounded-[16px] bg-white p-4 shadow-lg dark:bg-zinc-900">
-            <DrawerTitle className="mb-6 text-center">
-              Telegram Files Manager
-            </DrawerTitle>
-            <div className="flex h-full flex-col justify-between">
-              <div className="flex flex-1 flex-col gap-4">
-                <AccountSelect {...useTelegramAccountProps} />
-                <ChatSelect disabled={!useTelegramAccountProps.accountId} />
-              </div>
-              <div className="flex flex-col gap-4">
-                <div className="flex flex-col">
-                  <Label className="text-xs font-semibold text-muted-foreground">
-                    Auto Download
-                  </Label>
-                  <div className="py-2">
-                    {chat ? (
-                      <AutomationDialog />
-                    ) : (
-                      <Button
-                        variant="outline"
-                        className="w-full"
-                        disabled={true}
-                      >
-                        No chat selected
-                      </Button>
-                    )}
-                  </div>
-                </div>
-                <div className="flex flex-col">
-                  <Label className="text-xs font-semibold text-muted-foreground">
-                    Layout
-                  </Label>
-                  <div className="py-2">
-                    <Toggle
-                      className="w-full border"
-                      pressed={layout === "gallery"}
-                      onPressedChange={(pressed) => {
-                        setLayout(pressed ? "gallery" : "detailed");
-                      }}
+    <Drawer swipeDirection="left">
+      <DrawerTrigger
+        render={
+          <Button size="xs" variant="ghost">
+            <Ellipsis className="h-4 w-4" />
+          </Button>
+        }
+      />
+      <DrawerContent className="w-4/5">
+        <div className="flex h-full w-full grow flex-col rounded-[16px] bg-white p-4 shadow-lg dark:bg-zinc-900">
+          <DrawerTitle className="mb-6 text-center">
+            Telegram Files Manager
+          </DrawerTitle>
+          <div className="flex h-full flex-col justify-between">
+            <div className="flex flex-1 flex-col gap-4">
+              <AccountSelect {...useTelegramAccountProps} />
+              <ChatSelect disabled={!useTelegramAccountProps.accountId} />
+            </div>
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-col">
+                <Label className="text-xs font-semibold text-muted-foreground">
+                  Auto Download
+                </Label>
+                <div className="py-2">
+                  {chat ? (
+                    <AutomationDialog />
+                  ) : (
+                    <Button
+                      variant="outline"
+                      className="w-full"
+                      disabled={true}
                     >
-                      {layout === "detailed" ? (
-                        <>
-                          <List className="h-4 w-4" />
-                          <span className="">Detailed Layout</span>
-                        </>
-                      ) : (
-                        <>
-                          <GalleryHorizontal className="h-4 w-4" />
-                          <span className="">Gallery Layout</span>
-                        </>
-                      )}
-                    </Toggle>
-                  </div>
+                      No chat selected
+                    </Button>
+                  )}
                 </div>
               </div>
-              <div className="flex items-center justify-between gap-2 py-4">
-                <div className="flex flex-wrap items-center gap-2">
+              <div className="flex flex-col">
+                <Label className="text-xs font-semibold text-muted-foreground">
+                  Layout
+                </Label>
+                <div className="py-2">
+                  <Toggle
+                    className="w-full h-10 border data-[state=on]:bg-transparent data-[state=on]:hover:bg-muted"
+                    pressed={layout === "gallery"}
+                    onPressedChange={(pressed) => {
+                      setLayout(pressed ? "gallery" : "detailed");
+                    }}
+                  >
+                    {layout === "detailed" ? (
+                      <>
+                        <List className="h-4 w-4" />
+                        <span className="">Detailed Layout</span>
+                      </>
+                    ) : (
+                      <>
+                        <GalleryHorizontal className="h-4 w-4" />
+                        <span className="">Gallery Layout</span>
+                      </>
+                    )}
+                  </Toggle>
+                </div>
+              </div>
+
+              <div className="flex justify-between">
+                <div className="flex items-center gap-2">
                   <Badge
                     variant={
                       connectionStatus === "Open" ? "default" : "secondary"
                     }
-                    className={
-                      connectionStatus !== "Open" ? "cursor-pointer" : undefined
-                    }
-                    role={connectionStatus !== "Open" ? "button" : undefined}
-                    tabIndex={connectionStatus !== "Open" ? 0 : undefined}
-                    aria-label={
-                      connectionStatus !== "Open"
-                        ? "Reconnect live updates"
-                        : undefined
-                    }
                     onClick={
-                      connectionStatus !== "Open" ? reconnect : undefined
+                      connectionStatus !== "connected" ? reconnect : undefined
                     }
                     onKeyDown={
                       connectionStatus !== "Open"
@@ -290,7 +267,7 @@ function MenuDrawer() {
                     telegramConnectionState !== "ready" && (
                       <Badge variant="secondary">
                         <UnplugIcon className="mr-1 h-4 w-4" />
-                        Telegram: {telegramConnectionState}
+                        {telegramConnectionState}
                       </Badge>
                     )}
                 </div>
@@ -300,8 +277,8 @@ function MenuDrawer() {
               </div>
             </div>
           </div>
-        </DrawerPrimitive.Content>
-      </DrawerPortal>
+        </div>
+      </DrawerContent>
     </Drawer>
   );
 }

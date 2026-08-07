@@ -1,118 +1,73 @@
 "use client";
 
 import * as React from "react";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { motion } from "framer-motion";
-import { X } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Check, Plus } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 type TagsSelectorProps = {
   value: string[];
   onChangeAction?: (tags: string[]) => void;
   tags: string[];
+  className?: string;
 };
 
 export function TagsSelector({
   value = [],
   onChangeAction,
-  tags,
+  tags = [],
+  className,
 }: TagsSelectorProps) {
   const [selectedTags, setSelectedTags] = useState<string[]>(value);
-  const selectedsContainerRef = useRef<HTMLDivElement>(null);
-
-  const removeSelectedTag = (tag: string) => {
-    const newTags = selectedTags.filter((t) => tag !== t);
-    setSelectedTags(newTags);
-    onChangeAction?.(newTags);
-  };
-
-  const addSelectedTag = (tag: string) => {
-    const newTags = [...selectedTags, tag];
-    setSelectedTags(newTags);
-    onChangeAction?.(newTags);
-  };
-
-  const optionalTags = useMemo(() => {
-    return tags.filter(
-      (tag) => !selectedTags.some((selected) => selected === tag),
-    );
-  }, [selectedTags, tags]);
-
-  useEffect(() => {
-    if (selectedsContainerRef.current) {
-      selectedsContainerRef.current.scrollTo({
-        left: selectedsContainerRef.current.scrollWidth,
-        behavior: "smooth",
-      });
-    }
-  }, [selectedTags]);
 
   useEffect(() => {
     setSelectedTags(value);
   }, [value]);
 
+  const toggleTag = (tag: string) => {
+    let nextTags: string[];
+    if (selectedTags.includes(tag)) {
+      nextTags = selectedTags.filter((t) => t !== tag);
+    } else {
+      nextTags = [...selectedTags, tag];
+    }
+    setSelectedTags(nextTags);
+    onChangeAction?.(nextTags);
+  };
+
+  if (tags.length === 0) {
+    return (
+      <div className="py-2 text-center text-xs text-muted-foreground">
+        暂无可选标签
+      </div>
+    );
+  }
+
   return (
-    <div className="flex w-full max-w-lg flex-col">
-      <span className="mb-2 border-b py-1 text-xs text-gray-700 dark:text-gray-200">
-        Selected Tags
-      </span>
-      <motion.div
-        className="no-scrollbar mb-3 flex max-h-32 w-full flex-wrap items-center justify-start gap-3 overflow-auto p-1 md:gap-1.5"
-        ref={selectedsContainerRef}
-        layout
-      >
-        {selectedTags.length === 0 && (
-          <motion.div
-            className="flex w-full items-center justify-center rounded-md bg-gray-100 p-2 text-sm text-gray-500 dark:bg-gray-700"
-            layoutId="empty-tag"
-          >
-            No tags selected
-          </motion.div>
-        )}
-        {selectedTags.map((tag) => (
-          <motion.div
+    <div className={cn("flex flex-wrap gap-1.5 py-1", className)}>
+      {tags.map((tag) => {
+        const isSelected = selectedTags.includes(tag);
+        return (
+          <button
             key={tag}
-            className="flex shrink-0 items-center gap-1 rounded-md bg-white p-1 shadow dark:bg-gray-800"
-            layoutId={`tag-${tag}`}
+            type="button"
+            onClick={() => toggleTag(tag)}
+            className={cn(
+              "flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-medium transition active:scale-95",
+              isSelected
+                ? "bg-primary text-primary-foreground font-semibold shadow"
+                : "bg-muted text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+            )}
           >
-            <motion.span
-              layoutId={`tag-${tag}-label`}
-              className="text-xs text-gray-700 dark:text-gray-200"
-            >
-              {tag}
-            </motion.span>
-            <button
-              onClick={() => removeSelectedTag(tag)}
-              className="rounded-full p-1"
-            >
-              <X className="size-3 text-gray-500" />
-            </button>
-          </motion.div>
-        ))}
-      </motion.div>
-      <span className="mb-2 border-b py-1 text-xs text-gray-700 dark:text-gray-200">
-        Optional Tags
-      </span>
-      {optionalTags.length > 0 && (
-        <motion.div className="w-full p-1" layout>
-          <motion.div className="flex max-h-32 flex-wrap gap-3 overflow-auto md:gap-1.5">
-            {optionalTags.map((tag) => (
-              <motion.button
-                key={tag}
-                layoutId={`tag-${tag}`}
-                className="flex shrink-0 items-center gap-1 rounded-lg bg-gray-100 px-2 py-1 dark:bg-gray-700"
-                onClick={() => addSelectedTag(tag)}
-              >
-                <motion.span
-                  layoutId={`tag-${tag}-label`}
-                  className="text-xs text-gray-700 dark:text-gray-200"
-                >
-                  {tag}
-                </motion.span>
-              </motion.button>
-            ))}
-          </motion.div>
-        </motion.div>
-      )}
+            {isSelected ? (
+              <Check className="h-3 w-3" />
+            ) : (
+              <Plus className="h-3 w-3 opacity-60" />
+            )}
+            <span>{tag}</span>
+          </button>
+        );
+      })}
     </div>
   );
 }

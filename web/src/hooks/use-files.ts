@@ -64,6 +64,7 @@ export function useFiles(
         shareAccessScope?: TelegramFile["shareAccessScope"];
         sharePublicMessageUrl?: string | null;
         shareErrorCode?: string;
+        tags?: string;
         removed?: boolean;
       }
     >
@@ -262,6 +263,7 @@ export function useFiles(
         const merged = {
           ...file,
           id: latestFilesStatus[file.uniqueId]?.fileId ?? file.id,
+          tags: latestFilesStatus[file.uniqueId]?.tags ?? file.tags,
           downloadStatus:
             latestFilesStatus[file.uniqueId]?.downloadStatus ??
             file.downloadStatus,
@@ -465,6 +467,7 @@ export function useFiles(
             patch.shareErrorCode ??
             existing?.shareErrorCode ??
             currentFile?.shareErrorCode,
+          tags: patch.tags ?? existing?.tags ?? currentFile?.tags,
         },
       };
     });

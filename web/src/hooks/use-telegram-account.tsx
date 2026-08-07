@@ -34,7 +34,6 @@ export const TelegramAccountProvider: React.FC<
     isValidating,
   } = useSWR<TelegramAccount[]>(`/telegrams`);
   const router = useRouter();
-  const { toast } = useToast();
   const searchParams = useSearchParams();
   const routerAccountId = searchParams.get("id") ?? undefined;
   const [accountId, setAccountId] = useState<string | undefined>(
@@ -72,11 +71,6 @@ export const TelegramAccountProvider: React.FC<
     if (!account) return;
     setAccountId(newAccountId);
     if (account.status === "active") {
-      toast({
-        variant: "info",
-        title: "Account Changed",
-        description: `Switched to ${accounts?.find((a) => a.id === newAccountId)?.name}'s account`,
-      });
       router.push(`/accounts?id=${newAccountId}`);
     }
   };

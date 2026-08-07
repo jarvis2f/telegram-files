@@ -23,6 +23,7 @@ import FileNotFount from "@/components/file-not-found";
 import FileRow from "@/components/file-row";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { type TelegramFile } from "@/lib/types";
+import { isEqual } from "lodash";
 import FileViewer from "@/components/file-viewer";
 import FileFilters from "./file-filters";
 import { Badge } from "@/components/ui/badge";
@@ -210,13 +211,15 @@ export function FileTable({
     if (files.length === 0 || !currentViewFile) {
       return;
     }
-    const index = files.findIndex((f) => f.id === currentViewFile.id);
+    const index = files.findIndex(
+      (f) => f.id === currentViewFile.id || f.uniqueId === currentViewFile.uniqueId,
+    );
     if (index === -1) {
       setCurrentViewFile(undefined);
       return;
     }
     const file = files[index]!;
-    if (currentViewFile.next === undefined && file.next !== undefined) {
+    if (!isEqual(file, currentViewFile)) {
       setCurrentViewFile(file);
     }
   }, [currentViewFile, files]);
@@ -318,7 +321,10 @@ export function FileTable({
           open={viewerOpen}
           onOpenChange={setViewerOpen}
           file={currentViewFile}
-          onFileChange={setCurrentViewFile}
+          onFileChange={(newFile) => {
+            setCurrentViewFile(newFile);
+            void updateField(newFile.uniqueId, { tags: newFile.tags });
+          }}
           {...useFilesProps}
         />
       )}

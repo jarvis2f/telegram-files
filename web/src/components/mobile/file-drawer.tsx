@@ -10,13 +10,13 @@ import { type useFiles } from "@/hooks/use-files";
 import useFileSwitch from "@/hooks/use-file-switch";
 import FileImage from "../file-image";
 import { DotmTriangle2 } from "@/components/ui/dotm-triangle-2";
+import { MobilePreviewTagOverlay } from "./mobile-preview-tag-overlay";
 
 type FileDrawerProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   file: TelegramFile;
   onFileChange: (file: TelegramFile) => void;
-  onFileTagsClick: (file: TelegramFile) => void;
   initialViewing?: boolean;
 } & ReturnType<typeof useFiles>;
 
@@ -25,7 +25,6 @@ export default function FileDrawer({
   onOpenChange,
   file,
   onFileChange,
-  onFileTagsClick,
   initialViewing = false,
   hasMore,
   handleLoadMore,
@@ -105,16 +104,22 @@ export default function FileDrawer({
     enter: (direction: number) => ({
       x: direction > 0 ? 500 : -500,
       opacity: 0,
+      position: "relative" as const,
     }),
     center: {
       zIndex: 1,
       x: 0,
       opacity: 1,
+      position: "relative" as const,
     },
     exit: (direction: number) => ({
       zIndex: 0,
       x: direction < 0 ? 500 : -500,
       opacity: 0,
+      position: "absolute" as const,
+      top: 0,
+      left: 0,
+      width: "100%",
     }),
   };
 
@@ -134,7 +139,6 @@ export default function FileDrawer({
         }
         onOpenChange(open);
       }}
-      handleOnly={viewing}
     >
       <DrawerContent
         data-fileid={file.id}
@@ -142,7 +146,8 @@ export default function FileDrawer({
         data-next={file.next?.id}
         className={cn(
           "focus:outline-none",
-          viewing && "rounded-none border-none",
+          viewing &&
+            "!inset-0 !m-0 !h-dvh !max-h-dvh !w-screen !max-w-full !rounded-none !border-none bg-black [--drawer-inset:0px] [--drawer-content-height:100dvh] [--drawer-content-max-height:100dvh]",
         )}
         aria-describedby={undefined}
       >
@@ -162,41 +167,62 @@ export default function FileDrawer({
             />
           </div>
         )}
-        <AnimatePresence initial={false} custom={direction} mode="popLayout">
-          <motion.div
-            key={`${file.id}-${file.uniqueId}`}
-            custom={direction}
-            variants={slideVariants}
-            initial="enter"
-            animate="center"
-            exit="exit"
-            transition={{
-              x: { type: "spring", stiffness: 300, damping: 30 },
-              opacity: { duration: 0.2 },
-            }}
-            style={{
-              maxWidth: "100vw",
-              maxHeight: "100vh",
-            }}
-          >
-            {viewing ? (
-              <div className="relative flex min-h-screen items-center justify-center">
-                {file.type === "video" &&
-                file.downloadStatus === "completed" ? (
-                  <FileVideo file={file} />
-                ) : (
-                  <FileImage file={file} className="h-full" isFullPreview />
-                )}
-              </div>
-            ) : (
-              <FileInfo
-                onView={() => setViewing(true)}
-                file={file}
-                onFileTagsClick={onFileTagsClick}
-              />
-            )}
-          </motion.div>
-        </AnimatePresence>
+        <div
+          className={cn(
+            "grid grid-cols-1 grid-rows-1 flex-1 min-h-0 w-full overflow-hidden",
+            viewing && "h-dvh w-screen",
+          )}
+        >
+          <AnimatePresence initial={false} custom={direction}>
+            <motion.div
+              key={`${file.id}-${file.uniqueId}`}
+              custom={direction}
+              variants={slideVariants}
+              initial="enter"
+              animate="center"
+              exit="exit"
+              transition={{
+                x: { type: "spring", stiffness: 350, damping: 32 },
+                opacity: { duration: 0.2 },
+              }}
+              className={cn(
+                "col-start-1 row-start-1 flex flex-col min-h-0 w-full overflow-hidden",
+                viewing ? "h-dvh w-screen" : "h-full",
+              )}
+              style={{
+                maxWidth: "100vw",
+                maxHeight: "100vh",
+              }}
+            >
+              {viewing ? (
+                <div className="relative flex h-dvh w-screen items-center justify-center bg-black">
+                  {file.type === "video" &&
+                  file.downloadStatus === "completed" ? (
+                    <FileVideo
+                      file={file}
+                      onFileChange={onFileChange}
+                    />
+                  ) : (
+                    <>
+                      <FileImage file={file} className="h-full" isFullPreview />
+                      <MobilePreviewTagOverlay
+                        file={file}
+                        onFileChange={onFileChange}
+                        bottomOffset="bottom-12"
+                      />
+                    </>
+                  )}
+                </div>
+              ) : (
+                <FileInfo
+                  onView={() => setViewing(true)}
+                  file={file}
+                  onFileChange={onFileChange}
+                />
+              )}
+            </motion.div>
+          </AnimatePresence>
+        </div>
       </DrawerContent>
     </Drawer>
   );

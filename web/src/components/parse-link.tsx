@@ -165,13 +165,8 @@ function MobileParseLinkDrawer({
 }) {
   const [link, setLink] = useState<string>("");
   return (
-    <Drawer
-      open={open}
-      onOpenChange={onOpenChange}
-      disablePreventScroll={true}
-      repositionInputs={false}
-    >
-      <DrawerContent className="w-full md:w-2/3" aria-describedby={undefined}>
+    <Drawer open={open} onOpenChange={onOpenChange}>
+      <DrawerContent className="md:w-2/3" aria-describedby={undefined}>
         <div className="p-4">
           <DrawerTitle className="mb-4">Parse Link</DrawerTitle>
           <p className="mb-2 text-sm text-muted-foreground">
@@ -196,9 +191,7 @@ function MobileParseLinkDrawer({
           >
             Submit
           </Button>
-          <DrawerClose asChild>
-            <Button variant="outline">Close</Button>
-          </DrawerClose>
+          <DrawerClose render={<Button variant="outline">Close</Button>} />
         </DrawerFooter>
       </DrawerContent>
     </Drawer>

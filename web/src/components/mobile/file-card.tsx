@@ -8,11 +8,11 @@ import FileControl from "@/components/file-control";
 import React from "react";
 import FileExtra from "@/components/file-extra";
 import FileImage from "../file-image";
-import { MobileFileTags } from "@/components/file-tags";
 import { TooltipWrapper } from "@/components/ui/tooltip";
 import { Badge } from "@/components/ui/badge";
 import { FileSharing, FileSource } from "@/components/file-provenance";
 import { Progress } from "@/components/ui/progress";
+import FileTags from "@/components/file-tags";
 
 type FileCardProps = {
   index: number;
@@ -21,7 +21,7 @@ type FileCardProps = {
   ref?: React.Ref<HTMLDivElement>;
   file: TelegramFile;
   onFileClick: () => void;
-  onFileTagsClick?: () => void;
+  onFileChange?: (file: TelegramFile) => void;
   layout: "detailed" | "gallery";
 };
 
@@ -32,7 +32,7 @@ export function FileCard({
   ref,
   file,
   onFileClick,
-  onFileTagsClick,
+  onFileChange,
   layout,
 }: FileCardProps) {
   const { downloadProgress } = useFileSpeed(file);
@@ -97,9 +97,9 @@ export function FileCard({
                   <div className="flex min-h-5 flex-wrap items-center gap-1.5">
                     <FileStatus file={file} className="justify-start" />
                     {file.loaded && (
-                      <MobileFileTags
-                        tags={file.tags}
-                        onClick={onFileTagsClick}
+                      <FileTags
+                        file={file}
+                        onFileChange={onFileChange}
                         className="bg-foreground"
                       />
                     )}
@@ -129,9 +129,9 @@ export function FileCard({
                   <div className="flex items-center gap-1">
                     <FileStatus file={file} className="justify-start" />
                     {file.loaded && (
-                      <MobileFileTags
-                        tags={file.tags}
-                        onClick={onFileTagsClick}
+                      <FileTags
+                        file={file}
+                        onFileChange={onFileChange}
                       />
                     )}
                   </div>
