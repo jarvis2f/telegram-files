@@ -229,9 +229,9 @@ export default function FileViewer({
                         file={file}
                         onFileChange={onFileChange}
                         isPreviewOverlay={true}
-                        className="fixed bottom-5 left-5 z-[120]"
+                        className="fixed bottom-5 right-5 z-[120]"
                         side="top"
-                        align="start"
+                        align="end"
                       />
                     )}
                   </>

@@ -14,6 +14,7 @@ import {
   Play,
   RotateCcw,
   Trash2,
+  X,
 } from "lucide-react";
 import {
   Tooltip,
@@ -140,6 +141,7 @@ export default function FileControl({
   const [shareOpen, setShareOpen] = useState(false);
   const [editMetadataOpen, setEditMetadataOpen] = useState(false);
   const [uploadLimitOpen, setUploadLimitOpen] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const publishedSource = publishedSourceFromTelegramFile(file);
   const sharePolicy = useSharePublicationPolicy();
   const showDownloadInfo =
@@ -166,7 +168,7 @@ export default function FileControl({
   } = useFileControl(file, updateField);
 
   const removeBtnProps: ActionButtonProps = {
-    onClick: () => remove(file.id),
+    onClick: () => setDeleteConfirmOpen(true),
     tooltipText: "Remove local file",
     icon: <Trash2 className={iconSize} />,
     loading: removing,
@@ -323,7 +325,49 @@ export default function FileControl({
             <Link2Off className={iconSize} />
           </span>
         </TooltipWrapper>
-        <ActionButton isMobile={isMobile} {...removeBtnProps} />
+        {deleteConfirmOpen ? (
+          <div
+            className="flex items-center gap-1 animate-in fade-in zoom-in-95 duration-150"
+            onClick={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+            }}
+          >
+            <Button
+              size="sm"
+              variant="destructive"
+              className="h-7 px-2 text-xs font-medium"
+              disabled={removing}
+              onClick={async (event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                await remove(file.id);
+                setDeleteConfirmOpen(false);
+              }}
+            >
+              {removing ? (
+                <LoaderCircle className="h-3 w-3 animate-spin" />
+              ) : (
+                "Delete?"
+              )}
+            </Button>
+            <Button
+              size="icon"
+              variant="ghost"
+              className="size-7 text-muted-foreground hover:text-foreground"
+              disabled={removing}
+              onClick={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                setDeleteConfirmOpen(false);
+              }}
+            >
+              <X className="size-3.5" />
+            </Button>
+          </div>
+        ) : (
+          <ActionButton isMobile={isMobile} {...removeBtnProps} />
+        )}
       </div>
     </div>
   ) : (
@@ -518,13 +562,60 @@ export default function FileControl({
             </DropdownMenuContent>
           </DropdownMenu>
         )}
-        {statusActions.map((btnProps) => (
-          <ActionButton
-            key={btnProps.tooltipText}
-            isMobile={isMobile}
-            {...btnProps}
-          />
-        ))}
+        {statusActions.map((btnProps) => {
+          const isDeleteBtn = btnProps.tooltipText === "Remove local file";
+          if (isDeleteBtn && deleteConfirmOpen) {
+            return (
+              <div
+                key="delete-confirm-inline"
+                className="flex items-center gap-1 animate-in fade-in zoom-in-95 duration-150"
+                onClick={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                }}
+              >
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  className="h-7 px-2 text-xs font-medium"
+                  disabled={removing}
+                  onClick={async (event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    await remove(file.id);
+                    setDeleteConfirmOpen(false);
+                  }}
+                >
+                  {removing ? (
+                    <LoaderCircle className="h-3 w-3 animate-spin" />
+                  ) : (
+                    "Delete?"
+                  )}
+                </Button>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="size-7 text-muted-foreground hover:text-foreground"
+                  disabled={removing}
+                  onClick={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    setDeleteConfirmOpen(false);
+                  }}
+                >
+                  <X className="size-3.5" />
+                </Button>
+              </div>
+            );
+          }
+          return (
+            <ActionButton
+              key={btnProps.tooltipText}
+              isMobile={isMobile}
+              {...btnProps}
+            />
+          );
+        })}
       </div>
     </div>
   );
@@ -696,6 +787,7 @@ function SeedUploadLimitDialog({
 }
 
 export function MobileFileControl({ file }: { file: TelegramFile }) {
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
   const {
     start,
     starting,
@@ -818,19 +910,70 @@ export function MobileFileControl({ file }: { file: TelegramFile }) {
         </Button>
       )}
       {file.downloadStatus === "completed" && !isSeedComplete && (
-        <Button
-          variant="outline"
-          className={cn(
-            buttonClassName,
-            "text-destructive hover:border-destructive/30 hover:bg-destructive/10 hover:text-destructive",
-          )}
-          onClick={() => remove(file.id)}
-          disabled={removing}
-        >
-          {removing ? <LoaderCircle className="animate-spin" /> : <Trash2 />}
-          <span>Remove local file</span>
-        </Button>
+        confirmingDelete ? (
+          <div
+            className="flex flex-1 items-center gap-2 animate-in fade-in zoom-in-95 duration-150"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+            }}
+          >
+            <Button
+              variant="destructive"
+              className={cn(
+                buttonClassName,
+                "bg-destructive text-destructive-foreground hover:bg-destructive/90",
+              )}
+              onClick={async (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                await remove(file.id);
+                setConfirmingDelete(false);
+              }}
+              disabled={removing}
+            >
+              {removing ? (
+                <LoaderCircle className="mr-1.5 h-4 w-4 animate-spin" />
+              ) : (
+                <Trash2 className="mr-1.5 h-4 w-4" />
+              )}
+              <span>Confirm Delete</span>
+            </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-10 w-10 flex-shrink-0 rounded-xl"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setConfirmingDelete(false);
+              }}
+              disabled={removing}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        ) : (
+          <Button
+            variant="outline"
+            className={cn(
+              buttonClassName,
+              "text-destructive hover:border-destructive/30 hover:bg-destructive/10 hover:text-destructive",
+            )}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setConfirmingDelete(true);
+            }}
+            disabled={removing}
+          >
+            {removing ? <LoaderCircle className="animate-spin" /> : <Trash2 />}
+            <span>Remove local file</span>
+          </Button>
+        )
       )}
     </div>
   );
 }
+
+

@@ -26,10 +26,10 @@ export function MobilePreviewTagOverlay({
       )}
       onClick={(e) => e.stopPropagation()}
     >
-      {/* Bottom-left Tag Selector Overlay */}
+      {/* Bottom-right Tag Selector Overlay */}
       <div
         className={cn(
-          "pointer-events-auto absolute left-4 flex max-w-[80%] flex-wrap items-center gap-1.5 transition-all",
+          "pointer-events-auto absolute right-4 flex max-w-[80%] flex-wrap items-center justify-end gap-1.5 transition-all",
           bottomOffset,
         )}
       >
@@ -38,7 +38,7 @@ export function MobilePreviewTagOverlay({
           onFileChange={onFileChange}
           isPreviewOverlay={true}
           side="top"
-          align="start"
+          align="end"
         />
       </div>
     </div>
