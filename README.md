@@ -66,6 +66,33 @@
 Before getting started with telegram-files, you should apply a telegram api id and hash. You can apply for it on
 the [Telegram API](https://my.telegram.org/apps) page.
 
+**⚡ Docker Script (Recommended)**
+
+Run the interactive script to install, configure, stop, or update `telegram-files` (Supported OS: Linux amd64/arm64):
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/jarvis2f/telegram-files/main/scripts/deploy.sh | bash
+```
+
+<details closed>
+<summary>Script Command Usages</summary>
+
+You can also run subcommands directly:
+
+```sh
+./scripts/deploy.sh start    # Install & start service
+./scripts/deploy.sh stop     # Stop service
+./scripts/deploy.sh update   # Pull latest image & restart
+./scripts/deploy.sh restart  # Restart service
+./scripts/deploy.sh status   # Check container status
+./scripts/deploy.sh logs     # View live logs
+./scripts/deploy.sh config   # Modify environment configuration
+```
+
+</details>
+
+<br>
+
 **Using `docker`**
 &nbsp; [<img align="center" src="https://img.shields.io/badge/Docker-2CA5E0.svg?style={badge_style}&logo=docker&logoColor=white" />](https://www.docker.com/)
 
@@ -222,11 +249,6 @@ refer to the [LICENSE](LICENSE) file.
 ---
 
 ## 🆗 FAQs
-
-~~**Q.** Can't start the api server, error：`java.lang.UnsatisfiedLinkError: no tdjni in java.library.path`~~
-
-~~**A.** Maybe download tdlib failed, you can see the [entrypoint.sh](entrypoint.sh) file, then download tdlib
-manually.~~
 
 **Q.** Web's spoiler is static, how to solve it?
 

@@ -1,14 +1,18 @@
 services:
   telegram-files:
     container_name: telegram-files
-    image: ghcr.io/jarvis2f/telegram-files:latest
+    image: ghcr.io/jarvis2f/telegram-files:${IMAGE_TAG:-latest}
     restart: always
-    # Uncomment the following lines to enable health check for the service.
-    #    depends_on:
-    #      telegram-files-postgres:
-    #        condition: service_healthy
-    #      telegram-files-mysql:
-    #        condition: service_healthy
+    depends_on:
+      telegram-files-postgres:
+        condition: service_healthy
+        required: false
+      telegram-files-mysql:
+        condition: service_healthy
+        required: false
+      telegram-files-qbittorrent:
+        condition: service_healthy
+        required: false
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://127.0.0.1/api/health" ]
       interval: 10s
@@ -17,36 +21,35 @@ services:
       start_period: 10s
     environment:
       # PUID and PGID are the user id and group id of the user who owns the files in the mounted volume.
-      #PUID: 1000
-      #PGID: 1000
-      #NGINX_PORT: 80
+      PUID: ${PUID:-0}
+      PGID: ${PGID:-0}
+      TZ: ${TZ:-Asia/Shanghai}
       APP_ENV: "prod"
       APP_ROOT: "/app/data"
-      # Keep "true" when serving through HTTPS.
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
       HTTP_SECURE_COOKIES: ${HTTP_SECURE_COOKIES:-false}
       TELEGRAM_API_ID: ${TELEGRAM_API_ID}
       TELEGRAM_API_HASH: ${TELEGRAM_API_HASH}
-      # Uncomment the following lines to enable database connection, you can see .env.example for more details.
-      #DB_TYPE: ${DB_TYPE}
-      #DB_HOST: ${DB_HOST}
-      #DB_PORT: ${DB_PORT}
-      #DB_USER: ${DB_USER}
-      #DB_PASSWORD: ${DB_PASSWORD}
-      #DB_NAME: ${DB_NAME}
-      # Uncomment the following lines to enable the 0.4.0 share/torrent module.
-      #SHARE_ENABLED: ${SHARE_ENABLED:-false}
-      #SEED_PLATFORM_URL: ${SEED_PLATFORM_URL}
-      #SHARED_ROOT: /app/data/shared
-      #PEER_LISTEN_PORT: ${PEER_LISTEN_PORT:-51413}
-      #QBITTORRENT_URL: http://telegram-files-qbittorrent:8080
-      #QBITTORRENT_USERNAME: ${QBITTORRENT_USERNAME:-admin}
-      #QBITTORRENT_PASSWORD: ${QBITTORRENT_PASSWORD}
-      #QBITTORRENT_SHARED_ROOT: /downloads
+      TELEGRAM_LOG_LEVEL: ${TELEGRAM_LOG_LEVEL:-0}
+      DB_TYPE: ${DB_TYPE:-}
+      DB_HOST: ${DB_HOST:-}
+      DB_PORT: ${DB_PORT:-}
+      DB_USER: ${DB_USER:-}
+      DB_PASSWORD: ${DB_PASSWORD:-}
+      DB_NAME: ${DB_NAME:-}
+      SHARE_ENABLED: ${SHARE_ENABLED:-false}
+      SECRET_STORE_MASTER_KEY: ${SECRET_STORE_MASTER_KEY:-}
+      SEED_PLATFORM_URL: ${SEED_PLATFORM_URL:-}
+      SHARED_ROOT: ${SHARED_ROOT:-/app/data/shared}
+      PEER_LISTEN_PORT: ${PEER_LISTEN_PORT:-51413}
+      QBITTORRENT_URL: ${QBITTORRENT_URL:-http://telegram-files-qbittorrent:8080}
+      QBITTORRENT_USERNAME: ${QBITTORRENT_USERNAME:-admin}
+      QBITTORRENT_PASSWORD: ${QBITTORRENT_PASSWORD:-}
+      QBITTORRENT_SHARED_ROOT: ${QBITTORRENT_SHARED_ROOT:-/downloads}
     ports:
-      - "6543:80"
+      - "${PORT:-6543}:80"
     volumes:
-      - ./data:/app/data
-      # - ./other-files-for-transfer:/app/other-files-for-transfer
+      - ${DATA_DIR:-./data}:/app/data
 
   telegram-files-qbittorrent:
     container_name: telegram-files-qbittorrent
@@ -55,54 +58,66 @@ services:
     profiles:
       - share
     environment:
-      PUID: ${PUID:-1000}
-      PGID: ${PGID:-1000}
+      PUID: ${PUID:-0}
+      PGID: ${PGID:-0}
       TZ: ${TZ:-Asia/Shanghai}
       WEBUI_PORT: 8080
       TORRENTING_PORT: ${PEER_LISTEN_PORT:-51413}
     ports:
-      # WebUI is intentionally bound to localhost. Remove 127.0.0.1 only if you need LAN access.
       - "127.0.0.1:8080:8080"
       - "${PEER_LISTEN_PORT:-51413}:${PEER_LISTEN_PORT:-51413}"
       - "${PEER_LISTEN_PORT:-51413}:${PEER_LISTEN_PORT:-51413}/udp"
     volumes:
-      - ./data/qbittorrent/config:/config
-      - ./data/shared:/downloads
+      - ${DATA_DIR:-./data}/qbittorrent/config:/config
+      - ${DATA_DIR:-./data}/shared:/downloads
+    healthcheck:
+      test: [ "CMD-SHELL", "curl -fs -o /dev/null http://127.0.0.1:8080/api/v2/app/version || exit 1" ]
+      interval: 3s
+      timeout: 5s
+      retries: 20
+      start_period: 5s
 
-# Uncomment the following lines to enable database services.
-#  telegram-files-postgres:
-#    container_name: telegram-files-postgres
-#    image: postgres:15-alpine
-#    restart: always
-#    environment:
-#      PGUSER: ${DB_USER:-postgres}
-#      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
-#      POSTGRES_DB: ${DB_NAME:-telegram-files}
-#      PGDATA: /var/lib/postgresql/data/pgdata
-#    volumes:
-#      - ./data/db/data:/var/lib/postgresql/data
-#    healthcheck:
-#      test: [ 'CMD', 'pg_isready' ]
-#      interval: 1s
-#      timeout: 3s
-#      retries: 30
-#
-#  telegram-files-mysql:
-#    container_name: telegram-files-mysql
-#    image: mysql:8
-#    restart: always
-#    environment:
-#      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-password}
-#      MYSQL_DATABASE: ${DB_NAME:-telegram-files}
-#      MYSQL_USER: ${DB_USER:-mysql}
-#      MYSQL_PASSWORD: ${DB_PASSWORD:-password}
-#    command:
-#      --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
-#    volumes:
-#      - ./data/db/data:/var/lib/mysql
-#    healthcheck:
-#      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p$MYSQL_ROOT_PASSWORD" ]
-#      interval: 10s
-#      timeout: 5s
-#      retries: 5
-#      start_period: 30s
+  telegram-files-postgres:
+    container_name: telegram-files-postgres
+    image: postgres:15-alpine
+    restart: always
+    profiles:
+      - postgres
+    environment:
+      TZ: ${TZ:-Asia/Shanghai}
+      PGUSER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+      POSTGRES_DB: ${DB_NAME:-telegram-files}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - ${DATA_DIR:-./data}/db/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: [ 'CMD', 'pg_isready' ]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  telegram-files-mysql:
+    container_name: telegram-files-mysql
+    image: mysql:8
+    restart: always
+    profiles:
+      - mysql
+    environment:
+      TZ: ${TZ:-Asia/Shanghai}
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-password}
+      MYSQL_DATABASE: ${DB_NAME:-telegram-files}
+      MYSQL_USER: ${DB_USER:-mysql}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-password}
+    command:
+      --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci --innodb-use-native-aio=0
+    volumes:
+      - ${DATA_DIR:-./data}/db/mysql:/var/lib/mysql
+    healthcheck:
+      test: [ "CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-u", "${DB_USER:-mysql}", "-p${DB_PASSWORD:-password}" ]
+      interval: 3s
+      timeout: 5s
+      retries: 30
+      start_period: 10s
+
+

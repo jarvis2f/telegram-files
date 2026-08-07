@@ -3,6 +3,13 @@ on:
   push:
     branches:
       - "dev"
+    paths:
+      - 'api/**'
+      - 'web/**'
+      - 'Dockerfile'
+      - 'entrypoint.sh'
+      - 'nginx.conf.template'
+      - 'VERSION'
   release:
     types: [ published ]
 
