@@ -36,6 +36,8 @@ public class TelegramVerticle extends AbstractVerticle {
 
     public TelegramGateway client;
 
+    private volatile TelegramGateway tdlibClient;
+
     private final TelegramGatewayFactory gatewayFactory;
 
     private TelegramChats telegramChats;
@@ -67,6 +69,21 @@ public class TelegramVerticle extends AbstractVerticle {
     private long lastFileDownloadEventTime;
 
     private UnifiedFileDownloadService unifiedFileDownloadService;
+
+    private enum ClientLifecycle { STARTING, ACTIVE, STOPPING, SLEEPING, CLOSED }
+
+    private final Object lifecycleLock = new Object();
+    private final Set<String> frontendSessions = new HashSet<>();
+    private ClientLifecycle clientLifecycle = ClientLifecycle.STARTING;
+    private Promise<Void> readyPromise = Promise.promise();
+    private Promise<Void> closePromise;
+    private int activeRequests;
+    private int idleTimeoutMinutes = 0;
+    private long idleSleepTimerId;
+    private boolean idleClose;
+    private boolean permanentClose;
+    private boolean wakeAfterClose;
+    private boolean downloadsActive;
 
     public TelegramVerticle(String rootPath) {
         this(rootPath, TelegramGatewayFactory.tdlib());
@@ -111,15 +128,27 @@ public class TelegramVerticle extends AbstractVerticle {
     @Override
     public void start(Promise<Void> startPromise) {
         initializeTelegramGateway();
-        Future.all(initEventConsumer(), initAvgSpeed())
-                .compose(_ -> this.enableProxy(this.proxyName))
+        Future.all(initEventConsumer(), initAvgSpeed(), initIdleSleep())
+                .compose(_ -> this.enableProxy(this.proxyName, tdlibClient))
                 .compose(_ -> this.initDownloadStatusReconciliation())
                 .onSuccess(_ -> startPromise.complete())
                 .onFailure(startPromise::fail);
     }
 
     void initializeTelegramGateway() {
-        client = gatewayFactory.create();
+        synchronized (lifecycleLock) {
+            clientLifecycle = ClientLifecycle.STARTING;
+            if (readyPromise.future().isComplete()) readyPromise = Promise.promise();
+        }
+        tdlibClient = gatewayFactory.create();
+        if (client == null) {
+            client = new ManagedTelegramGateway(
+                    this::wake,
+                    () -> tdlibClient,
+                    this::onRequestStarted,
+                    this::onRequestFinished
+            );
+        }
         telegramChats = new TelegramChats(client);
         TelegramUpdateHandler telegramUpdateHandler = new TelegramUpdateHandler();
         telegramUpdateHandler.setOnAuthorizationStateUpdated(this::onAuthorizationStateUpdated);
@@ -129,7 +158,11 @@ public class TelegramVerticle extends AbstractVerticle {
         telegramUpdateHandler.setOnMessageReceived(this::onMessageReceived);
         telegramUpdateHandler.setOnConnectionStateUpdated(this::onConnectionStateUpdated);
 
-        client.initialize(telegramUpdateHandler, this::handleException, this::handleException);
+        tdlibClient.initialize(telegramUpdateHandler, this::handleException, this::handleException);
+    }
+
+    TelegramGateway tdlibClient() {
+        return tdlibClient;
     }
 
     @Override
@@ -139,17 +172,90 @@ public class TelegramVerticle extends AbstractVerticle {
     }
 
     public Future<Void> close(boolean needDelete) {
+        cancelIdleSleepTimer();
         if (downloadStatusReconciliationTimerId != 0) {
             vertx.cancelTimer(downloadStatusReconciliationTimerId);
             downloadStatusReconciliationTimerId = 0;
         }
-        return client.execute(new TdApi.Close())
-                .onSuccess(_ -> {
-                    log.info("[%s] Telegram account closed".formatted(this.getRootId()));
-                    this.needDelete = needDelete;
-                })
-                .onFailure(e -> log.error("[%s] Failed to close telegram account: %s".formatted(this.getRootId(), e.getMessage())))
-                .mapEmpty();
+        synchronized (lifecycleLock) {
+            this.needDelete = needDelete;
+            permanentClose = true;
+            idleClose = false;
+            wakeAfterClose = false;
+            if (clientLifecycle == ClientLifecycle.CLOSED) return Future.succeededFuture();
+            if (clientLifecycle == ClientLifecycle.SLEEPING) {
+                clientLifecycle = ClientLifecycle.CLOSED;
+                return needDelete ? deleteAccountData() : Future.succeededFuture();
+            }
+            if (clientLifecycle == ClientLifecycle.STOPPING && closePromise != null) return closePromise.future();
+            clientLifecycle = ClientLifecycle.STOPPING;
+            closePromise = Promise.promise();
+        }
+        tdlibClient.execute(new TdApi.Close())
+                .onFailure(this::handleCloseFailure);
+        return closePromise.future();
+    }
+
+    public Future<Void> wake() {
+        boolean initialize = false;
+        Future<Void> future;
+        synchronized (lifecycleLock) {
+            cancelIdleSleepTimerLocked();
+            switch (clientLifecycle) {
+                case ACTIVE -> { return Future.succeededFuture(); }
+                case STARTING -> {
+                    // A new, not-yet-registered account must be able to submit login details before
+                    // AuthorizationStateReady can ever be reached.
+                    return telegramRecord == null ? Future.succeededFuture() : readyPromise.future();
+                }
+                case STOPPING -> {
+                    if (!permanentClose) wakeAfterClose = true;
+                    return readyPromise.future();
+                }
+                case SLEEPING -> {
+                    readyPromise = Promise.promise();
+                    clientLifecycle = ClientLifecycle.STARTING;
+                    initialize = true;
+                    future = readyPromise.future();
+                }
+                case CLOSED -> { return Future.failedFuture("Telegram account is closed"); }
+                default -> throw new IllegalStateException("Unsupported TDLib lifecycle state");
+            }
+        }
+        if (initialize) initializeTelegramGateway();
+        return future;
+    }
+
+    public void retainFrontendSession(String sessionId) {
+        synchronized (lifecycleLock) {
+            frontendSessions.add(sessionId);
+            cancelIdleSleepTimerLocked();
+        }
+        wake().onFailure(e -> log.warn("[%s] Failed to wake TDLib for frontend: %s"
+                .formatted(getRootId(), e.getMessage())));
+    }
+
+    public void releaseFrontendSession(String sessionId) {
+        synchronized (lifecycleLock) {
+            frontendSessions.remove(sessionId);
+        }
+        refreshIdlePolicy();
+    }
+
+    public void refreshIdlePolicy() {
+        if (hasSleepBlockingAutomationEnabled()) {
+            cancelIdleSleepTimer();
+            wake().onFailure(e -> log.warn("[%s] Failed to keep TDLib awake for automation: %s"
+                    .formatted(getRootId(), e.getMessage())));
+            return;
+        }
+        scheduleIdleSleep();
+    }
+
+    public boolean isAvailable() {
+        synchronized (lifecycleLock) {
+            return authorized || (telegramRecord != null && clientLifecycle != ClientLifecycle.CLOSED);
+        }
     }
 
     public boolean check() {
@@ -163,12 +269,14 @@ public class TelegramVerticle extends AbstractVerticle {
     public Future<JsonObject> getTelegramAccount() {
         return Future.future(promise -> {
             if (!authorized) {
+                boolean sleeping = isSleepingOrWaking();
                 JsonObject jsonObject = new JsonObject()
                         .put("id", this.getRootId())
                         .put("name", this.getRootId())
                         .put("phoneNumber", "")
                         .put("avatar", "")
-                        .put("status", "inactive")
+                        .put("status", sleeping ? "active" : "inactive")
+                        .put("sleeping", sleeping)
                         .put("rootPath", this.rootPath)
                         .put("isPremium", false)
                         .put("lastAuthorizationState", lastAuthorizationState)
@@ -695,13 +803,17 @@ public class TelegramVerticle extends AbstractVerticle {
     }
 
     public Future<TdApi.AddedProxy> enableProxy(String proxyName) {
+        return enableProxy(proxyName, client);
+    }
+
+    private Future<TdApi.AddedProxy> enableProxy(String proxyName, TelegramGateway gateway) {
         if (StrUtil.isBlank(proxyName)) return Future.succeededFuture();
         return DataVerticle.settingRepository.<SettingProxyRecords>getByKey(SettingKey.proxys)
                 .map(settingProxyRecords -> Optional.ofNullable(settingProxyRecords)
                         .flatMap(r -> r.getProxy(proxyName))
                         .orElseThrow(() -> VertxException.noStackTrace("Proxy %s not found".formatted(proxyName)))
                 )
-                .compose(proxy -> this.getTdAddedProxy(proxy)
+                .compose(proxy -> this.getTdAddedProxy(proxy, gateway)
                         .map(r -> Tuple.tuple(proxy, r))
                 )
                 .compose(tuple -> {
@@ -725,8 +837,8 @@ public class TelegramVerticle extends AbstractVerticle {
                         }
                     }
                     TdApi.Proxy tdProxy = new TdApi.Proxy(proxy.server, proxy.port, proxyType);
-                    return edit ? client.execute(new TdApi.EditProxy(tdAddedProxy.id, tdProxy, true, proxy.name))
-                            : client.execute(new TdApi.AddProxy(tdProxy, true, proxy.name));
+                    return edit ? gateway.execute(new TdApi.EditProxy(tdAddedProxy.id, tdProxy, true, proxy.name))
+                            : gateway.execute(new TdApi.AddProxy(tdProxy, true, proxy.name));
                 })
                 .compose( r -> {
                     this.proxyName = proxyName;
@@ -764,7 +876,11 @@ public class TelegramVerticle extends AbstractVerticle {
     }
 
     public Future<TdApi.AddedProxy> getTdAddedProxy(SettingProxyRecords.Item proxy) {
-        return client.execute(new TdApi.GetProxies())
+        return getTdAddedProxy(proxy, client);
+    }
+
+    private Future<TdApi.AddedProxy> getTdAddedProxy(SettingProxyRecords.Item proxy, TelegramGateway gateway) {
+        return gateway.execute(new TdApi.GetProxies())
                 .map(proxies -> Stream.of(proxies.proxies)
                         .filter(p -> proxy.equalsTdProxy(p.proxy))
                         .findFirst()
@@ -952,8 +1068,112 @@ public class TelegramVerticle extends AbstractVerticle {
             log.debug("Avg Speed Interval update: %s".formatted(message.body()));
             this.initAvgSpeed();
         });
+        vertx.eventBus().consumer(EventEnum.SETTING_UPDATE.address(SettingKey.tdlibIdleTimeoutMinutes.name()), message -> {
+            idleTimeoutMinutes = Math.max(0, Convert.toInt(message.body(), 0));
+            refreshIdlePolicy();
+        });
 
         return Future.succeededFuture();
+    }
+
+    private Future<Void> initIdleSleep() {
+        return DataVerticle.settingRepository.<Integer>getByKey(SettingKey.tdlibIdleTimeoutMinutes)
+                .onSuccess(value -> {
+                    idleTimeoutMinutes = Math.max(0, value == null ? 0 : value);
+                    refreshIdlePolicy();
+                })
+                .mapEmpty();
+    }
+
+    private void onRequestStarted() {
+        synchronized (lifecycleLock) {
+            activeRequests++;
+            cancelIdleSleepTimerLocked();
+        }
+    }
+
+    private void onRequestFinished() {
+        synchronized (lifecycleLock) {
+            if (activeRequests > 0) activeRequests--;
+        }
+        scheduleIdleSleep();
+    }
+
+    private boolean hasSleepBlockingAutomationEnabled() {
+        if (telegramRecord == null) return false;
+        return AutomationsHolder.INSTANCE.autoRecords().automations.stream()
+                .anyMatch(auto -> auto.telegramId == telegramRecord.id()
+                                  && ((auto.download != null && auto.download.enabled)
+                                      || (auto.preload != null && auto.preload.enabled)));
+    }
+
+    private boolean canIdleSleepLocked() {
+        return idleTimeoutMinutes > 0
+               && clientLifecycle == ClientLifecycle.ACTIVE
+               && frontendSessions.isEmpty()
+               && activeRequests == 0
+               && !downloadsActive
+               && !hasSleepBlockingAutomationEnabled();
+    }
+
+    private void scheduleIdleSleep() {
+        synchronized (lifecycleLock) {
+            cancelIdleSleepTimerLocked();
+            if (!canIdleSleepLocked() || vertx == null) return;
+            idleSleepTimerId = vertx.setTimer(idleTimeoutMinutes * 60_000L, _ -> closeForIdle());
+        }
+    }
+
+    private void closeForIdle() {
+        synchronized (lifecycleLock) {
+            idleSleepTimerId = 0;
+            if (!canIdleSleepLocked()) return;
+            idleClose = true;
+            permanentClose = false;
+            wakeAfterClose = false;
+            clientLifecycle = ClientLifecycle.STOPPING;
+            closePromise = Promise.promise();
+            readyPromise = Promise.promise();
+        }
+        log.info("[%s] Closing idle TDLib client".formatted(getRootId()));
+        tdlibClient.execute(new TdApi.Close()).onFailure(this::handleCloseFailure);
+    }
+
+    private void handleCloseFailure(Throwable failure) {
+        Promise<Void> pendingClose;
+        synchronized (lifecycleLock) {
+            clientLifecycle = ClientLifecycle.ACTIVE;
+            idleClose = false;
+            permanentClose = false;
+            pendingClose = closePromise;
+            closePromise = null;
+            if (!readyPromise.future().isComplete()) readyPromise.complete();
+        }
+        if (pendingClose != null && !pendingClose.future().isComplete()) pendingClose.fail(failure);
+        log.error("[%s] Failed to close Telegram account: %s".formatted(getRootId(), failure.getMessage()));
+        scheduleIdleSleep();
+    }
+
+    private boolean isSleepingOrWaking() {
+        synchronized (lifecycleLock) {
+            return telegramRecord != null
+                   && (clientLifecycle == ClientLifecycle.SLEEPING
+                       || (clientLifecycle == ClientLifecycle.STARTING && !permanentClose)
+                       || (clientLifecycle == ClientLifecycle.STOPPING && idleClose));
+        }
+    }
+
+    private void cancelIdleSleepTimer() {
+        synchronized (lifecycleLock) {
+            cancelIdleSleepTimerLocked();
+        }
+    }
+
+    private void cancelIdleSleepTimerLocked() {
+        if (idleSleepTimerId != 0 && vertx != null) {
+            vertx.cancelTimer(idleSleepTimerId);
+            idleSleepTimerId = 0;
+        }
     }
 
     private Future<Void> initDownloadStatusReconciliation() {
@@ -1015,7 +1235,7 @@ public class TelegramVerticle extends AbstractVerticle {
         log.debug("[%s] Connection state: %s".formatted(getRootId(), connectionState.getClass().getSimpleName()));
         if (connectionState.getConstructor() == TdApi.ConnectionStateWaitingForNetwork.CONSTRUCTOR) {
             // Tell TDLib the network is available so it retries connecting instead of waiting indefinitely.
-            client.execute(new TdApi.SetNetworkType(new TdApi.NetworkTypeOther()), true);
+            tdlibClient.execute(new TdApi.SetNetworkType(new TdApi.NetworkTypeOther()), true);
         }
         sendEvent(EventPayload.build(EventPayload.TYPE_CONNECTION, new JsonObject()
                 .put("state", connectionStateName(connectionState))));
@@ -1051,7 +1271,7 @@ public class TelegramVerticle extends AbstractVerticle {
                 request.applicationVersion = Start.VERSION;
                 log.trace("[%s] Send SetTdlibParameters: %s".formatted(getRootId(), request));
 
-                client.execute(request).onSuccess(this::handleAuthorizationResult);
+                tdlibClient.execute(request).onSuccess(this::handleAuthorizationResult);
                 break;
             case TdApi.AuthorizationStateWaitPhoneNumber.CONSTRUCTOR:
             case TdApi.AuthorizationStateWaitOtherDeviceConfirmation.CONSTRUCTOR:
@@ -1066,6 +1286,20 @@ public class TelegramVerticle extends AbstractVerticle {
                 break;
             case TdApi.AuthorizationStateReady.CONSTRUCTOR:
                 authorized = true;
+                boolean becameActive;
+                synchronized (lifecycleLock) {
+                    becameActive = clientLifecycle != ClientLifecycle.STOPPING;
+                    if (becameActive) {
+                        clientLifecycle = ClientLifecycle.ACTIVE;
+                        idleClose = false;
+                        permanentClose = false;
+                        if (!readyPromise.future().isComplete()) readyPromise.complete();
+                    }
+                }
+                if (!becameActive) {
+                    authorized = false;
+                    break;
+                }
                 if (telegramRecord == null) {
                     client.execute(new TdApi.GetMe())
                             .compose(user -> {
@@ -1085,15 +1319,16 @@ public class TelegramVerticle extends AbstractVerticle {
                             })
                             .onSuccess(o -> {
                                 telegramRecord = o;
-                                log.info("[%s] %s Authorization Ready".formatted(getRootId(), this.telegramRecord.firstName()));
+                                log.info("[%s] Account <%s> Authorization Ready".formatted(getRootId(), this.telegramRecord.firstName()));
                             })
                             .onFailure(e -> log.error("[%s] Authorization Ready, but failed to create telegram record: %s".formatted(getRootId(), e.getMessage())));
                 } else {
-                    log.info("[%s] %s Authorization Ready".formatted(getRootId(), this.telegramRecord.firstName()));
+                    log.info("[%s] Account <%s> Authorization Ready".formatted(getRootId(), this.telegramRecord.firstName()));
                 }
                 sendEvent(EventPayload.build(EventPayload.TYPE_AUTHORIZATION, authorizationState));
                 telegramChats.loadMainChatList();
                 telegramChats.loadArchivedChatList();
+                if (becameActive) scheduleIdleSleep();
                 break;
             case TdApi.AuthorizationStateLoggingOut.CONSTRUCTOR:
                 authorized = false;
@@ -1104,21 +1339,40 @@ public class TelegramVerticle extends AbstractVerticle {
                 break;
             case TdApi.AuthorizationStateClosed.CONSTRUCTOR:
                 authorized = false;
+                Promise<Void> completedClose;
+                boolean restart;
+                synchronized (lifecycleLock) {
+                    restart = idleClose && wakeAfterClose && !permanentClose;
+                    clientLifecycle = idleClose ? ClientLifecycle.SLEEPING : ClientLifecycle.CLOSED;
+                    completedClose = closePromise;
+                    closePromise = null;
+                    idleClose = false;
+                    wakeAfterClose = false;
+                }
+                if (completedClose != null && !completedClose.future().isComplete()) completedClose.complete();
+                log.info("[%s] Account <%s> closed".formatted(this.getRootId(), this.telegramRecord.firstName()));
                 if (needDelete) {
-                    File root = FileUtil.file(this.rootPath);
-                    if (root.exists()) {
-                        FileUtil.del(root);
-                    }
-                    if (getId() instanceof Long telegramId) {
-                        DataVerticle.telegramRepository.delete(telegramId)
-                                .onFailure(e -> log.error("[%s] Failed to delete telegram record: %s".formatted(this.getRootId(), e.getMessage())));
-                    }
-                    log.info("[%s] Telegram account deleted".formatted(this.getRootId()));
+                    deleteAccountData();
+                }
+                if (restart) {
+                    vertx.runOnContext(_ -> initializeTelegramGateway());
                 }
                 break;
             default:
                 log.warn("[%s] Unsupported authorization state received:%s".formatted(this.getRootId(), authorizationState));
         }
+    }
+
+    private Future<Void> deleteAccountData() {
+        File root = FileUtil.file(this.rootPath);
+        if (root.exists()) FileUtil.del(root);
+        Future<Void> deletion = getId() instanceof Long telegramId
+                ? DataVerticle.telegramRepository.delete(telegramId).mapEmpty()
+                : Future.succeededFuture();
+        return deletion
+                .onSuccess(_ -> log.info("[%s] Telegram account deleted".formatted(this.getRootId())))
+                .onFailure(e -> log.error("[%s] Failed to delete telegram record: %s"
+                        .formatted(this.getRootId(), e.getMessage())));
     }
 
     private void onFileUpdated(TdApi.UpdateFile updateFile) {
@@ -1170,6 +1424,10 @@ public class TelegramVerticle extends AbstractVerticle {
 
     private void onFileDownloadsUpdated(TdApi.UpdateFileDownloads updateFileDownloads) {
         log.trace("[%s] Receive file downloads update: %s".formatted(getRootId(), updateFileDownloads));
+        downloadsActive = updateFileDownloads.totalCount > 0
+                          && updateFileDownloads.downloadedSize < updateFileDownloads.totalSize;
+        if (downloadsActive) cancelIdleSleepTimer();
+        else scheduleIdleSleep();
         avgSpeed.update(updateFileDownloads.downloadedSize, System.currentTimeMillis());
         if (lastFileDownloadEventTime == 0 || System.currentTimeMillis() - lastFileDownloadEventTime > 1000) {
             sendEvent(EventPayload.build(EventPayload.TYPE_FILE_DOWNLOAD, updateFileDownloads));

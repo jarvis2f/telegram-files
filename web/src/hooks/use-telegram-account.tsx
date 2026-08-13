@@ -1,7 +1,6 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { useToast } from "@/hooks/use-toast";
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import type { TelegramAccount } from "@/lib/types";
 import useSWR from "swr";
@@ -39,6 +38,12 @@ export const TelegramAccountProvider: React.FC<
   const [accountId, setAccountId] = useState<string | undefined>(
     routerAccountId,
   );
+
+  // This provider lives in the root layout and survives client-side navigation. Keep its local
+  // selection in sync when a link (for example, from /automations) changes the URL directly.
+  useEffect(() => {
+    setAccountId(routerAccountId);
+  }, [routerAccountId]);
 
   const { trigger: triggerChange } = useSWRMutation(
     "/telegrams/change",

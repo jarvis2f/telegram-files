@@ -99,7 +99,11 @@ public class TelegramVerticles {
     }
 
     public static boolean hasAuthorized() {
-        return telegramVerticles.stream().anyMatch(telegramVerticle -> telegramVerticle.authorized);
+        return telegramVerticles.stream().anyMatch(TelegramVerticle::isAvailable);
+    }
+
+    public static void refreshIdlePolicies() {
+        telegramVerticles.forEach(TelegramVerticle::refreshIdlePolicy);
     }
 
     public static Optional<TelegramVerticle> get(String telegramId) {

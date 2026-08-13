@@ -39,16 +39,24 @@ export function AccountList({ accounts, onSelectAccount }: AccountListProps) {
                   <h3 className="font-semibold">{account.name}</h3>
                   <Badge
                     variant={
-                      account.status === "active" ? "default" : "secondary"
+                      account.status === "active" && !account.sleeping
+                        ? "default"
+                        : "secondary"
                     }
                   >
                     <Circle
-                      className={`mr-1 h-2 w-2 ${account.status === "active" ? "text-green-500" : "text-gray-500"}`}
+                      className={`mr-1 h-2 w-2 ${
+                        account.sleeping
+                          ? "text-amber-500"
+                          : account.status === "active"
+                            ? "text-green-500"
+                            : "text-gray-500"
+                      }`}
                     />
-                    {account.status}
+                    {account.sleeping ? "sleeping" : account.status}
                   </Badge>
                 </div>
-                {account.status === "active" && (
+                {account.status === "active" && !account.sleeping && (
                   <div className="mb-4 flex items-center text-sm text-muted-foreground">
                     <PhoneCall className="mr-1 h-3 w-3" />
                     <Spoiler>{account.phoneNumber}</Spoiler>

@@ -6,6 +6,7 @@ import {
   FolderOpen,
   Gauge,
   LogOut,
+  Moon,
   Shield,
   Tags,
   type LucideIcon,
@@ -120,6 +121,15 @@ export default function SettingsForm() {
     { value: "1800", label: "30 minutes" },
   ];
 
+  const tdlibIdleTimeoutOptions = [
+    { value: "1", label: "1 minute" },
+    { value: "5", label: "5 minutes" },
+    { value: "10", label: "10 minutes" },
+    { value: "30", label: "30 minutes" },
+    { value: "60", label: "1 hour" },
+    { value: "0", label: "Never" },
+  ];
+
   const handleSave = async (e: FormEvent) => {
     e.preventDefault();
     await updateSettings();
@@ -181,6 +191,39 @@ export default function SettingsForm() {
                 <Copy />
               </Button>
             </div>
+          </div>
+        </SettingsSection>
+
+        <SettingsSection
+          icon={Moon}
+          title="TDLib sleep"
+          description="Close idle Telegram clients to stop background disk activity"
+        >
+          <div className="grid gap-4 rounded-md border bg-card p-4 shadow-sm md:grid-cols-[1fr_220px] md:items-center">
+            <div>
+              <Label htmlFor="tdlib-idle-timeout">Sleep after</Label>
+              <p className="mt-1 text-sm text-muted-foreground">
+                TDLib restarts automatically when the account is opened.
+                Accounts with auto download or auto preload enabled never sleep.
+              </p>
+            </div>
+            <Select
+              value={String(settings?.tdlibIdleTimeoutMinutes ?? "0")}
+              onValueChange={(value) =>
+                void setSetting("tdlibIdleTimeoutMinutes", value)
+              }
+            >
+              <SelectTrigger id="tdlib-idle-timeout">
+                <SelectValue placeholder="Select idle timeout" />
+              </SelectTrigger>
+              <SelectContent>
+                {tdlibIdleTimeoutOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </SettingsSection>
 
@@ -410,7 +453,7 @@ export default function SettingsForm() {
           </div>
         </SettingsSection>
       </div>
-      <DialogFooter className="mt-3 border-t bg-background pt-3 gap-2">
+      <DialogFooter className="mt-3 gap-2 border-t bg-background pt-3">
         <DialogClose asChild>
           <Button className="w-full md:w-auto" variant="outline" type="button">
             Cancel

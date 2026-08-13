@@ -29,6 +29,11 @@ public enum SettingKey {
      */
     avgSpeedInterval(Convert::toInt, 5 * 60),
     /**
+     * Minutes an unused TDLib account stays open before its database is closed.
+     * A value of 0 disables idle sleep.
+     */
+    tdlibIdleTimeoutMinutes(Convert::toInt, 0),
+    /**
      * Speed units for displaying download speed, e.g., "bits" or "bytes"
      */
     speedUnits(Function.identity(), "bits"),

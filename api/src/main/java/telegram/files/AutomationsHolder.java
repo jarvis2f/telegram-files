@@ -47,6 +47,7 @@ public class AutomationsHolder {
                     settingAutoRecords.automations.forEach(item -> TelegramVerticles.get(item.telegramId)
                             .ifPresentOrElse(_ -> AUTO_RECORDS.add(item),
                                     () -> log.warn("Init auto records fail. Telegram verticle not found: %s".formatted(item.telegramId))));
+                    TelegramVerticles.refreshIdlePolicies();
                 })
                 .onFailure(e -> log.error("Init auto records failed!", e))
                 .mapEmpty();
@@ -87,6 +88,7 @@ public class AutomationsHolder {
         if (CollUtil.isNotEmpty(removedItems)) {
             onRemoveListeners.forEach(listener -> listener.accept(removedItems));
         }
+        TelegramVerticles.refreshIdlePolicies();
     }
 
     public Future<Void> saveAutoRecords() {

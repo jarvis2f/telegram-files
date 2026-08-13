@@ -15,13 +15,13 @@ import { useDebounce } from "use-debounce";
 import { useToast } from "@/hooks/use-toast";
 import { AutomationButton } from "@/components/automation-button";
 import { useTelegramChat } from "@/hooks/use-telegram-chat";
-import { useTelegramAccount } from "@/hooks/use-telegram-account";
 import { Label } from "@/components/ui/label";
 import { type Auto } from "@/lib/types";
 import { Badge } from "./ui/badge";
 import AutomationForm from "@/components/automation-form";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Download, FolderSync, PackageSearch } from "lucide-react";
+import { useSearchParams } from "next/navigation";
 
 const DEFAULT_AUTO: Auto = {
   preload: {
@@ -104,16 +104,18 @@ function DetailBlock({
 }
 
 export default function AutomationDialog() {
-  const { accountId } = useTelegramAccount();
+  const accountId = useSearchParams().get("id") ?? undefined;
   const { isLoading, chat, reload } = useTelegramChat();
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [auto, setAuto] = useState<Auto>(DEFAULT_AUTO);
+  const mutationKey =
+    accountId && chat
+      ? `/${accountId}/file/update-auto-settings?telegramId=${accountId}&chatId=${chat.id}`
+      : undefined;
   const { trigger: triggerAuto, isMutating: isAutoMutating } = useSWRMutation(
-    !accountId || !chat
-      ? undefined
-      : `/${accountId}/file/update-auto-settings?telegramId=${accountId}&chatId=${chat?.id}`,
+    mutationKey,
     (
       key,
       {
@@ -325,7 +327,7 @@ export default function AutomationDialog() {
             <AutomationForm auto={auto} onChange={setAuto} />
           )}
         </div>
-        <DialogFooter className="border-t bg-background px-5 py-4 gap-2">
+        <DialogFooter className="gap-2 border-t bg-background px-5 py-4">
           {!editMode && chat?.auto ? (
             <Button variant="outline" onClick={() => setEditMode(true)}>
               Edit
@@ -356,9 +358,17 @@ export default function AutomationDialog() {
                     });
                     return;
                   }
+                  if (!mutationKey) {
+                    toast({
+                      variant: "warning",
+                      title: "Account or chat is still loading",
+                      description: "Please wait a moment and try again.",
+                    });
+                    return;
+                  }
                   void triggerAuto(auto);
                 }}
-                disabled={debounceIsAutoMutating}
+                disabled={debounceIsAutoMutating || !mutationKey}
               >
                 {debounceIsAutoMutating ? "Submitting..." : "Submit"}
               </Button>

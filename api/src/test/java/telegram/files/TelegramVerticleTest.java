@@ -26,7 +26,7 @@ public class TelegramVerticleTest {
         verticle.initializeTelegramGateway();
         gateway.emit(new TdApi.UpdateAuthorizationState(new TdApi.AuthorizationStateClosing()));
 
-        assertSame(gateway, verticle.client);
+        assertSame(gateway, verticle.tdlibClient());
         assertInstanceOf(TdApi.AuthorizationStateClosing.class, verticle.lastAuthorizationState);
         assertTrue(gateway.requests().isEmpty());
     }

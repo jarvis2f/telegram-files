@@ -869,6 +869,8 @@ public class HttpVerticle extends AbstractVerticle {
 
             ws.exceptionHandler(throwable -> log.error("WebSocket error: %s".formatted(throwable.getMessage())));
             ws.closeHandler(_ -> {
+                TelegramVerticle selected = sessionTelegramVerticles.get(sessionId);
+                if (selected != null) selected.releaseFrontendSession(sessionId);
                 clients.remove(sessionId, textHandlerId);
                 sessionTelegramVerticles.remove(sessionId);
                 unboundClients.remove(sessionId);
@@ -971,7 +973,11 @@ public class HttpVerticle extends AbstractVerticle {
         telegramVerticle.close(true)
                 .onSuccess(_ -> {
                     TelegramVerticles.remove(telegramVerticle);
-                    sessionTelegramVerticles.entrySet().removeIf(e -> e.getValue().equals(telegramVerticle));
+                    sessionTelegramVerticles.entrySet().removeIf(e -> {
+                        if (!e.getValue().equals(telegramVerticle)) return false;
+                        telegramVerticle.releaseFrontendSession(e.getKey());
+                        return true;
+                    });
                     ctx.end();
                 });
     }
@@ -1133,15 +1139,20 @@ public class HttpVerticle extends AbstractVerticle {
     }
 
     private boolean handleTelegramChange(String sessionId, String telegramId) {
+        TelegramVerticle previous = sessionTelegramVerticles.get(sessionId);
         if (StrUtil.isBlank(telegramId)) {
             sessionTelegramVerticles.remove(sessionId);
+            if (previous != null) previous.releaseFrontendSession(sessionId);
             return true;
         }
         Optional<TelegramVerticle> optionalTelegramVerticle = TelegramVerticles.get(telegramId);
         if (optionalTelegramVerticle.isEmpty()) {
             return false;
         }
-        sessionTelegramVerticles.put(sessionId, optionalTelegramVerticle.get());
+        TelegramVerticle selected = optionalTelegramVerticle.get();
+        sessionTelegramVerticles.put(sessionId, selected);
+        if (previous != null && previous != selected) previous.releaseFrontendSession(sessionId);
+        if (clients.containsKey(sessionId)) selected.retainFrontendSession(sessionId);
         return true;
     }
 

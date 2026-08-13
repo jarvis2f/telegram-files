@@ -6,6 +6,7 @@ export type TelegramAccount = {
   phoneNumber: string;
   avatar?: string;
   status: "active" | "inactive";
+  sleeping?: boolean;
   lastAuthorizationState?: TelegramObject;
   proxy?: string;
   rootPath: string;
@@ -177,6 +178,7 @@ export const SettingKeys = [
   "autoDownloadTimeLimited",
   "proxys",
   "avgSpeedInterval",
+  "tdlibIdleTimeoutMinutes",
   "speedUnits",
   "tags",
   "shareEnabled",
