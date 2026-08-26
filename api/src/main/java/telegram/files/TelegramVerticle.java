@@ -1472,6 +1472,7 @@ public class TelegramVerticle extends AbstractVerticle {
                             .withThreadInfo(messageThreadInfo);
 
                     return DataVerticle.fileRepository.create(fileRecord)
+                            .onFailure(err -> log.error(err, "Failed to create file record: %s".formatted(file.remote.uniqueId)))
                             .compose(_ -> DataVerticle.fileRepository.updateDownloadStatus(
                                     file.id,
                                     file.remote.uniqueId,
