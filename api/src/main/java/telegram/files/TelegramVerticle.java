@@ -42,7 +42,7 @@ public class TelegramVerticle extends AbstractVerticle {
 
     private TelegramChats telegramChats;
 
-    public boolean authorized = false;
+    public volatile boolean authorized = false;
 
     public TdApi.AuthorizationState lastAuthorizationState;
 
@@ -268,7 +268,11 @@ public class TelegramVerticle extends AbstractVerticle {
 
     public Future<JsonObject> getTelegramAccount() {
         return Future.future(promise -> {
-            if (!authorized) {
+            // AuthorizationStateClosing is delivered asynchronously. During that small window
+            // authorized can still be true while the managed gateway is waiting for the idle
+            // close/restart cycle. Account listing must remain a metadata operation and must not
+            // block on that lifecycle transition.
+            if (!authorized || isSleepingOrWaking()) {
                 boolean sleeping = isSleepingOrWaking();
                 JsonObject jsonObject = new JsonObject()
                         .put("id", this.getRootId())

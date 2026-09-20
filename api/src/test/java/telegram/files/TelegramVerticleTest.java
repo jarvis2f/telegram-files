@@ -3,6 +3,7 @@ package telegram.files;
 import org.drinkless.tdlib.TdApi;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import telegram.files.repository.TelegramRecord;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
@@ -41,6 +42,25 @@ public class TelegramVerticleTest {
         assertTrue(gateway.execute(new TdApi.GetMe()).failed());
         assertNull(gateway.execute(new TdApi.GetMe(), true).result());
         assertEquals(2, gateway.requests().size());
+    }
+
+    @Test
+    void accountListingDoesNotQueryTdlibWhileAccountIsStarting() {
+        ScriptedTelegramGateway gateway = new ScriptedTelegramGateway(_ -> {
+            throw new AssertionError("account listing must not query TDLib while waking");
+        });
+        TelegramVerticle verticle = new TelegramVerticle(
+                new TelegramRecord(42L, "test", "/tmp/account-fixture", null),
+                () -> gateway
+        );
+        verticle.initializeTelegramGateway();
+        verticle.authorized = true;
+
+        var account = verticle.getTelegramAccount().result();
+
+        assertEquals("42", account.getString("id"));
+        assertTrue(account.getBoolean("sleeping"));
+        assertTrue(gateway.requests().isEmpty());
     }
 
 }
