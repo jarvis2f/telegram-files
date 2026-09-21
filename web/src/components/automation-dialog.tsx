@@ -22,6 +22,7 @@ import AutomationForm from "@/components/automation-form";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Download, FolderSync, PackageSearch } from "lucide-react";
 import { useSearchParams } from "next/navigation";
+import { isValidFolderPath } from "@/lib/folder-path";
 
 const DEFAULT_AUTO: Auto = {
   preload: {
@@ -356,12 +357,9 @@ export default function AutomationDialog() {
               </Button>
               <Button
                 onClick={() => {
-                  const folderPathRegex =
-                    /^[\/\\]?(?:[^<>:"|?*\/\\]+[\/\\]?)*$/;
                   if (
                     auto?.transfer.enabled &&
-                    (auto?.transfer.rule.destination.length === 0 ||
-                      !folderPathRegex.test(auto?.transfer.rule.destination))
+                    !isValidFolderPath(auto?.transfer.rule.destination)
                   ) {
                     toast({
                       variant: "warning",
