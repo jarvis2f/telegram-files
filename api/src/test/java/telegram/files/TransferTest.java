@@ -58,6 +58,23 @@ class TransferTest {
     }
 
     @Test
+    void testResolveDestinationPathRejectsTraversal(@TempDir Path destination) {
+
+        assertThrows(IllegalArgumentException.class, () ->
+                Transfer.resolveDestinationPath(destination.toString(), "../../outside", "file.txt"));
+        assertThrows(IllegalArgumentException.class, () ->
+                Transfer.resolveDestinationPath(destination.toString(), destination.getRoot().resolve("outside").toString(), "file.txt"));
+    }
+
+    @Test
+    void testResolveDestinationPathKeepsValidPathInsideDestination(@TempDir Path tempDir) {
+        Path resolved = Transfer.resolveDestinationPath(tempDir.toString(), "documents/work", "file.txt");
+
+        assertEquals(tempDir.toAbsolutePath().normalize().resolve("documents/work/file.txt"), resolved);
+        assertTrue(resolved.startsWith(tempDir.toAbsolutePath().normalize()));
+    }
+
+    @Test
     void testTransferSuccessful(@TempDir Path tempDir) {
         // Prepare mock file record
         String fileName = "source.txt";

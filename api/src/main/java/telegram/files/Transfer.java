@@ -201,6 +201,15 @@ public abstract class Transfer {
 
     protected abstract String getTransferPath(FileRecord fileRecord);
 
+    static Path resolveDestinationPath(String destination, String relativePath, String fileName) {
+        Path destinationRoot = Path.of(destination).toAbsolutePath().normalize();
+        Path resolved = destinationRoot.resolve(relativePath).resolve(fileName).normalize();
+        if (!resolved.startsWith(destinationRoot)) {
+            throw new IllegalArgumentException("AI classification path escapes transfer destination");
+        }
+        return resolved;
+    }
+
     static class GroupByChat extends Transfer {
 
         public GroupByChat(SettingAutoRecords.TransferRule transferRule) {
@@ -273,10 +282,7 @@ public abstract class Transfer {
                 name = "";
             }
 
-            return Path.of(destination,
-                    result.path,
-                    name
-            ).toString();
+            return resolveDestinationPath(destination, result.path, name).toString();
         }
 
     }
