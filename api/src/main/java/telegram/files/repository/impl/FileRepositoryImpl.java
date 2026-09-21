@@ -64,8 +64,7 @@ public class FileRepositoryImpl extends AbstractSqlRepository implements FileRep
                         return this.updateAlbumDataByMediaAlbumId(fileRecord.mediaAlbumId(), fileRecord.caption(), fileRecord.reactionCount()).map(r);
                     }
                 })
-                .onSuccess(r -> log.trace("Successfully created file record: %s".formatted(fileRecord.id())))
-                .onFailure(err -> log.error("Failed to create file record: %s".formatted(err.getMessage())));
+                .onSuccess(r -> log.trace("Successfully created file record: %s".formatted(fileRecord.id())));
     }
 
     @Override
@@ -75,7 +74,18 @@ public class FileRepositoryImpl extends AbstractSqlRepository implements FileRep
                     if (record != null) {
                         return Future.succeededFuture(false);
                     }
-                    return this.create(fileRecord).map(true);
+                    return this.create(fileRecord)
+                            .map(true)
+                            .recover(err -> this.getByUniqueId(fileRecord.uniqueId())
+                                    .compose(existing -> {
+                                        if (existing != null) {
+                                            log.debug("File record already exists (create race): %s".formatted(fileRecord.uniqueId()));
+                                            return Future.succeededFuture(false);
+                                        }
+                                        log.error(err, "Failed to create file record: %s".formatted(fileRecord.uniqueId()));
+                                        return Future.failedFuture(err);
+                                    })
+                            );
                 });
     }
 
