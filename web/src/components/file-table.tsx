@@ -36,6 +36,7 @@ import {
 import { useShareEnabled } from "@/hooks/use-share-enabled";
 import { TooltipWrapper } from "@/components/ui/tooltip";
 import { DotmTriangle2 } from "@/components/ui/dotm-triangle-2";
+import { nextSelection } from "@/lib/range-selection";
 
 const COLUMNS: Column[] = [
   {
@@ -112,6 +113,8 @@ export function FileTable({
   link,
 }: FileTableProps) {
   const [selectedFiles, setSelectedFiles] = useState<Set<number>>(new Set());
+  // Row last clicked, the start of a Shift+click range.
+  const lastSelectedFileId = useRef<number | null>(null);
   const tableParentRef = useRef<HTMLDivElement>(null);
   const shareEnabled = useShareEnabled();
   const defaultColumns = useMemo(() => {
@@ -252,14 +255,17 @@ export function FileTable({
     }
   };
 
-  const handleSelectFile = (fileId: number) => {
-    const newSelected = new Set(selectedFiles);
-    if (newSelected.has(fileId)) {
-      newSelected.delete(fileId);
-    } else {
-      newSelected.add(fileId);
-    }
-    setSelectedFiles(newSelected);
+  const handleSelectFile = (fileId: number, shiftKey: boolean) => {
+    setSelectedFiles(
+      nextSelection(
+        selectedFiles,
+        files,
+        fileId,
+        lastSelectedFileId.current,
+        shiftKey,
+      ),
+    );
+    lastSelectedFileId.current = fileId;
   };
 
   return (
@@ -406,7 +412,9 @@ export function FileTable({
                       file={file}
                       updateField={updateField}
                       checked={selectedFiles.has(file.id)}
-                      onCheckedChange={() => handleSelectFile(file.id)}
+                      onCheckedChange={(shiftKey) =>
+                        handleSelectFile(file.id, shiftKey)
+                      }
                       onFileClick={() => {
                         setCurrentViewFile(file);
                         setViewerOpen(true);
