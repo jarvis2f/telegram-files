@@ -1,7 +1,7 @@
 import { cn } from "@/lib/utils";
 import { type RowHeight } from "@/components/table-row-height-switch";
 import { Checkbox } from "@/components/ui/checkbox";
-import React, { type ReactNode, useState } from "react";
+import React, { type ReactNode, useRef, useState } from "react";
 import { type TelegramFile } from "@/lib/types";
 import prettyBytes from "pretty-bytes";
 import FileStatus from "@/components/file-status";
@@ -35,7 +35,7 @@ type FileRowProps = {
     };
     columns: Column[];
   };
-  onCheckedChange: (checked: boolean) => void;
+  onCheckedChange: (shiftKey: boolean) => void;
   onFileClick: () => void;
 };
 
@@ -54,6 +54,9 @@ export default function FileRow({
   const { rowHeight, dynamicClass, columns } = properties;
   const { downloadProgress, downloadSpeed } = useFileSpeed(file);
   const [hovered, setHovered] = useState(false);
+  // Radix does not pass the click event to onCheckedChange, so remember
+  // whether Shift was held for the click that is toggling the checkbox.
+  const shiftKeyRef = useRef(false);
 
   const columnRenders: Record<string, ReactNode> = {
     content: (
@@ -147,7 +150,19 @@ export default function FileRow({
     >
       <div className="flex w-full flex-1 items-center hover:bg-accent">
         <div className="w-[30px] text-center">
-          <Checkbox checked={checked} onCheckedChange={onCheckedChange} />
+          <Checkbox
+            checked={checked}
+            onMouseDown={(event) => {
+              // Keep Shift+click from also selecting the text between rows.
+              if (event.shiftKey) {
+                event.preventDefault();
+              }
+            }}
+            onClick={(event) => {
+              shiftKeyRef.current = event.shiftKey;
+            }}
+            onCheckedChange={() => onCheckedChange(shiftKeyRef.current)}
+          />
         </div>
         {columns.map((col) =>
           col.isVisible ? (
