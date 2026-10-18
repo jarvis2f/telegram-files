@@ -283,7 +283,8 @@ public class AutoDownloadVerticle extends AbstractVerticle {
                                         return true;
                                     } else {
                                         FileRecord fileRecord = existFiles.get(uniqueId);
-                                        return fileRecord.isDownloadStatus(FileRecord.DownloadStatus.idle);
+                                        return fileRecord.isDownloadStatus(FileRecord.DownloadStatus.idle)
+                                               && !fileRecord.isTransferStatus(FileRecord.TransferStatus.completed);
                                     }
                                 })
                                 .toList();

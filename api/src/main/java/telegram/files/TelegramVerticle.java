@@ -1397,8 +1397,8 @@ public class TelegramVerticle extends AbstractVerticle {
 
                         if (fileRecord != null) {
                             if (fileRecord.isDownloadStatus(FileRecord.DownloadStatus.completed) &&
-                                fileRecord.isTransferStatus(FileRecord.TransferStatus.completed) &&
-                                FileUtil.exist(fileRecord.localPath())) {
+                                fileRecord.isTransferStatus(FileRecord.TransferStatus.completed)) {
+                                // A downstream consumer may move the transferred file after delivery.
                                 return;
                             }
                             if (downloadStatus == null) {
