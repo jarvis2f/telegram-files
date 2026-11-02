@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.7
 
-FROM eclipse-temurin:23-jdk-alpine AS runtime-builder
+FROM eclipse-temurin:25-jdk-alpine-3.24 AS runtime-builder
 
 WORKDIR /custom-jre
 
@@ -13,10 +13,10 @@ RUN --mount=type=cache,target=/var/cache/apk \
         --strip-debug \
         --no-man-pages \
         --no-header-files \
-        --compress=2 && \
+        --compress=zip-6 && \
     apk del binutils
 
-FROM alpine:3.18.12 AS final
+FROM alpine:3.24 AS final
 
 WORKDIR /app
 

@@ -31,11 +31,11 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v5
 
-      - name: Set up JDK 23
+      - name: Set up JDK 25
         if: inputs.platform == 'macos_silicon'
         uses: actions/setup-java@v5
         with:
-          java-version: '23'
+          java-version: '25'
           distribution: temurin
 
       - name: Build Linux TDLib JNI in Alpine
@@ -52,7 +52,7 @@ jobs:
             -e TDLIB_REF="$TDLIB_REF" \
             -v "$PWD:/work" \
             -w /work \
-            alpine:3.19 \
+            alpine:3.24 \
             sh -euxc '
               apk add --no-cache \
                 alpine-sdk \
