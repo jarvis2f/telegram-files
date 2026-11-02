@@ -127,7 +127,9 @@ public class FileDownloadStatusConcurrentTest {
 
         int processCount = 5;
         List<Process> processes = new ArrayList<>();
-        String classpath = System.getProperty("java.class.path");
+        String classpath = System.getProperty(
+                "telegram.files.test.classpath", System.getProperty("java.class.path")
+        );
         String javaPath = System.getProperty("java.home") + "/bin/java";
 
         for (int i = 0; i < processCount; i++) {
@@ -148,7 +150,7 @@ public class FileDownloadStatusConcurrentTest {
         }
 
         for (Process process : processes) {
-            process.waitFor();
+            Assertions.assertEquals(0, process.waitFor(), "Child update process should succeed");
         }
 
         Future<FileRecord> future = DataVerticle.fileRepository.getByPrimaryKey(newFileId, fileRecord.uniqueId());

@@ -1,20 +1,25 @@
 plugins {
     id 'java'
-    id 'com.gradleup.shadow' version '8.3.5'
+    id 'com.gradleup.shadow' version '9.6.1'
     id 'jacoco'
 }
 
 group = 'telegram.files'
 version = providers.fileContents(layout.projectDirectory.file('../VERSION')).asText.map { it.trim() }.get()
+def applicationVersion = version.toString()
+def gitCommit = providers.exec {
+    commandLine 'git', 'rev-parse', '--short', 'HEAD'
+    ignoreExitValue = true
+}.standardOutput.asText.map { it.trim() ?: 'unknown' }
 
 java {
     toolchain {
-        languageVersion = JavaLanguageVersion.of(23)
+        languageVersion = JavaLanguageVersion.of(25)
     }
 }
 
 tasks.withType(JavaCompile).configureEach {
-    options.release = 23
+    options.release = 25
 }
 
 repositories {
@@ -61,7 +66,12 @@ dependencies {
     testImplementation "io.vertx:vertx-junit5:$vertxVersion"
     testImplementation platform('org.junit:junit-bom:5.10.0')
     testImplementation 'org.junit.jupiter:junit-jupiter'
-    testImplementation 'org.mockito:mockito-core:5.15.2'
+    testImplementation 'org.mockito:mockito-core:5.24.0'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+jacoco {
+    toolVersion = '0.8.16'
 }
 
 test {
@@ -80,7 +90,8 @@ test {
     jvmArgs "-Djava.library.path=${System.getenv('TDLIB_PATH')}",
             "-XX:+EnableDynamicAgentLoading",
             "-javaagent:${configurations.testRuntimeClasspath.find { it.name.contains('mockito-core') }}"
-    environment "APP_ROOT", "${testClassesDirs.asPath}"
+    environment "APP_ROOT", layout.buildDirectory.dir('test-data').get().asFile.absolutePath
+    systemProperty 'telegram.files.test.classpath', sourceSets.test.runtimeClasspath.asPath
     useJUnitPlatform()
     finalizedBy jacocoTestReport
 }
@@ -103,9 +114,9 @@ tasks.build {
 }
 
 tasks.named('processResources') {
-    inputs.property('applicationVersion', project.version)
+    inputs.property('applicationVersion', applicationVersion)
     filesMatching('telegram-files-version.properties') {
-        expand(applicationVersion: project.version)
+        expand(applicationVersion: applicationVersion)
     }
 }
 
@@ -122,6 +133,9 @@ tasks.register('syncSeedContracts', Sync) {
 }
 
 shadowJar {
+    filesMatching('META-INF/*.kotlin_module') {
+        duplicatesStrategy = DuplicatesStrategy.INCLUDE
+    }
     archiveBaseName.set('telegram-files')
     archiveClassifier.set('')
     archiveVersion.set('')
@@ -139,15 +153,7 @@ tasks.named('jar') {
                 'Implementation-Version': project.version,
                 'Built-By': System.getProperty('user.name'),
                 'Build-Time': new Date().format('yyyy-MM-dd HH:mm:ss'),
-                'Git-Commit': getGitCommit()
+                'Git-Commit': gitCommit.get()
         )
-    }
-}
-
-static def getGitCommit() {
-    try {
-        return 'git rev-parse --short HEAD'.execute().text.trim()
-    } catch (ignored) {
-        return 'unknown'
     }
 }

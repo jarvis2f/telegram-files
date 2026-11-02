@@ -144,8 +144,8 @@ java -cp api/build/libs/telegram-files.jar telegram.files.Maintain admin apply-r
 
 Before getting started with telegram-files, ensure your runtime environment meets the following requirements:
 
-- **Programming Language:** JDK23,TypeScript
-- **Package Manager:** Gradle,Npm
+- **Programming Language:** JDK25 LTS,TypeScript
+- **Package Manager:** Gradle 9.8.2 via the included wrapper, Npm
 - **Container Runtime:** Docker
 
 ### ⚙️ Installation
@@ -181,7 +181,7 @@ npm install
 
 ```sh
 cd api
-gradle build
+./gradlew build
 ```
 
 **Using `docker`**
