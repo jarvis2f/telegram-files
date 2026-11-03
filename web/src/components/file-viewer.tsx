@@ -137,6 +137,8 @@ export default function FileViewer({
                     animate={{ opacity: 1, x: 0 }}
                     exit={isPlayableVideo ? { opacity: 0, x: -16 } : undefined}
                     transition={{ duration: 0.18 }}
+                    onMouseEnter={() => setIsVideoChromeHovered(true)}
+                    onMouseLeave={() => setIsVideoChromeHovered(false)}
                     className="fixed bottom-0 left-3 top-0 z-[110] my-auto hidden h-12 w-12 sm:block"
                   >
                     <Button
@@ -157,6 +159,8 @@ export default function FileViewer({
                     animate={{ opacity: 1, x: 0 }}
                     exit={isPlayableVideo ? { opacity: 0, x: 16 } : undefined}
                     transition={{ duration: 0.18 }}
+                    onMouseEnter={() => setIsVideoChromeHovered(true)}
+                    onMouseLeave={() => setIsVideoChromeHovered(false)}
                     className="fixed bottom-0 right-3 top-0 z-[110] my-auto hidden h-12 w-12 sm:block"
                   >
                     <Button
