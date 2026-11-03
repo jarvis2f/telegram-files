@@ -1,4 +1,11 @@
-import { Archive, Check, ChevronsUpDown, Ellipsis, List } from "lucide-react";
+import {
+  Archive,
+  Bookmark,
+  Check,
+  ChevronsUpDown,
+  Ellipsis,
+  List,
+} from "lucide-react";
 import { Button } from "./ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import {
@@ -29,6 +36,7 @@ export default function ChatSelect({ disabled }: { disabled: boolean }) {
     chats,
     chat: selectedChat,
     handleChatChange,
+    handleSavedMessages,
     handleArchivedChange,
   } = useTelegramChat();
 
@@ -83,6 +91,21 @@ export default function ChatSelect({ disabled }: { disabled: boolean }) {
           >
             {archived ? <Archive /> : <List />}
           </Toggle>
+        </TooltipWrapper>
+        <TooltipWrapper content="Open Saved Messages">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="h-10 w-10 shrink-0 rounded-none border-r"
+            aria-label="Open Saved Messages"
+            onClick={() => {
+              handleSavedMessages();
+              setOpen(false);
+            }}
+          >
+            <Bookmark />
+          </Button>
         </TooltipWrapper>
         <div className="min-w-0 flex-1">
           <CommandInput

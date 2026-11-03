@@ -16,6 +16,7 @@ interface TelegramChatContextType {
   query: string;
   archived: boolean;
   handleChatChange: (chatId: string) => void;
+  handleSavedMessages: () => void;
   handleQueryChange: (search: string) => void;
   handleArchivedChange: (archived: boolean) => void;
 }
@@ -52,8 +53,12 @@ export const TelegramChatProvider: React.FC<TelegramChatProviderProps> = ({
   );
 
   const chat = useMemo(
-    () => chats?.find((c) => c.id === chatId),
-    [chatId, chats],
+    () =>
+      chats?.find((c) => c.id === chatId) ??
+      (accountId && chatId === accountId
+        ? { id: accountId, name: "Saved Messages", type: "private" as const }
+        : undefined),
+    [accountId, chatId, chats],
   );
 
   const handleChatChange = (newChatId: string) => {
@@ -79,6 +84,11 @@ export const TelegramChatProvider: React.FC<TelegramChatProviderProps> = ({
         query,
         archived,
         handleChatChange,
+        handleSavedMessages: () => {
+          if (accountId && chatId !== accountId) {
+            router.push(`/accounts?id=${accountId}&chatId=${accountId}`);
+          }
+        },
         handleQueryChange: handleQueryChange,
         handleArchivedChange: setArchived,
       }}
