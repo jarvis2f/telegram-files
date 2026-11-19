@@ -12,10 +12,12 @@ import telegram.files.repository.FileRecord;
 import telegram.files.repository.SettingAutoRecords;
 
 import java.io.File;
+import java.io.RandomAccessFile;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
+import java.util.List;
 import java.util.function.Consumer;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -134,6 +136,35 @@ class TransferTest {
         assertTrue(filesInDir.length >= 2);
         assertTrue(Arrays.stream(filesInDir)
                 .anyMatch(f -> f.getName().contains("source-1.txt")));
+    }
+
+    @Test
+    void testDuplicationPolicyHashDropsIdenticalTwoGiBFile(@TempDir Path sourceDir) throws Exception {
+        SettingAutoRecords.TransferRule rule = new SettingAutoRecords.TransferRule();
+        rule.destination = transfer.destination;
+        rule.transferPolicy = TransferPolicy.DIRECT;
+        rule.duplicationPolicy = DuplicationPolicy.HASH;
+        Transfer directTransfer = Transfer.create(rule);
+        directTransfer.transferStatusUpdated = mockStatusUpdater;
+
+        Path source = sourceDir.resolve("large.bin");
+        Path destination = Path.of(rule.destination).resolve(source.getFileName());
+        long size = 1L << 31;
+        for (Path path : List.of(source, destination)) {
+            try (RandomAccessFile file = new RandomAccessFile(path.toFile(), "rw")) {
+                file.seek(size - 1);
+                file.write(1);
+            }
+        }
+        when(mockFileRecord.localPath()).thenReturn(source.toString());
+
+        directTransfer.transfer(mockFileRecord);
+
+        assertEquals(size, Files.size(destination));
+        assertFalse(Files.exists(source));
+        assertFalse(Files.exists(destination.resolveSibling("large-1.bin")));
+        verify(mockStatusUpdater).accept(new Transfer.TransferStatusUpdated(
+                mockFileRecord, FileRecord.TransferStatus.completed, destination.toString()));
     }
 
     @Test

@@ -1,16 +1,19 @@
 package telegram.files;
 
+import cn.hutool.log.Log;
+import cn.hutool.log.LogFactory;
 import io.vertx.core.Future;
 
 import java.io.File;
 import java.io.FileInputStream;
-import java.nio.MappedByteBuffer;
-import java.nio.channels.FileChannel;
 import java.security.MessageDigest;
 import java.time.LocalDateTime;
+import java.util.HexFormat;
 import java.util.concurrent.CompletableFuture;
 
 public class MessyUtils {
+
+    private static final Log log = LogFactory.get();
 
     public static LocalDateTime withGrouping5Minutes(LocalDateTime time) {
         int minute = time.getMinute();
@@ -20,23 +23,17 @@ public class MessyUtils {
     }
 
     public static String calculateFileMD5(File file) {
-        try (FileInputStream fis = new FileInputStream(file);
-             FileChannel channel = fis.getChannel()) {
-
-            MappedByteBuffer buffer = channel.map(FileChannel.MapMode.READ_ONLY, 0, file.length());
-
-            MessageDigest md = MessageDigest.getInstance("MD5");
-
-            md.update(buffer);
-
-            byte[] md5Bytes = md.digest();
-            StringBuilder hexString = new StringBuilder();
-            for (byte b : md5Bytes) {
-                hexString.append(String.format("%02x", b));
+        try (FileInputStream input = new FileInputStream(file)) {
+            MessageDigest digest = MessageDigest.getInstance("MD5");
+            byte[] buffer = new byte[64 * 1024];
+            int bytesRead;
+            while ((bytesRead = input.read(buffer)) != -1) {
+                digest.update(buffer, 0, bytesRead);
             }
 
-            return hexString.toString();
+            return HexFormat.of().formatHex(digest.digest());
         } catch (Exception e) {
+            log.warn(e, "Failed to calculate MD5 for file {}", file);
             return null;
         }
     }
