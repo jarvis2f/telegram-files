@@ -44,6 +44,7 @@ import dynamic from "next/dynamic";
 import QRCodeStyling, { type Options } from "qr-code-styling";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
+import { useI18n } from "@/hooks/use-i18n";
 
 function AuthPanel({
   icon: Icon,
@@ -111,6 +112,7 @@ export default function AccountCreator({
   onCreated,
   onLoginSuccess,
 }: AccountCreatorProps) {
+  const { t } = useI18n();
   const { triggerMethod, isMethodExecuting } = useTelegramMethod();
   const { toast } = useToast();
   const { mutate } = useSWRConfig();
@@ -165,7 +167,7 @@ export default function AccountCreator({
         case TelegramConstructor.STATE_READY:
           toast({
             variant: "success",
-            description: "Account added successfully",
+            description: t("Account added successfully"),
           });
           setTimeout(() => {
             void mutate("/telegrams");
@@ -182,7 +184,7 @@ export default function AccountCreator({
           console.log("Unknown telegram constructor:", state.constructor);
       }
     },
-    [mutate, onLoginSuccess, toast],
+    [mutate, onLoginSuccess, t, toast],
   );
 
   useEffect(() => {
@@ -241,9 +243,11 @@ export default function AccountCreator({
         <div className="flex items-start gap-3">
           <AlertTriangle className="mt-0.5 size-5 shrink-0" />
           <div>
-            <p className="font-medium">Initializing account failed</p>
+            <p className="font-medium">{t("Initializing account failed")}</p>
             <p className="mt-1 text-sm text-muted-foreground">
-              Please try again later, or choose another proxy before retrying.
+              {t(
+                "Please try again later, or choose another proxy before retrying.",
+              )}
             </p>
           </div>
         </div>
@@ -265,13 +269,19 @@ export default function AccountCreator({
           </div>
           <div>
             <div className="flex items-center justify-center gap-2">
-              <h3 className="text-lg font-semibold">Initialize Telegram</h3>
+              <h3 className="text-lg font-semibold">
+                {t("Initialize Telegram")}
+              </h3>
               {proxyName && (
-                <Badge variant="secondary">Proxy: {proxyName}</Badge>
+                <Badge variant="secondary">
+                  {t("Proxy: {name}", { name: proxyName })}
+                </Badge>
               )}
             </div>
             <p className="mt-1 text-sm text-muted-foreground">
-              Start a secure Telegram authorization session for this account.
+              {t(
+                "Start a secure Telegram authorization session for this account.",
+              )}
             </p>
           </div>
           <Button
@@ -285,7 +295,7 @@ export default function AccountCreator({
             }}
           >
             <Rocket />
-            Start initialization
+            {t("Start initialization")}
           </Button>
         </div>
       </div>
@@ -297,9 +307,11 @@ export default function AccountCreator({
       <div className="flex flex-col items-center justify-center gap-3 rounded-md border bg-muted/30 p-5 text-center">
         <Ellipsis className="size-5 animate-pulse text-muted-foreground" />
         <div>
-          <p className="font-medium">Waiting for Telegram authorization</p>
+          <p className="font-medium">
+            {t("Waiting for Telegram authorization")}
+          </p>
           <p className="mt-1 text-sm text-muted-foreground">
-            If this takes too long, refresh the page or try again later.
+            {t("If this takes too long, refresh the page or try again later.")}
           </p>
         </div>
       </div>
@@ -310,11 +322,11 @@ export default function AccountCreator({
     [TelegramConstructor.WAIT_PHONE_NUMBER]: (
       <AuthPanel
         icon={Phone}
-        title="Phone number"
-        description="Enter the account phone number with country code."
+        title={t("Phone number")}
+        description={t("Enter the account phone number with country code.")}
       >
         <div className="flex flex-col gap-2">
-          <Label htmlFor="phone">Phone Number</Label>
+          <Label htmlFor="phone">{t("Phone Number")}</Label>
           <Input
             id="phone"
             placeholder="8613712345678"
@@ -324,8 +336,9 @@ export default function AccountCreator({
             required
           />
           <p className="text-sm text-muted-foreground">
-            Example: 8613712345678. Non-numeric characters are removed
-            automatically.
+            {t(
+              "Example: 8613712345678. Non-numeric characters are removed automatically.",
+            )}
           </p>
         </div>
       </AuthPanel>
@@ -333,8 +346,8 @@ export default function AccountCreator({
     [TelegramConstructor.WAIT_OTHER_DEVICE_CONFIRMATION]: (
       <AuthPanel
         icon={QrCode}
-        title="QR code login"
-        description="Scan with an existing Telegram app session."
+        title={t("QR code login")}
+        description={t("Scan with an existing Telegram app session.")}
       >
         <QRCodePanel link={qrCodeLink} />
       </AuthPanel>
@@ -342,11 +355,11 @@ export default function AccountCreator({
     [TelegramConstructor.WAIT_CODE]: (
       <AuthPanel
         icon={MessageSquareCode}
-        title="Authentication code"
-        description="Enter the code sent to your Telegram account."
+        title={t("Authentication code")}
+        description={t("Enter the code sent to your Telegram account.")}
       >
         <div className="flex flex-col gap-2">
-          <Label htmlFor="code">Authentication Code</Label>
+          <Label htmlFor="code">{t("Authentication Code")}</Label>
           <InputOTP
             id="code"
             maxLength={6}
@@ -370,11 +383,13 @@ export default function AccountCreator({
     [TelegramConstructor.WAIT_PASSWORD]: (
       <AuthPanel
         icon={LockKeyhole}
-        title="Two-step verification"
-        description="Enter the password configured for this Telegram account."
+        title={t("Two-step verification")}
+        description={t(
+          "Enter the password configured for this Telegram account.",
+        )}
       >
         <div className="flex flex-col gap-2">
-          <Label htmlFor="password">Password</Label>
+          <Label htmlFor="password">{t("Password")}</Label>
           <Input
             id="password"
             type="password"
@@ -384,9 +399,9 @@ export default function AccountCreator({
             required
           />
           <InlineNotice tone="warning">
-            Using passkeys instead of a password? Close this dialog, start over,
-            and use <strong>Log in by QR code</strong> from an existing Telegram
-            device.
+            {t(
+              "Using passkeys instead of a password? Close this dialog, start over, and use Log in by QR code from an existing Telegram device.",
+            )}
           </InlineNotice>
         </div>
       </AuthPanel>
@@ -394,11 +409,15 @@ export default function AccountCreator({
     [TelegramConstructor.WAIT_PREMIUM_PURCHASE]: (
       <AuthPanel
         icon={ShieldAlert}
-        title="Telegram Premium required"
-        description="This account requires an active Telegram Premium subscription to log in."
+        title={t("Telegram Premium required")}
+        description={t(
+          "This account requires an active Telegram Premium subscription to log in.",
+        )}
       >
         <InlineNotice tone="destructive">
-          Purchase Telegram Premium in the official Telegram app and try again.
+          {t(
+            "Purchase Telegram Premium in the official Telegram app and try again.",
+          )}
         </InlineNotice>
       </AuthPanel>
     ),
@@ -455,7 +474,7 @@ export default function AccountCreator({
                 {isDeMethodExecuting ? (
                   <LoaderCircle className="animate-spin" />
                 ) : (
-                  "Submit"
+                  t("Submit")
                 )}
               </Button>
             )}
@@ -469,7 +488,7 @@ export default function AccountCreator({
               {isDeMethodExecuting ? (
                 <LoaderCircle className="animate-spin" />
               ) : (
-                "Log in by QR code"
+                t("Log in by QR code")
               )}
             </Button>
           )}
@@ -501,6 +520,7 @@ const options: Options = {
 };
 
 function QRCodePanel({ link }: { link?: string }) {
+  const { t } = useI18n();
   const [qrCode, setQrCode] = useState<QRCodeStyling>();
   const ref = useRef<HTMLDivElement>(null);
 
@@ -528,7 +548,11 @@ function QRCodePanel({ link }: { link?: string }) {
 
   if (!link) {
     return (
-      <div className="flex min-h-72 items-center justify-center">
+      <div
+        className="flex min-h-72 items-center justify-center"
+        role="status"
+        aria-label={t("Loading QR code")}
+      >
         <LoaderCircle className="size-10 animate-spin text-muted-foreground" />
       </div>
     );
@@ -545,8 +569,9 @@ function QRCodePanel({ link }: { link?: string }) {
         />
       </div>
       <p className="max-w-72 text-center text-sm text-muted-foreground">
-        Open Telegram on another device, go to linked devices, and scan this QR
-        code.
+        {t(
+          "Open Telegram on another device, go to linked devices, and scan this QR code.",
+        )}
       </p>
     </div>
   );

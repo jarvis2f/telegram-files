@@ -7,8 +7,10 @@ import useIsMobile from "@/hooks/use-is-mobile";
 import { MobileHeader } from "@/components/mobile/mobile-header";
 import React from "react";
 import ParseLinkButton from "@/components/parse-link";
+import { useI18n } from "@/hooks/use-i18n";
 
 export default function AccountPage() {
+  const { t } = useI18n();
   const isMobile = useIsMobile();
   const searchParams = useSearchParams();
   const accountId = searchParams.get("id");
@@ -32,7 +34,7 @@ export default function AccountPage() {
         <div className="flex min-h-[60vh] flex-col items-center justify-center">
           <EmptyState
             hasAccounts={true}
-            message="Select a chat to view files"
+            message={t("Select a chat to view files")}
           />
           {accountId && <ParseLinkButton accountId={accountId} />}
         </div>

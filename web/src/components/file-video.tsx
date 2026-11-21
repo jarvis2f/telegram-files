@@ -22,6 +22,7 @@ import useIsMobile from "@/hooks/use-is-mobile";
 import * as SliderPrimitive from "@radix-ui/react-slider";
 import prettyBytes from "pretty-bytes";
 import { MobilePreviewTagOverlay } from "@/components/mobile/mobile-preview-tag-overlay";
+import { useI18n } from "@/hooks/use-i18n";
 
 // 检测浏览器是否支持特定视频格式
 const checkVideoSupport = (mimeType: string): "probably" | "maybe" | "" => {
@@ -74,10 +75,10 @@ const estimateBufferedBytes = (
   );
 };
 
-const formatLoadingSpeed = (bytesPerSecond: number) => {
+const formatLoadingSpeed = (bytesPerSecond: number, locale: string) => {
   if (!Number.isFinite(bytesPerSecond) || bytesPerSecond <= 0) return "0 B/s";
 
-  return `${prettyBytes(bytesPerSecond)}/s`;
+  return `${prettyBytes(bytesPerSecond, { locale })}/s`;
 };
 
 const LOAD_SPEED_WINDOW_MS = 2500;
@@ -86,7 +87,9 @@ const LOAD_SPEED_IDLE_TIMEOUT_MS = 1500;
 const VideoErrorFallback = ({
   className = "",
   message = "Video loading failed!",
-}) => (
+}) => {
+  const { t } = useI18n();
+  return (
   <div
     className={cn(
       "flex flex-col items-center justify-center rounded-lg border border-white/10 bg-zinc-950/90 p-6 text-center shadow-2xl ring-1 ring-white/10",
@@ -96,17 +99,18 @@ const VideoErrorFallback = ({
     <div className="mb-3 rounded-full bg-white/10 p-3">
       <VideoOff className="h-7 w-7 text-white/70" />
     </div>
-    <p className="text-sm font-medium text-white">Video unavailable</p>
-    <p className="mt-1 max-w-sm text-sm text-white/60">{message}</p>
+    <p className="text-sm font-medium text-white">{t("Video unavailable")}</p>
+    <p className="mt-1 max-w-sm text-sm text-white/60">{t(message)}</p>
   </div>
-);
+  );
+};
 
 const Slider = React.forwardRef<
   React.ComponentRef<typeof SliderPrimitive.Root>,
   React.ComponentPropsWithoutRef<typeof SliderPrimitive.Root> & {
     isMobile?: boolean;
   }
->(({ className, isMobile = false, ...props }, ref) => (
+>(({ className, isMobile = false, "aria-label": ariaLabel, ...props }, ref) => (
   <SliderPrimitive.Root
     ref={ref}
     className={cn(
@@ -125,6 +129,7 @@ const Slider = React.forwardRef<
       <SliderPrimitive.Range className="absolute h-full bg-white" />
     </SliderPrimitive.Track>
     <SliderPrimitive.Thumb
+      aria-label={ariaLabel}
       className={cn(
         "block rounded-full border-4 border-white bg-zinc-950 shadow transition-all",
         isMobile ? "h-8 w-8 border-[5px] active:scale-110" : "h-4 w-4",
@@ -180,6 +185,7 @@ const DesktopControls = ({
   previewPos: number;
   canvasRef: React.RefObject<HTMLCanvasElement | null>;
 }) => {
+  const { t } = useI18n();
   const playbackRates = [0.5, 0.75, 1, 1.25, 1.5, 2];
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -196,6 +202,7 @@ const DesktopControls = ({
         onMouseLeave={onProgressBarLeave}
       >
         <Slider
+          aria-label={t("Playback position")}
           value={[currentTime]}
           max={duration}
           step={0.1}
@@ -227,6 +234,7 @@ const DesktopControls = ({
           variant="ghost"
           size="icon"
           className="rounded-full bg-white/10 text-white hover:bg-white/20 hover:text-white [&_svg]:size-5"
+          aria-label={isPlaying ? t("Pause") : t("Play")}
           onClick={onPlayPause}
         >
           {isPlaying ? (
@@ -241,6 +249,7 @@ const DesktopControls = ({
             variant="ghost"
             size="icon"
             className="rounded-full text-white hover:bg-white/20 hover:text-white [&_svg]:size-5"
+            aria-label={isMuted ? t("Unmute") : t("Mute")}
             onClick={onMuteToggle}
           >
             {isMuted ? (
@@ -250,6 +259,7 @@ const DesktopControls = ({
             )}
           </Button>
           <Slider
+            aria-label={t("Volume")}
             value={[volume * 100]}
             max={100}
             className="w-24"
@@ -267,6 +277,7 @@ const DesktopControls = ({
               <Button
                 variant="ghost"
                 size="sm"
+                aria-label={t("Playback speed")}
                 className="rounded-full bg-white/10 text-white hover:bg-white/20 hover:text-white"
               >
                 {playbackRate}x
@@ -282,6 +293,7 @@ const DesktopControls = ({
                       "justify-start rounded-none",
                       rate === playbackRate && "bg-accent",
                     )}
+                    aria-label={t("Playback speed {rate}x", { rate })}
                     onClick={() => onPlaybackRateChange(rate)}
                   >
                     {rate}x
@@ -295,6 +307,7 @@ const DesktopControls = ({
             variant="ghost"
             size="icon"
             className="rounded-full text-white hover:bg-white/20 hover:text-white [&_svg]:size-5"
+            aria-label={isFullscreen ? t("Exit fullscreen") : t("Enter fullscreen")}
             onClick={onFullscreenToggle}
           >
             {isFullscreen ? (
@@ -326,6 +339,7 @@ const MobileControls = ({
   onSkipForward: () => void;
   onSkipBackward: () => void;
 }) => {
+  const { t } = useI18n();
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
@@ -351,6 +365,7 @@ const MobileControls = ({
       >
         <Slider
           isMobile={true}
+          aria-label={t("Playback position")}
           value={[currentTime]}
           max={duration}
           step={0.1}
@@ -364,6 +379,7 @@ const MobileControls = ({
           variant="ghost"
           size="icon"
           className="h-12 w-12 rounded-full bg-white/10 text-white hover:bg-white/20 hover:text-white [&_svg]:size-5"
+          aria-label={t("Skip back 15 seconds")}
           onClick={onSkipBackward}
         >
           <RotateCcw className="h-8 w-8" />
@@ -373,6 +389,7 @@ const MobileControls = ({
           variant="ghost"
           size="icon"
           className="h-14 w-14 rounded-full bg-white text-black shadow-2xl hover:bg-white/90 hover:text-black [&_svg]:size-7"
+          aria-label={isPlaying ? t("Pause") : t("Play")}
           onClick={onPlayPause}
         >
           {isPlaying ? (
@@ -386,6 +403,7 @@ const MobileControls = ({
           variant="ghost"
           size="icon"
           className="h-12 w-12 rounded-full bg-white/10 text-white hover:bg-white/20 hover:text-white [&_svg]:size-5"
+          aria-label={t("Skip forward 15 seconds")}
           onClick={onSkipForward}
         >
           <RotateCw className="h-8 w-8" />
@@ -410,6 +428,7 @@ const FileVideo = ({
   onFileChange?: (file: TelegramFile) => void;
   className?: string;
 }) => {
+  const { t, locale } = useI18n();
   const videoRef = useRef<HTMLVideoElement>(null);
   const previewVideoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -763,10 +782,7 @@ const FileVideo = ({
           message = "Decode error";
           break;
         case 4:
-          message = `Unsupported format (${mimeType})`;
-          if (BROWSER_LIMITED_FORMATS[mimeType]) {
-            message += ` - ${BROWSER_LIMITED_FORMATS[mimeType]}`;
-          }
+          message = "Unsupported format ({format})";
           break;
         default:
           message = "Unknown error";
@@ -817,7 +833,11 @@ const FileVideo = ({
     return (
       <VideoErrorFallback
         className="h-dvh min-h-[240px] w-dvw rounded-none"
-        message={errorMessage}
+        message={errorMessage === "Unsupported format ({format})"
+          ? BROWSER_LIMITED_FORMATS[mimeType]
+            ? t("Unsupported format ({format}) - {reason}", { format: mimeType, reason: t(BROWSER_LIMITED_FORMATS[mimeType]) })
+            : t("Unsupported format ({format})", { format: mimeType })
+          : t(errorMessage)}
       />
     );
   }
@@ -858,7 +878,7 @@ const FileVideo = ({
         onTimeUpdate={handleTimeUpdate}
       >
         <source src={url} type={mimeType} />
-        Your browser does not support this video format
+        {t("Your browser does not support this video format")}
       </video>
 
       {/* Hidden video for preview */}
@@ -880,7 +900,7 @@ const FileVideo = ({
       {formatWarning && !error && (
         <div className="absolute left-3 right-3 top-3 z-20 flex items-center justify-center gap-2 rounded-md border border-amber-300/30 bg-amber-500/90 px-3 py-2 text-center text-sm font-medium text-amber-950 shadow-lg backdrop-blur-md">
           <AlertTriangle className="h-4 w-4 flex-shrink-0" />
-          <span>{formatWarning}</span>
+          <span>{t(formatWarning)}</span>
         </div>
       )}
 
@@ -902,8 +922,8 @@ const FileVideo = ({
                   formatWarning ? "top-16 sm:top-16" : "top-3 sm:top-5",
                 )}
               >
-                <span className="text-white/60">Loading</span>{" "}
-                {formatLoadingSpeed(loadingSpeed)}
+                <span className="text-white/60">{t("Loading")}</span>{" "}
+                {formatLoadingSpeed(loadingSpeed, locale)}
                 <span className="ml-2 text-white/50">
                   {Math.floor(loadedPercent)}%
                 </span>

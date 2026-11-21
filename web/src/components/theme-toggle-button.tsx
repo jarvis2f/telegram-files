@@ -1,10 +1,13 @@
 "use client";
 
+import { useI18n } from "@/hooks/use-i18n";
+
 import { Toggle } from "@/components/ui/toggle";
 import { Moon, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
 
 export default function ThemeToggleButton() {
+  const { t } = useI18n();
   const { theme, setTheme } = useTheme();
 
   return (
@@ -16,7 +19,9 @@ export default function ThemeToggleButton() {
       onPressedChange={() =>
         setTheme((prev) => (prev === "dark" ? "light" : "dark"))
       }
-      aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
+      aria-label={t(
+        theme === "dark" ? "Switch to light mode" : "Switch to dark mode",
+      )}
     >
       <Moon
         size={16}

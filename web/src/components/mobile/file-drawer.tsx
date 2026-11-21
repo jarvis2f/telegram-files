@@ -11,6 +11,7 @@ import useFileSwitch from "@/hooks/use-file-switch";
 import FileImage from "../file-image";
 import { DotmTriangle2 } from "@/components/ui/dotm-triangle-2";
 import { MobilePreviewTagOverlay } from "./mobile-preview-tag-overlay";
+import { useI18n } from "@/hooks/use-i18n";
 
 type FileDrawerProps = {
   open: boolean;
@@ -30,6 +31,7 @@ export default function FileDrawer({
   handleLoadMore,
   isLoading,
 }: FileDrawerProps) {
+  const { t } = useI18n();
   const [viewing, setViewing] = useState(initialViewing);
 
   // 防止在下载状态变化时意外调用onFileChange导致drawer关闭
@@ -152,7 +154,7 @@ export default function FileDrawer({
         aria-describedby={undefined}
       >
         <VisuallyHidden>
-          <DrawerTitle>File Details</DrawerTitle>
+          <DrawerTitle>{t("File Details")}</DrawerTitle>
         </VisuallyHidden>
         {isLoading && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center">
@@ -163,7 +165,7 @@ export default function FileDrawer({
               opacityBase={0.1}
               opacityMid={0.4}
               opacityPeak={0.95}
-              ariaLabel="Loading file details"
+              ariaLabel={t("Loading file details")}
             />
           </div>
         )}

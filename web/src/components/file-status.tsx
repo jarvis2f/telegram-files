@@ -13,6 +13,7 @@ import {
   XCircle,
 } from "lucide-react";
 import useIsMobile from "@/hooks/use-is-mobile";
+import { useI18n } from "@/hooks/use-i18n";
 
 export const DOWNLOAD_STATUS = {
   idle: {
@@ -72,6 +73,7 @@ export default function FileStatus({
   file: TelegramFile;
   className?: string;
 }) {
+  const { t } = useI18n();
   const badgeVariants = {
     initial: { opacity: 0, scale: 0.9 },
     animate: {
@@ -96,7 +98,7 @@ export default function FileStatus({
             animate="animate"
             exit="exit"
           >
-            <TooltipWrapper content="Download Status">
+            <TooltipWrapper content={t("Download Status")}>
               <Badge
                 className={cn(
                   "h-6 text-xs hover:bg-gray-200",
@@ -104,7 +106,7 @@ export default function FileStatus({
                   isMobile && "shadow-none",
                 )}
               >
-                {DOWNLOAD_STATUS[file.downloadStatus].text}
+                {t(DOWNLOAD_STATUS[file.downloadStatus].text)}
               </Badge>
             </TooltipWrapper>
           </motion.div>
@@ -119,14 +121,14 @@ export default function FileStatus({
               animate="animate"
               exit="exit"
             >
-              <TooltipWrapper content="Transfer Status">
+              <TooltipWrapper content={t("Transfer Status")}>
                 <Badge
                   className={cn(
                     "h-6 text-xs hover:bg-gray-200",
                     TRANSFER_STATUS[file.transferStatus].className,
                   )}
                 >
-                  {TRANSFER_STATUS[file.transferStatus].text}
+                  {t(TRANSFER_STATUS[file.transferStatus].text)}
                 </Badge>
               </TooltipWrapper>
             </motion.div>

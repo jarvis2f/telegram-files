@@ -35,6 +35,8 @@ import { RadioGroup, RadioGroupItem } from "./ui/radio-group";
 import { useAdminSession } from "@/hooks/use-admin-session";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { LanguageSwitcher } from "@/components/language-switcher";
+import { useI18n } from "@/hooks/use-i18n";
 
 interface SettingsSectionProps {
   icon: LucideIcon;
@@ -107,6 +109,7 @@ function SettingRow({
 }
 
 export default function SettingsForm() {
+  const { t } = useI18n();
   const { settings, setSetting, updateSettings } = useSettings();
   const { account } = useTelegramAccount();
   const { session, logout } = useAdminSession();
@@ -114,20 +117,20 @@ export default function SettingsForm() {
   const [loggingOut, setLoggingOut] = useState(false);
 
   const avgSpeedIntervalOptions = [
-    { value: "60", label: "1 minute" },
-    { value: "300", label: "5 minutes" },
-    { value: "600", label: "10 minutes" },
-    { value: "900", label: "15 minutes" },
-    { value: "1800", label: "30 minutes" },
+    { value: "60", label: t("1 minute") },
+    { value: "300", label: t("5 minutes") },
+    { value: "600", label: t("10 minutes") },
+    { value: "900", label: t("15 minutes") },
+    { value: "1800", label: t("30 minutes") },
   ];
 
   const tdlibIdleTimeoutOptions = [
-    { value: "1", label: "1 minute" },
-    { value: "5", label: "5 minutes" },
-    { value: "10", label: "10 minutes" },
-    { value: "30", label: "30 minutes" },
-    { value: "60", label: "1 hour" },
-    { value: "0", label: "Never" },
+    { value: "1", label: t("1 minute") },
+    { value: "5", label: t("5 minutes") },
+    { value: "10", label: t("10 minutes") },
+    { value: "30", label: t("30 minutes") },
+    { value: "60", label: t("1 hour") },
+    { value: "0", label: t("Never") },
   ];
 
   const handleSave = async (e: FormEvent) => {
@@ -161,27 +164,27 @@ export default function SettingsForm() {
       <div className="flex flex-1 flex-col gap-4 overflow-y-auto pr-1">
         <div className="flex items-start gap-3 rounded-md border bg-muted/40 p-3 text-sm text-muted-foreground">
           <Bell className="mt-0.5 size-4 shrink-0" />
-          <p>These settings are shared across every Telegram account.</p>
+          <p>{t("These settings are shared across every Telegram account.")}</p>
         </div>
 
         <SettingsSection
           icon={FolderOpen}
-          title="Storage"
-          description="Current account storage location"
+          title={t("Storage")}
+          description={t("Current account storage location")}
         >
           <div className="flex flex-col gap-2 rounded-md border bg-card p-4 shadow-sm">
             <div className="flex items-center justify-between gap-3">
-              <Label>Your root path</Label>
-              <Badge variant="secondary">Read only</Badge>
+              <Label>{t("Your root path")}</Label>
+              <Badge variant="secondary">{t("Read only")}</Badge>
             </div>
             <div className="flex items-center gap-2">
               <p className="min-w-0 flex-1 truncate rounded-md bg-muted px-3 py-2 font-mono text-xs text-muted-foreground">
-                {account?.rootPath || "No account selected"}
+                {account?.rootPath || t("No account selected")}
               </p>
               <Button
                 variant="ghost"
                 size="icon"
-                aria-label="Copy root path"
+                aria-label={t("Copy root path")}
                 disabled={!account?.rootPath}
                 onClick={(e) => {
                   e.preventDefault();
@@ -196,15 +199,18 @@ export default function SettingsForm() {
 
         <SettingsSection
           icon={Moon}
-          title="TDLib sleep"
-          description="Close idle Telegram clients to stop background disk activity"
+          title={t("TDLib sleep")}
+          description={t(
+            "Close idle Telegram clients to stop background disk activity",
+          )}
         >
           <div className="grid gap-4 rounded-md border bg-card p-4 shadow-sm md:grid-cols-[1fr_220px] md:items-center">
             <div>
-              <Label htmlFor="tdlib-idle-timeout">Sleep after</Label>
+              <Label htmlFor="tdlib-idle-timeout">{t("Sleep after")}</Label>
               <p className="mt-1 text-sm text-muted-foreground">
-                TDLib restarts automatically when the account is opened.
-                Accounts with auto download or auto preload enabled never sleep.
+                {t(
+                  "TDLib restarts automatically when the account is opened. Accounts with auto download or auto preload enabled never sleep.",
+                )}
               </p>
             </div>
             <Select
@@ -214,7 +220,7 @@ export default function SettingsForm() {
               }
             >
               <SelectTrigger id="tdlib-idle-timeout">
-                <SelectValue placeholder="Select idle timeout" />
+                <SelectValue placeholder={t("Select idle timeout")} />
               </SelectTrigger>
               <SelectContent>
                 {tdlibIdleTimeoutOptions.map((option) => (
@@ -229,12 +235,20 @@ export default function SettingsForm() {
 
         <SettingsSection
           icon={Gauge}
-          title="Display"
-          description="Units and table visibility preferences"
+          title={t("Display")}
+          description={t("Units and table visibility preferences")}
         >
           <SettingRow
-            label="Speed units"
-            description="Choose how transfer speed is displayed throughout the app."
+            label={t("Language")}
+            description={t("Choose the language used on this device.")}
+          >
+            <LanguageSwitcher />
+          </SettingRow>
+          <SettingRow
+            label={t("Speed units")}
+            description={t(
+              "Choose how transfer speed is displayed throughout the app.",
+            )}
           >
             <RadioGroup
               value={settings?.speedUnits || "bits"}
@@ -243,7 +257,7 @@ export default function SettingsForm() {
               data-state={settings?.speedUnits || "bits"}
             >
               <label className="inline-flex cursor-pointer items-center justify-center whitespace-nowrap rounded-md px-3 py-1 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 group-data-[state=bits]:bg-background group-data-[state=bits]:text-foreground group-data-[state=bits]:shadow">
-                bits
+                {t("bits")}
                 <RadioGroupItem
                   id="enspeedUnits-bits"
                   value="bits"
@@ -251,7 +265,7 @@ export default function SettingsForm() {
                 />
               </label>
               <label className="inline-flex cursor-pointer items-center justify-center whitespace-nowrap rounded-md px-3 py-1 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 group-data-[state=bytes]:bg-background group-data-[state=bytes]:text-foreground group-data-[state=bytes]:shadow">
-                bytes
+                {t("bytes")}
                 <RadioGroupItem
                   id="speedUnits-bytes"
                   value="bytes"
@@ -262,13 +276,10 @@ export default function SettingsForm() {
           </SettingRow>
 
           <SettingRow
-            label="Unique only"
-            description={
-              <>
-                Show only unique files in the table. When enabled, document
-                counts may be less precise.
-              </>
-            }
+            label={t("Unique only")}
+            description={t(
+              "Show only unique files in the table. When enabled, document counts may be less precise.",
+            )}
             onClick={(event) => handleSwitchChange("uniqueOnly", event)}
           >
             <Switch
@@ -281,12 +292,14 @@ export default function SettingsForm() {
 
         <SettingsSection
           icon={EyeOff}
-          title="Privacy"
-          description="Control how sensitive file content appears in lists"
+          title={t("Privacy")}
+          description={t("Control how sensitive file content appears in lists")}
         >
           <SettingRow
-            label="Always hide"
-            description="Always hide content and extra information in the table."
+            label={t("Always hide")}
+            description={t(
+              "Always hide content and extra information in the table.",
+            )}
             onClick={(event) => handleSwitchChange("alwaysHide", event)}
           >
             <Switch
@@ -298,8 +311,10 @@ export default function SettingsForm() {
 
           {settings?.alwaysHide === "false" && (
             <SettingRow
-              label="Show sensitive content"
-              description="When disabled, sensitive content is still present but hidden behind a spoiler."
+              label={t("Show sensitive content")}
+              description={t(
+                "When disabled, sensitive content is still present but hidden behind a spoiler.",
+              )}
               onClick={(event) =>
                 handleSwitchChange("showSensitiveContent", event)
               }
@@ -317,12 +332,14 @@ export default function SettingsForm() {
 
         <SettingsSection
           icon={DownloadCloud}
-          title="Auto Download"
-          description="Limits and timing for automatic downloads"
+          title={t("Auto Download")}
+          description={t("Limits and timing for automatic downloads")}
         >
           <SettingRow
-            label="Auto load thumbnails"
-            description="Download lightweight preview thumbnails while browsing files."
+            label={t("Auto load thumbnails")}
+            description={t(
+              "Download lightweight preview thumbnails while browsing files.",
+            )}
             onClick={(event) => handleSwitchChange("thumbnailAutoLoad", event)}
           >
             <Switch
@@ -335,9 +352,9 @@ export default function SettingsForm() {
           <div className="rounded-md border bg-card p-4 shadow-sm">
             <div className="flex items-center justify-between gap-4">
               <div>
-                <Label htmlFor="limit">Limit per account</Label>
+                <Label htmlFor="limit">{t("Limit per account")}</Label>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  Maximum concurrent automatic downloads per account.
+                  {t("Maximum concurrent automatic downloads per account.")}
                 </p>
               </div>
               <span className="text-muted-foreground">
@@ -358,9 +375,13 @@ export default function SettingsForm() {
 
           <div className="grid gap-4 rounded-md border bg-card p-4 shadow-sm md:grid-cols-[1fr_220px] md:items-center">
             <div>
-              <Label htmlFor="avg-speed-interval">Average speed interval</Label>
+              <Label htmlFor="avg-speed-interval">
+                {t("Average speed interval")}
+              </Label>
               <p className="mt-1 text-sm text-muted-foreground">
-                Longer intervals smooth the chart, but may consume more memory.
+                {t(
+                  "Longer intervals smooth the chart, but may consume more memory.",
+                )}
               </p>
             </div>
             <Select
@@ -368,7 +389,7 @@ export default function SettingsForm() {
               onValueChange={(v) => void setSetting("avgSpeedInterval", v)}
             >
               <SelectTrigger id="avg-speed-interval">
-                <SelectValue placeholder="Select Avg Speed Interval" />
+                <SelectValue placeholder={t("Select Avg Speed Interval")} />
               </SelectTrigger>
               <SelectContent>
                 {avgSpeedIntervalOptions.map((option) => (
@@ -381,7 +402,7 @@ export default function SettingsForm() {
           </div>
 
           <div className="flex flex-col gap-3 rounded-md border bg-card p-4 shadow-sm">
-            <Label htmlFor="time-limited">Time Limited</Label>
+            <Label htmlFor="time-limited">{t("Time Limited")}</Label>
             <TimeRangeSelector
               startRequired={true}
               endRequired={true}
@@ -406,15 +427,15 @@ export default function SettingsForm() {
               className="max-w-md"
             />
             <p className="text-sm text-muted-foreground">
-              Set both values to 00:00 to disable the time window.
+              {t("Set both values to 00:00 to disable the time window.")}
             </p>
           </div>
         </SettingsSection>
 
         <SettingsSection
           icon={Tags}
-          title="Tags"
-          description="Reusable labels available when organizing files"
+          title={t("Tags")}
+          description={t("Reusable labels available when organizing files")}
         >
           <div className="rounded-md border bg-card p-4 shadow-sm">
             <TagsInput
@@ -431,14 +452,18 @@ export default function SettingsForm() {
 
         <SettingsSection
           icon={Shield}
-          title="Administrator Session"
-          description="End the current administrator session on this device"
+          title={t("Administrator Session")}
+          description={t(
+            "End the current administrator session on this device",
+          )}
         >
           <div className="flex items-center justify-between gap-4 rounded-md border bg-card p-4 shadow-sm">
             <div className="flex min-w-0 flex-col gap-1">
-              <Label>Signed in account</Label>
+              <Label>{t("Signed in account")}</Label>
               <p className="truncate text-xs text-muted-foreground">
-                Signed in as {session?.username ?? "administrator"}
+                {t("Signed in as {name}", {
+                  name: session?.username ?? t("administrator"),
+                })}
               </p>
             </div>
             <Button
@@ -448,7 +473,7 @@ export default function SettingsForm() {
               onClick={() => void handleLogout()}
             >
               <LogOut data-icon="inline-start" />
-              {loggingOut ? "Logging out…" : "Log out"}
+              {loggingOut ? t("Logging out…") : t("Log out")}
             </Button>
           </div>
         </SettingsSection>
@@ -456,11 +481,11 @@ export default function SettingsForm() {
       <DialogFooter className="mt-3 gap-2 border-t bg-background pt-3">
         <DialogClose asChild>
           <Button className="w-full md:w-auto" variant="outline" type="button">
-            Cancel
+            {t("Cancel")}
           </Button>
         </DialogClose>
         <Button className="w-full md:w-auto" type="submit">
-          Save settings
+          {t("Save settings")}
         </Button>
       </DialogFooter>
     </form>

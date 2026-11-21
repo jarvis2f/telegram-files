@@ -8,9 +8,11 @@ import { request } from "@/lib/api";
 import { describeShareError } from "@/lib/share-errors";
 import type { TelegramFile } from "@/lib/types";
 import { toast } from "@/hooks/use-toast";
+import { useI18n } from "@/hooks/use-i18n";
 import { useSharePublicationPolicy } from "@/hooks/use-share-publication-policy";
 import { categoryForFile } from "@/lib/share-publication-policy";
 import { defaultShareTags } from "@/lib/share-tags";
+import { shareCategoryLabel } from "@/components/sharing-i18n";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -45,13 +47,17 @@ export function ShareResourceDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
-  const [title, setTitle] = useState(
-    file.fileName || file.caption || "Telegram file",
+  const { t } = useI18n();
+  const [title, setTitle] = useState<string | null>(
+    file.fileName || file.caption || null,
   );
+  const resourceTitle = title ?? t("Telegram file");
   const policy = useSharePublicationPolicy();
   const [description, setDescription] = useState(file.caption ?? "");
   const [tags, setTags] = useState(defaultShareTags(file));
-  const [category, setCategory] = useState<string>(categoryForFile(file, policy));
+  const [category, setCategory] = useState<string>(
+    categoryForFile(file, policy),
+  );
   const [scope, setScope] = useState<AccessScope>("OWNER_ONLY");
   const [publicMessageUrl, setPublicMessageUrl] = useState("");
   const downloaded = file.downloadStatus === "completed";
@@ -59,7 +65,7 @@ export function ShareResourceDialog({
 
   useEffect(() => {
     if (!open) return;
-    setTitle(file.fileName || file.caption || "Telegram file");
+    setTitle(file.fileName || file.caption || null);
     setDescription(file.caption ?? "");
     setTags(defaultShareTags(file));
     setCategory(categoryForFile(file, policy));
@@ -70,7 +76,9 @@ export function ShareResourceDialog({
     setSubmitting(true);
     try {
       const isEditing = Boolean(file.sharedResourceId);
-      const endpoint = isEditing ? `/share/resources/${file.sharedResourceId}` : "/share/resources";
+      const endpoint = isEditing
+        ? `/share/resources/${file.sharedResourceId}`
+        : "/share/resources";
       const method = isEditing ? "PUT" : "POST";
       const result = await request<{
         status: string;
@@ -79,7 +87,7 @@ export function ShareResourceDialog({
         method,
         body: JSON.stringify({
           ...(isEditing ? {} : { fileUniqueId: file.uniqueId }),
-          title,
+          title: resourceTitle,
           description: description || null,
           tags: tags
             .split(",")
@@ -101,25 +109,25 @@ export function ShareResourceDialog({
             ? "success"
             : "info",
         title: failed
-          ? "Publication failed"
+          ? t("Publication failed")
           : result.status === "PUBLISHED"
-            ? "Resource published"
-            : "Publication queued",
+            ? t("Resource published")
+            : t("Publication queued"),
         description: failed
-          ? describeShareError(result.lastErrorCode)
+          ? t(describeShareError(result.lastErrorCode))
           : result.status === "PUBLISHED"
-            ? "The public index can now discover this resource."
-            : "The node will retry when the platform is reachable.",
+            ? t("The public index can now discover this resource.")
+            : t("The node will retry when the platform is reachable."),
       });
       onOpenChange(false);
     } catch (error) {
       toast({
         variant: "error",
-        title: "Publication failed",
+        title: t("Publication failed"),
         description:
           error instanceof Error
-            ? error.message
-            : "The resource could not be published.",
+            ? t(error.message)
+            : t("The resource could not be published."),
       });
     } finally {
       setSubmitting(false);
@@ -138,7 +146,7 @@ export function ShareResourceDialog({
             height={20}
             className="size-5 rounded-full bg-white"
           />
-          Index publication
+          {t("Index publication")}
         </div>
 
         <form
@@ -150,26 +158,28 @@ export function ShareResourceDialog({
         >
           <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto overscroll-contain px-6 py-5">
             <DialogHeader className="gap-2">
-              <DialogTitle>Share metadata, keep the locator local.</DialogTitle>
+              <DialogTitle>
+                {t("Share metadata, keep the locator local.")}
+              </DialogTitle>
               <DialogDescription>
-                The platform receives an opaque capability and safe file
-                metadata. Chat ID, message ID, account identity, and local paths
-                never leave this node.
+                {t(
+                  "The platform receives an opaque capability and safe file metadata. Chat ID, message ID, account identity, and local paths never leave this node.",
+                )}
               </DialogDescription>
             </DialogHeader>
 
             <div className="grid gap-4 md:grid-cols-2">
               <label className="flex flex-col gap-2 md:col-span-2">
-                <span className="text-sm font-medium">Title</span>
+                <span className="text-sm font-medium">{t("Title")}</span>
                 <Input
-                  value={title}
+                  value={resourceTitle}
                   maxLength={255}
                   required
                   onChange={(event) => setTitle(event.target.value)}
                 />
               </label>
               <label className="flex flex-col gap-2 md:col-span-2">
-                <span className="text-sm font-medium">Description</span>
+                <span className="text-sm font-medium">{t("Description")}</span>
                 <Textarea
                   value={description}
                   maxLength={4096}
@@ -178,19 +188,16 @@ export function ShareResourceDialog({
                 />
               </label>
               <label className="flex flex-col gap-2">
-                <span className="text-sm font-medium">Tags</span>
+                <span className="text-sm font-medium">{t("Tags")}</span>
                 <Input
                   value={tags}
-                  placeholder="document, archive"
+                  placeholder={t("document, archive")}
                   onChange={(event) => setTags(event.target.value)}
                 />
               </label>
               <label className="flex flex-col gap-2">
-                <span className="text-sm font-medium">Category</span>
-                <Select
-                  value={category}
-                  onValueChange={setCategory}
-                >
+                <span className="text-sm font-medium">{t("Category")}</span>
+                <Select value={category} onValueChange={setCategory}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -198,7 +205,7 @@ export function ShareResourceDialog({
                     <SelectGroup>
                       {policy.categories.map((item) => (
                         <SelectItem key={item.id} value={item.id}>
-                          {item.label}
+                          {shareCategoryLabel(item, t)}
                         </SelectItem>
                       ))}
                     </SelectGroup>
@@ -206,7 +213,9 @@ export function ShareResourceDialog({
                 </Select>
               </label>
               <div className="flex flex-col gap-2 md:col-span-2">
-                <Label htmlFor={`scope-${file.uniqueId}`}>Source access</Label>
+                <Label htmlFor={`scope-${file.uniqueId}`}>
+                  {t("Source access")}
+                </Label>
                 <SourceAccessSelect
                   id={`scope-${file.uniqueId}`}
                   value={scope}
@@ -216,7 +225,7 @@ export function ShareResourceDialog({
               {scope === "PUBLIC" && (
                 <label className="flex flex-col gap-2 md:col-span-2">
                   <span className="text-sm font-medium">
-                    Public Telegram message URL
+                    {t("Public Telegram message URL")}
                   </span>
                   <Input
                     type="url"
@@ -235,8 +244,8 @@ export function ShareResourceDialog({
               <ShieldCheck aria-hidden="true" />
               <span>
                 {file.downloadStatus === "completed"
-                  ? "Downloaded source"
-                  : "Remote-only source"}{" "}
+                  ? t("Downloaded source")
+                  : t("Remote-only source")}{" "}
                 · {file.fileName}
               </span>
             </div>
@@ -248,18 +257,18 @@ export function ShareResourceDialog({
               variant="ghost"
               onClick={() => onOpenChange(false)}
             >
-              Cancel
+              {t("Cancel")}
             </Button>
             <Button
               type="submit"
               disabled={
-                submitting || title.trim().length === 0 || !downloaded
+                submitting || resourceTitle.trim().length === 0 || !downloaded
               }
             >
               {submitting && (
                 <Loader2 data-icon="inline-start" className="animate-spin" />
               )}
-              Publish resource
+              {t("Publish resource")}
             </Button>
           </DialogFooter>
         </form>

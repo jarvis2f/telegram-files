@@ -38,6 +38,7 @@ import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { request } from "@/lib/api";
+import { useI18n } from "@/hooks/use-i18n";
 
 type BindingState =
   | "UNBOUND"
@@ -76,6 +77,7 @@ function defaultNodeName(): string {
 }
 
 export function PlatformBinding() {
+  const { t } = useI18n();
   const [status, setStatus] = useState<BindingStatus>({ status: "UNBOUND" });
   const [nodeName, setNodeName] = useState("");
   const [isLoading, setIsLoading] = useState(true);
@@ -155,7 +157,7 @@ export function PlatformBinding() {
       <Card>
         <CardContent className="flex min-h-80 items-center justify-center p-6">
           <LoaderCircle className="animate-spin text-muted-foreground" />
-          <span className="sr-only">Loading platform binding</span>
+          <span className="sr-only">{t("Loading platform binding")}</span>
         </CardContent>
       </Card>
     );
@@ -168,7 +170,7 @@ export function PlatformBinding() {
           role="alert"
           className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive"
         >
-          {error}
+          {t(error)}
         </div>
       )}
 
@@ -221,6 +223,8 @@ function AuthorizeCard({
   isMutating: boolean;
   onSubmit: (event: FormEvent) => void;
 }) {
+  const { t } = useI18n();
+
   return (
     <Card>
       <CardHeader>
@@ -228,12 +232,13 @@ function AuthorizeCard({
           <div className="flex flex-col gap-2">
             <Badge variant="secondary" className="w-fit gap-1.5 px-2 py-1">
               <Cloud data-icon="inline-start" size={16} />
-              Unbound
+              {t("Unbound")}
             </Badge>
-            <CardTitle className="text-2xl">Connect this node</CardTitle>
+            <CardTitle className="text-2xl">{t("Connect this node")}</CardTitle>
             <CardDescription className="max-w-xl">
-              Authorize this installation from Telegram Seed. Credentials stay
-              encrypted on this machine and can be revoked independently.
+              {t(
+                "Authorize this installation from Telegram Seed. Credentials stay encrypted on this machine and can be revoked independently.",
+              )}
             </CardDescription>
           </div>
           <ShieldCheck className="text-muted-foreground" aria-hidden="true" />
@@ -245,7 +250,7 @@ function AuthorizeCard({
           onSubmit={onSubmit}
           className="flex flex-col gap-2"
         >
-          <Label htmlFor="node-name">Node name</Label>
+          <Label htmlFor="node-name">{t("Node name")}</Label>
           <Input
             id="node-name"
             value={nodeName}
@@ -255,13 +260,16 @@ function AuthorizeCard({
             onChange={(event) => setNodeName(event.target.value)}
           />
           <p className="text-xs text-muted-foreground">
-            Use a name that makes this machine easy to recognize in your device
-            list.
+            {t(
+              "Use a name that makes this machine easy to recognize in your device list.",
+            )}
           </p>
           {terminalStates.has(status) && (
             <p className="mt-2 text-sm text-muted-foreground">
-              The previous authorization was {status}. Start a new request when
-              ready.
+              {t(
+                "The previous authorization was {status}. Start a new request when ready.",
+                { status: t(status) },
+              )}
             </p>
           )}
         </form>
@@ -277,7 +285,7 @@ function AuthorizeCard({
           ) : (
             <ArrowUpRight data-icon="inline-start" />
           )}
-          Start authorization
+          {t("Start authorization")}
         </Button>
       </CardFooter>
     </Card>
@@ -297,6 +305,7 @@ function PendingCard({
   onRefresh: () => void;
   onCancel: () => void;
 }) {
+  const { t } = useI18n();
   const remaining = Math.max(0, (status.expiresAt ?? now) - now);
   const total = 10 * 60 * 1_000;
   const progress = Math.min(100, (remaining / total) * 100);
@@ -306,12 +315,15 @@ function PendingCard({
       <CardHeader>
         <Badge variant="secondary" className="w-fit gap-1.5 px-2 py-1">
           <Activity data-icon="inline-start" size={16} />
-          Waiting for approval
+          {t("Waiting for approval")}
         </Badge>
-        <CardTitle className="text-2xl">Approve in Telegram Seed</CardTitle>
+        <CardTitle className="text-2xl">
+          {t("Approve in Telegram Seed")}
+        </CardTitle>
         <CardDescription>
-          Scan the code or open the approval link, then confirm the node name
-          and scopes.
+          {t(
+            "Scan the code or open the approval link, then confirm the node name and scopes.",
+          )}
         </CardDescription>
       </CardHeader>
       <CardContent className="grid gap-6 md:grid-cols-[12rem_1fr] md:items-center">
@@ -319,7 +331,7 @@ function PendingCard({
         <div className="flex flex-col gap-5">
           <div className="flex flex-col gap-2">
             <span className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
-              User code
+              {t("User code")}
             </span>
             <div className="flex flex-wrap items-center gap-2">
               <code className="rounded-md border bg-muted px-3 py-2 text-xl font-semibold tracking-widest">
@@ -329,7 +341,7 @@ function PendingCard({
                 type="button"
                 size="icon"
                 variant="outline"
-                aria-label="Copy user code"
+                aria-label={t("Copy user code")}
                 onClick={() =>
                   void navigator.clipboard.writeText(status.userCode ?? "")
                 }
@@ -340,7 +352,7 @@ function PendingCard({
           </div>
           <div className="flex flex-col gap-2">
             <div className="flex justify-between gap-4 text-xs text-muted-foreground">
-              <span>Authorization window</span>
+              <span>{t("Authorization window")}</span>
               <span>{formatRemaining(remaining)}</span>
             </div>
             <Progress value={progress} />
@@ -353,7 +365,7 @@ function PendingCard({
                 rel="noreferrer"
               >
                 <ArrowUpRight data-icon="inline-start" />
-                Open approval page
+                {t("Open approval page")}
               </a>
             </Button>
           )}
@@ -362,7 +374,7 @@ function PendingCard({
       <CardFooter className="justify-between gap-3 border-t pt-6">
         <Button type="button" variant="ghost" onClick={onRefresh}>
           <RefreshCw data-icon="inline-start" />
-          Check now
+          {t("Check now")}
         </Button>
         <Button
           type="button"
@@ -370,7 +382,7 @@ function PendingCard({
           disabled={isMutating}
           onClick={onCancel}
         >
-          Cancel
+          {t("Cancel")}
         </Button>
       </CardFooter>
     </Card>
@@ -392,7 +404,13 @@ function BoundCard({
   onRename: (event: FormEvent) => void;
   onUnbind: () => void;
 }) {
+  const { t, locale } = useI18n();
   const [isCollapsed, setIsCollapsed] = useState(true);
+  const lastHeartbeat = formatRelative(
+    status.lastHeartbeatAt,
+    locale,
+    t("Not reported yet"),
+  );
 
   if (isCollapsed) {
     return (
@@ -403,22 +421,23 @@ function BoundCard({
         <CardHeader className="py-4">
           <div className="flex items-center justify-between gap-4">
             <div className="flex flex-wrap items-center gap-3">
-              <Badge className="w-fit py-1 px-2 gap-1.5">
+              <Badge className="w-fit gap-1.5 px-2 py-1">
                 <CheckCircle2 data-icon="inline-start" size={16} />
-                Bound
+                {t("Bound")}
               </Badge>
               <span className="font-semibold">{status.nodeName}</span>
-              <span className="font-mono text-xs text-muted-foreground hidden sm:inline">
-                {shortId(status.nodeId)}
+              <span className="hidden font-mono text-xs text-muted-foreground sm:inline">
+                {shortId(status.nodeId, t("Node ID pending"))}
               </span>
-              <span className="text-xs text-muted-foreground hidden md:inline">
-                • Last heartbeat {formatRelative(status.lastHeartbeatAt)}
+              <span className="hidden text-xs text-muted-foreground md:inline">
+                {t("• Last heartbeat {time}", { time: lastHeartbeat })}
               </span>
             </div>
             <Button
               type="button"
               variant="ghost"
               size="icon"
+              aria-label={t("Show node details")}
               className="h-8 w-8 shrink-0"
               onClick={(e) => {
                 e.stopPropagation();
@@ -438,23 +457,26 @@ function BoundCard({
       <CardHeader>
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="flex flex-col gap-2">
-            <Badge className="w-fit py-1 px-2 gap-1.5">
+            <Badge className="w-fit gap-1.5 px-2 py-1">
               <CheckCircle2 data-icon="inline-start" size={16} />
-              Bound
+              {t("Bound")}
             </Badge>
             <CardTitle className="text-2xl">{status.nodeName}</CardTitle>
             <CardDescription>
-              This node has its own credential family and heartbeat identity.
+              {t(
+                "This node has its own credential family and heartbeat identity.",
+              )}
             </CardDescription>
           </div>
           <div className="flex items-start gap-4">
-            <span className="font-mono text-xs text-muted-foreground mt-2">
-              {shortId(status.nodeId)}
+            <span className="mt-2 font-mono text-xs text-muted-foreground">
+              {shortId(status.nodeId, t("Node ID pending"))}
             </span>
             <Button
               type="button"
               variant="ghost"
               size="icon"
+              aria-label={t("Hide node details")}
               className="-mr-2 -mt-2 h-8 w-8 shrink-0 text-muted-foreground"
               onClick={() => setIsCollapsed(true)}
             >
@@ -465,14 +487,18 @@ function BoundCard({
       </CardHeader>
       <CardContent className="flex flex-col gap-6">
         <div className="grid gap-4 sm:grid-cols-3">
-          <Fact label="Platform" value={hostOf(status.platformUrl)} />
           <Fact
-            label="Last heartbeat"
-            value={formatRelative(status.lastHeartbeatAt)}
+            label={t("Platform")}
+            value={hostOf(status.platformUrl, t("Unknown"))}
           />
+          <Fact label={t("Last heartbeat")} value={lastHeartbeat} />
           <Fact
-            label="Access rotates"
-            value={formatRelative(status.tokenExpireAt)}
+            label={t("Access rotates")}
+            value={formatRelative(
+              status.tokenExpireAt,
+              locale,
+              t("Not reported yet"),
+            )}
           />
         </div>
         <Separator />
@@ -481,7 +507,7 @@ function BoundCard({
           onSubmit={onRename}
           className="flex flex-col gap-2"
         >
-          <Label htmlFor="bound-node-name">Node name</Label>
+          <Label htmlFor="bound-node-name">{t("Node name")}</Label>
           <div className="flex flex-col gap-2 sm:flex-row">
             <Input
               id="bound-node-name"
@@ -499,7 +525,7 @@ function BoundCard({
                 nodeName.trim() === status.nodeName
               }
             >
-              Save name
+              {t("Save name")}
             </Button>
           </div>
         </form>
@@ -516,7 +542,7 @@ function BoundCard({
           ) : (
             <Unlink data-icon="inline-start" />
           )}
-          Unbind this node
+          {t("Unbind this node")}
         </Button>
       </CardFooter>
     </Card>
@@ -533,6 +559,7 @@ function Fact({ label, value }: { label: string; value: string }) {
 }
 
 function BindingQrCode({ value }: { value?: string }) {
+  const { t } = useI18n();
   const host = useRef<HTMLDivElement>(null);
   const qrCode = useMemo(
     () =>
@@ -564,7 +591,11 @@ function BindingQrCode({ value }: { value?: string }) {
       {value ? (
         <div ref={host} />
       ) : (
-        <LoaderCircle className="animate-spin text-muted-foreground" />
+        <LoaderCircle
+          className="animate-spin text-muted-foreground"
+          role="status"
+          aria-label={t("Loading QR code")}
+        />
       )}
     </div>
   );
@@ -576,13 +607,13 @@ function messageOf(failure: unknown): string {
     : "The platform request failed";
 }
 
-function shortId(value?: string): string {
-  if (!value) return "Node ID pending";
+function shortId(value: string | undefined, pending: string): string {
+  if (!value) return pending;
   return value.length > 16 ? `${value.slice(0, 8)}…${value.slice(-6)}` : value;
 }
 
-function hostOf(value?: string): string {
-  if (!value) return "Unknown";
+function hostOf(value: string | undefined, unknown: string): string {
+  if (!value) return unknown;
   try {
     return new URL(value).host;
   } catch {
@@ -590,11 +621,15 @@ function hostOf(value?: string): string {
   }
 }
 
-function formatRelative(value?: number | null): string {
-  if (!value) return "Not reported yet";
+function formatRelative(
+  value: number | null | undefined,
+  locale: string,
+  notReported: string,
+): string {
+  if (!value) return notReported;
   const distance = value - Date.now();
   const absolute = Math.abs(distance);
-  const formatter = new Intl.RelativeTimeFormat(undefined, { numeric: "auto" });
+  const formatter = new Intl.RelativeTimeFormat(locale, { numeric: "auto" });
   if (absolute < 60_000)
     return formatter.format(Math.round(distance / 1_000), "second");
   if (absolute < 3_600_000)

@@ -7,14 +7,16 @@ import { Button } from "@/components/ui/button";
 import { TooltipWrapper } from "@/components/ui/tooltip";
 import { usePlatformBindingStatus } from "@/hooks/use-platform-binding-status";
 import { useShareEnabled } from "@/hooks/use-share-enabled";
+import { useI18n } from "@/hooks/use-i18n";
 
 export function PlatformBindingShortcut() {
+  const { t } = useI18n();
   const shareEnabled = useShareEnabled();
   const { data, error, isLoading, isBound, isPending } =
     usePlatformBindingStatus();
 
   if (!shareEnabled) {
-    const disabledLabel = "Sharing feature is disabled";
+    const disabledLabel = t("Sharing feature is disabled");
     return (
       <TooltipWrapper content={disabledLabel}>
         <span className="inline-flex cursor-not-allowed">
@@ -33,22 +35,22 @@ export function PlatformBindingShortcut() {
     );
   }
 
-  let label = "Platform node not bound";
+  let label = t("Platform node not bound");
   let icon = <Unplug data-icon="inline-start" />;
 
   if (isLoading) {
-    label = "Checking platform node binding";
+    label = t("Checking platform node binding");
     icon = <LoaderCircle data-icon="inline-start" className="animate-spin" />;
   } else if (error || !data) {
-    label = "Platform node binding status unavailable";
+    label = t("Platform node binding status unavailable");
     icon = <Network data-icon="inline-start" />;
   } else if (isBound) {
     label = data.nodeName
-      ? `Platform node bound: ${data.nodeName}`
-      : "Platform node bound";
+      ? t("Platform node bound: {name}", { name: data.nodeName })
+      : t("Platform node bound");
     icon = <BadgeCheck data-icon="inline-start" />;
   } else if (isPending) {
-    label = "Platform node authorization pending";
+    label = t("Platform node authorization pending");
     icon = <LoaderCircle data-icon="inline-start" className="animate-spin" />;
   }
 

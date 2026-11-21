@@ -11,6 +11,7 @@ import { Ellipsis } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import * as React from "react";
 import { useEffect } from "react";
+import { useI18n } from "@/hooks/use-i18n";
 
 interface FileTypeFilterProps {
   offline: boolean;
@@ -33,11 +34,12 @@ const FileTypeSelectItem = ({
   counts,
   isLoading,
 }: FileTypeSelectItemProps) => {
+  const { t } = useI18n();
   return (
     <SelectItem value={value}>
       <div className="flex items-center gap-5">
         <span className="w-10">
-          {value.charAt(0).toUpperCase() + value.slice(1)}
+          {t(value.charAt(0).toUpperCase() + value.slice(1))}
         </span>
         {isLoading ? (
           <Ellipsis className="h-4 w-4 animate-pulse" />
@@ -59,6 +61,7 @@ export default function FileTypeFilter({
   seedOnly = false,
   onChange,
 }: FileTypeFilterProps) {
+  const { t } = useI18n();
   const [localType, setLocalType] = React.useState<FileType | "all">(type);
   const countParams = new URLSearchParams({
     offline: String(offline),
@@ -82,13 +85,13 @@ export default function FileTypeFilter({
 
   return (
     <div className="space-y-2">
-      <Label>Type</Label>
+      <Label>{t("Type")}</Label>
       <Select value={localType} onValueChange={handleTypeChange}>
         <SelectTrigger>
-          <SelectValue placeholder="File type" />
+          <SelectValue placeholder={t("File type")} />
         </SelectTrigger>
         <SelectContent>
-          {offline && <SelectItem value="all">All Files</SelectItem>}
+          {offline && <SelectItem value="all">{t("All Files")}</SelectItem>}
           <FileTypeSelectItem
             value="media"
             counts={counts}

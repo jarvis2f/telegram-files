@@ -37,6 +37,7 @@ import { useShareEnabled } from "@/hooks/use-share-enabled";
 import { TooltipWrapper } from "@/components/ui/tooltip";
 import { DotmTriangle2 } from "@/components/ui/dotm-triangle-2";
 import { nextSelection } from "@/lib/range-selection";
+import { useI18n } from "@/hooks/use-i18n";
 
 const COLUMNS: Column[] = [
   {
@@ -112,19 +113,21 @@ export function FileTable({
   messageThreadId,
   link,
 }: FileTableProps) {
+  const { t } = useI18n();
   const [selectedFiles, setSelectedFiles] = useState<Set<number>>(new Set());
   // Row last clicked, the start of a Shift+click range.
   const lastSelectedFileId = useRef<number | null>(null);
   const tableParentRef = useRef<HTMLDivElement>(null);
   const shareEnabled = useShareEnabled();
   const defaultColumns = useMemo(() => {
-    return COLUMNS.map((col) => {
+    return COLUMNS.map((column) => {
+      const col = { ...column, label: t(column.label), tooltip: column.tooltip ? t(column.tooltip) : undefined };
       if (col.id === "source" || col.id === "sharing" || col.id === "seeding") {
         return { ...col, isVisible: shareEnabled };
       }
       return col;
     });
-  }, [shareEnabled]);
+  }, [shareEnabled, t]);
 
   const [columnPreferences, setColumnPreferences] = useLocalStorage<
     ColumnPreference[]
@@ -280,7 +283,7 @@ export function FileTable({
               }}
             >
               <SquareChevronLeft className="h-4 w-4" />
-              Back
+              {t("Back")}
             </Button>
           )}
           {link ? (
@@ -291,7 +294,7 @@ export function FileTable({
           ) : (
             <>
               <Badge variant="outline" className="flex h-full bg-accent">
-                {filters.type.charAt(0).toUpperCase() + filters.type.slice(1)}
+                {t(filters.type.charAt(0).toUpperCase() + filters.type.slice(1))}
               </Badge>
               <FileFilters
                 telegramId={accountId}
@@ -305,8 +308,9 @@ export function FileTable({
         </div>
         <div className="hidden items-center gap-4 md:flex">
           <span className="text-sm text-muted-foreground">
-            Loaded {loadedCount}
-            {totalCount === undefined ? "" : ` / ${totalCount}`}
+            {totalCount === undefined
+              ? t("Loaded {count}", { count: loadedCount })
+              : t("Loaded {count} / {total}", { count: loadedCount, total: totalCount })}
           </span>
           <TableColumnFilter
             columns={columns}
@@ -350,6 +354,7 @@ export function FileTable({
           <div className="sticky top-0 z-20 flex h-10 items-center border-b bg-background/90 text-sm text-muted-foreground backdrop-blur-sm">
             <div className="w-[30px] text-center">
               <Checkbox
+                aria-label={t("Select all files")}
                 checked={selectedFiles.size === files.length}
                 onCheckedChange={handleSelectAll}
               />
@@ -386,7 +391,7 @@ export function FileTable({
                 opacityBase={0.1}
                 opacityMid={0.4}
                 opacityPeak={0.95}
-                ariaLabel="Loading files"
+                ariaLabel={t("Loading files")}
               />
             </div>
           )}

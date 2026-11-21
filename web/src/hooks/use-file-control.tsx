@@ -2,11 +2,13 @@ import { type TelegramFile } from "@/lib/types";
 import useSWRMutation from "swr/mutation";
 import { POST } from "@/lib/api";
 import { toast } from "@/hooks/use-toast";
+import { useI18n } from "@/hooks/use-i18n";
 
 export function useFileControl(
   file: TelegramFile,
   updateField?: (uniqueId: string, patch: Partial<TelegramFile>) => Promise<void>,
 ) {
+  const { t } = useI18n();
   const { trigger: startDownload, isMutating: starting } = useSWRMutation(
     file.source === "SEED"
       ? "/files/start-download-multiple"
@@ -62,7 +64,7 @@ export function useFileControl(
         if (!file.uniqueId || file.uniqueId.trim() === "") {
           toast({
             variant: "error",
-            description: "☹️Sorry, this file cannot be downloaded",
+            description: t("☹️Sorry, this file cannot be downloaded"),
           });
           return;
         }
@@ -103,7 +105,7 @@ export function useFileControl(
         if (!isPausing && file.downloadStatus !== "completed") {
           toast({
             variant: "error",
-            description: "Please download the file before seeding",
+            description: t("Please download the file before seeding"),
           });
           return;
         }
@@ -115,7 +117,7 @@ export function useFileControl(
         if (!resourceId) {
           toast({
             variant: "error",
-            description: "No seeding resource ID found for this file",
+            description: t("No seeding resource ID found for this file"),
           });
           return;
         }
@@ -135,7 +137,7 @@ export function useFileControl(
           }
           toast({
             variant: "success",
-            description: isPausing ? "Seeding paused" : "Seeding resumed",
+            description: isPausing ? t("Seeding paused") : t("Seeding resumed"),
           });
         } catch (error) {
           toast({
@@ -143,7 +145,7 @@ export function useFileControl(
             description:
               error instanceof Error
                 ? error.message
-                : "Failed to toggle seeding state",
+                : t("Failed to toggle seeding state"),
           });
         }
       }
@@ -157,7 +159,7 @@ export function useFileControl(
         if (!resourceId) {
           toast({
             variant: "error",
-            description: "No seeding resource ID found for this file",
+            description: t("No seeding resource ID found for this file"),
           });
           return;
         }
@@ -176,7 +178,7 @@ export function useFileControl(
           }
           toast({
             variant: "info",
-            description: "Seeding canceled",
+            description: t("Seeding canceled"),
           });
         } catch (error) {
           toast({
@@ -184,7 +186,7 @@ export function useFileControl(
             description:
               error instanceof Error
                 ? error.message
-                : "Failed to cancel seeding",
+                : t("Failed to cancel seeding"),
           });
         }
       }
@@ -197,7 +199,7 @@ export function useFileControl(
         ) {
           toast({
             variant: "error",
-            description: "Upload limit is invalid",
+            description: t("Upload limit is invalid"),
           });
           return false;
         }
@@ -210,7 +212,7 @@ export function useFileControl(
         if (!resourceId) {
           toast({
             variant: "error",
-            description: "No seeding resource ID found for this file",
+            description: t("No seeding resource ID found for this file"),
           });
           return false;
         }
@@ -229,8 +231,8 @@ export function useFileControl(
             variant: "success",
             description:
               uploadLimitBytesPerSecond === 0
-                ? "Upload limit cleared"
-                : "Upload limit updated",
+                ? t("Upload limit cleared")
+                : t("Upload limit updated"),
           });
           return true;
         } catch (error) {
@@ -239,7 +241,7 @@ export function useFileControl(
             description:
               error instanceof Error
                 ? error.message
-                : "Failed to update upload limit",
+                : t("Failed to update upload limit"),
           });
           return false;
         }

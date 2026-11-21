@@ -12,6 +12,8 @@ import {
   getDefaultClassNames,
 } from "react-day-picker";
 
+import { zhCN } from "react-day-picker/locale";
+import { useI18n } from "@/hooks/use-i18n";
 import { cn } from "@/lib/utils";
 import { Button, buttonVariants } from "@/components/ui/button";
 
@@ -22,15 +24,37 @@ function Calendar({
   captionLayout = "label",
   buttonVariant = "ghost",
   formatters,
+  labels,
   components,
   ...props
 }: React.ComponentProps<typeof DayPicker> & {
   buttonVariant?: React.ComponentProps<typeof Button>["variant"];
 }) {
+  const { locale, t, formatDate } = useI18n();
   const defaultClassNames = getDefaultClassNames();
+  const localizedLabels: React.ComponentProps<typeof DayPicker>["labels"] =
+    locale === "zh-CN"
+      ? {
+          labelNext: () => t("Go to the Next Month"),
+          labelPrevious: () => t("Go to the Previous Month"),
+          labelMonthDropdown: () => t("Choose the Month"),
+          labelYearDropdown: () => t("Choose the Year"),
+          labelWeekNumberHeader: () => t("Week Number"),
+          labelWeekNumber: (number) => t("Week {number}", { number }),
+          labelDayButton: (day, modifiers) => {
+            let date = formatDate(day, { dateStyle: "full" });
+            if (modifiers.today) date = t("Today, {date}", { date });
+            if (modifiers.selected) date = t("{date}, selected", { date });
+            return date;
+          },
+          ...labels,
+        }
+      : labels;
 
   return (
     <DayPicker
+      locale={locale === "zh-CN" ? zhCN : undefined}
+      labels={localizedLabels}
       showOutsideDays={showOutsideDays}
       className={cn(
         "group/calendar bg-background p-3 [--cell-size:2rem] [[data-slot=card-content]_&]:bg-transparent [[data-slot=popover-content]_&]:bg-transparent",
@@ -41,7 +65,9 @@ function Calendar({
       captionLayout={captionLayout}
       formatters={{
         formatMonthDropdown: (date) =>
-          date.toLocaleString("default", { month: "short" }),
+          date.toLocaleString(locale === "zh-CN" ? locale : "default", {
+            month: "short",
+          }),
         ...formatters,
       }}
       classNames={{

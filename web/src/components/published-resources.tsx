@@ -14,6 +14,7 @@ import {
 
 import { request } from "@/lib/api";
 import { describeShareError } from "@/lib/share-errors";
+import { useI18n } from "@/hooks/use-i18n";
 import { useShareEnabled } from "@/hooks/use-share-enabled";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -62,6 +63,7 @@ type PublishedResourcesPage = {
 const PAGE_SIZE = 10;
 
 export function PublishedResources() {
+  const { t } = useI18n();
   const shareEnabled = useShareEnabled();
   const [editing, setEditing] = useState<PublishedSource | null>(null);
   const [page, setPage] = useState(1);
@@ -86,35 +88,44 @@ export function PublishedResources() {
   }, [page, totalPages]);
 
   async function revoke(source: PublishedSource) {
-    if (!window.confirm(`Revoke “${source.title}” from the platform index?`))
+    if (
+      !window.confirm(
+        t("Revoke “{name}” from the platform index?", { name: source.title }),
+      )
+    )
       return;
     try {
       await request(`/share/resources/${source.sourceId}`, {
         method: "DELETE",
       });
       await mutate();
-      toast({ variant: "success", title: "Resource revoked" });
+      toast({ variant: "success", title: t("Resource revoked") });
     } catch (failure) {
       toast({
         variant: "error",
-        title: "Revocation failed",
+        title: t("Revocation failed"),
         description:
-          failure instanceof Error ? failure.message : "Please try again.",
+          failure instanceof Error
+            ? t(failure.message)
+            : t("Please try again."),
       });
     }
   }
 
   async function copyPlatformLink(source: PublishedSource) {
     if (!source.resourceId || !device?.platformUrl) {
-      toast({ variant: "error", title: "Platform link is not available" });
+      toast({ variant: "error", title: t("Platform link is not available") });
       return;
     }
     try {
-      const link = seedResourceDetailsUrl(device.platformUrl, source.resourceId);
+      const link = seedResourceDetailsUrl(
+        device.platformUrl,
+        source.resourceId,
+      );
       await navigator.clipboard.writeText(link);
-      toast({ variant: "success", title: "Platform link copied" });
+      toast({ variant: "success", title: t("Platform link copied") });
     } catch {
-      toast({ variant: "error", title: "Could not copy the platform link" });
+      toast({ variant: "error", title: t("Could not copy the platform link") });
     }
   }
 
@@ -147,13 +158,15 @@ export function PublishedResources() {
         });
       }
       await mutate();
-      toast({ variant: "success", title: "Synchronization retried" });
+      toast({ variant: "success", title: t("Synchronization retried") });
     } catch (failure) {
       toast({
         variant: "error",
-        title: "Retry failed",
+        title: t("Retry failed"),
         description:
-          failure instanceof Error ? failure.message : "Please try again.",
+          failure instanceof Error
+            ? t(failure.message)
+            : t("Please try again."),
       });
     }
   }
@@ -162,28 +175,34 @@ export function PublishedResources() {
     <section className="flex flex-col gap-4">
       <div className="flex items-end justify-between gap-4">
         <div className="flex flex-col gap-1">
-          <h2 className="text-xl font-semibold">Published sources</h2>
+          <h2 className="text-xl font-semibold">{t("Published sources")}</h2>
           <p className="text-sm text-muted-foreground">
-            Local source records retain the private locator; this view never
-            exposes it.
+            {t(
+              "Local source records retain the private locator; this view never exposes it.",
+            )}
           </p>
         </div>
         <Button variant="outline" size="sm" onClick={() => void mutate()}>
-          <RotateCcw data-icon="inline-start" /> Refresh
+          <RotateCcw data-icon="inline-start" /> {t("Refresh")}
         </Button>
       </div>
       {isLoading ? (
-        <div className="flex min-h-32 items-center justify-center text-muted-foreground">
+        <div
+          role="status"
+          aria-label={t("Loading published sources")}
+          className="flex min-h-32 items-center justify-center text-muted-foreground"
+        >
           <Loader2 className="animate-spin" />
         </div>
       ) : error ? (
         <div className="rounded-lg border border-destructive/40 p-4 text-sm text-destructive">
-          Published sources are temporarily unavailable.
+          {t("Published sources are temporarily unavailable.")}
         </div>
       ) : !data?.items.length ? (
         <div className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
-          No resources yet. Open any Telegram file and choose “Share to
-          telegram-seed”.
+          {t(
+            "No resources yet. Open any Telegram file and choose “Share to telegram-seed”.",
+          )}
         </div>
       ) : (
         <div className="grid gap-3">
@@ -196,19 +215,19 @@ export function PublishedResources() {
                 <div className="mb-2 flex flex-wrap items-center gap-2">
                   <h3 className="truncate font-medium">{source.title}</h3>
                   <Badge variant="secondary">
-                    {source.status.replaceAll("_", " ")}
+                    {t(source.status.replaceAll("_", " "))}
                   </Badge>
                   <Badge variant="outline">
-                    {source.accessScope.replaceAll("_", " ")}
+                    {t(source.accessScope.replaceAll("_", " "))}
                   </Badge>
                 </div>
                 <p className="truncate text-sm text-muted-foreground">
                   {source.fileName} ·{" "}
-                  {source.downloaded ? "downloaded" : "remote only"}
+                  {source.downloaded ? t("downloaded") : t("remote only")}
                 </p>
                 {source.lastErrorCode && (
                   <p className="mt-2 text-xs text-destructive">
-                    {describeShareError(source.lastErrorCode)}
+                    {t(describeShareError(source.lastErrorCode))}
                   </p>
                 )}
               </div>
@@ -224,14 +243,16 @@ export function PublishedResources() {
                     size="sm"
                     onClick={() => void retry(source)}
                   >
-                    <RotateCcw data-icon="inline-start" /> Retry
+                    <RotateCcw data-icon="inline-start" /> {t("Retry")}
                   </Button>
                 )}
                 <Button
                   variant="ghost"
                   size="icon"
                   disabled={!source.resourceId}
-                  aria-label={`Copy platform link for ${source.title}`}
+                  aria-label={t("Copy platform link for {name}", {
+                    name: source.title,
+                  })}
                   onClick={() => void copyPlatformLink(source)}
                 >
                   <Copy data-icon="inline-start" />
@@ -240,7 +261,7 @@ export function PublishedResources() {
                   variant="ghost"
                   size="icon"
                   disabled={!source.resourceId || source.status === "REVOKED"}
-                  aria-label={`Edit ${source.title}`}
+                  aria-label={t("Edit {name}", { name: source.title })}
                   onClick={() => setEditing(source)}
                 >
                   <Pencil data-icon="inline-start" />
@@ -249,7 +270,7 @@ export function PublishedResources() {
                   variant="ghost"
                   size="icon"
                   disabled={source.status === "REVOKED"}
-                  aria-label={`Revoke ${source.title}`}
+                  aria-label={t("Revoke {name}", { name: source.title })}
                   onClick={() => void revoke(source)}
                 >
                   <Trash2 data-icon="inline-start" />
@@ -260,7 +281,11 @@ export function PublishedResources() {
           {totalPages > 1 && (
             <div className="flex flex-col gap-2 pt-1 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
               <span>
-                Showing {firstItem}-{lastItem} of {total}
+                {t("Showing {first}-{last} of {total}", {
+                  first: firstItem,
+                  last: lastItem,
+                  total,
+                })}
               </span>
               <div className="flex items-center gap-2">
                 <Button
@@ -270,7 +295,7 @@ export function PublishedResources() {
                   onClick={() => setPage((value) => Math.max(1, value - 1))}
                 >
                   <ChevronLeft data-icon="inline-start" />
-                  Previous
+                  {t("Previous")}
                 </Button>
                 <span className="min-w-16 text-center">
                   {page} / {totalPages}
@@ -283,7 +308,7 @@ export function PublishedResources() {
                     setPage((value) => Math.min(totalPages, value + 1))
                   }
                 >
-                  Next
+                  {t("Next")}
                   <ChevronRight data-icon="inline-end" />
                 </Button>
               </div>
@@ -324,6 +349,7 @@ export function EditPublishedResourceDialog({
   onOpenChange: (open: boolean) => void;
   onSaved: () => Promise<void>;
 }) {
+  const { t } = useI18n();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [tags, setTags] = useState("");
@@ -366,14 +392,16 @@ export function EditPublishedResourceDialog({
           publicMessageUrl: scope === "PUBLIC" ? publicMessageUrl : null,
         }),
       });
-      toast({ variant: "success", title: "Resource metadata updated" });
+      toast({ variant: "success", title: t("Resource metadata updated") });
       await onSaved();
     } catch (failure) {
       toast({
         variant: "error",
-        title: "Update failed",
+        title: t("Update failed"),
         description:
-          failure instanceof Error ? failure.message : "Please try again.",
+          failure instanceof Error
+            ? t(failure.message)
+            : t("Please try again."),
       });
     } finally {
       setSubmitting(false);
@@ -384,10 +412,11 @@ export function EditPublishedResourceDialog({
     <Dialog open={source !== null} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] max-w-xl overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Edit index metadata</DialogTitle>
+          <DialogTitle>{t("Edit index metadata")}</DialogTitle>
           <DialogDescription>
-            Safe metadata is synchronized to telegram-seed. The Telegram
-            account, chat, message, and local path remain on this node.
+            {t(
+              "Safe metadata is synchronized to telegram-seed. The Telegram account, chat, message, and local path remain on this node.",
+            )}
           </DialogDescription>
         </DialogHeader>
         <form
@@ -398,7 +427,7 @@ export function EditPublishedResourceDialog({
           }}
         >
           <label className="flex flex-col gap-2">
-            <span className="text-sm font-medium">Title</span>
+            <span className="text-sm font-medium">{t("Title")}</span>
             <Input
               value={title}
               maxLength={255}
@@ -407,7 +436,7 @@ export function EditPublishedResourceDialog({
             />
           </label>
           <label className="flex flex-col gap-2">
-            <span className="text-sm font-medium">Description</span>
+            <span className="text-sm font-medium">{t("Description")}</span>
             <Textarea
               value={description}
               maxLength={4096}
@@ -417,14 +446,14 @@ export function EditPublishedResourceDialog({
           </label>
           <div className="grid gap-4 sm:grid-cols-2">
             <label className="flex flex-col gap-2">
-              <span className="text-sm font-medium">Tags</span>
+              <span className="text-sm font-medium">{t("Tags")}</span>
               <Input
                 value={tags}
                 onChange={(event) => setTags(event.target.value)}
               />
             </label>
             <label className="flex flex-col gap-2">
-              <span className="text-sm font-medium">Category</span>
+              <span className="text-sm font-medium">{t("Category")}</span>
               <Input
                 value={category}
                 maxLength={64}
@@ -433,13 +462,13 @@ export function EditPublishedResourceDialog({
             </label>
           </div>
           <div className="flex flex-col gap-2">
-            <span className="text-sm font-medium">Source access</span>
+            <span className="text-sm font-medium">{t("Source access")}</span>
             <SourceAccessSelect value={scope} onValueChange={setScope} />
           </div>
           {scope === "PUBLIC" && (
             <label className="flex flex-col gap-2">
               <span className="text-sm font-medium">
-                Public Telegram message URL
+                {t("Public Telegram message URL")}
               </span>
               <Input
                 type="url"
@@ -456,7 +485,7 @@ export function EditPublishedResourceDialog({
               variant="outline"
               onClick={() => onOpenChange(false)}
             >
-              Cancel
+              {t("Cancel")}
             </Button>
             <Button
               type="submit"
@@ -465,7 +494,7 @@ export function EditPublishedResourceDialog({
               {submitting && (
                 <Loader2 data-icon="inline-start" className="animate-spin" />
               )}
-              Save changes
+              {t("Save changes")}
             </Button>
           </DialogFooter>
         </form>

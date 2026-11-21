@@ -129,3 +129,44 @@ test("supports the local-network first-administrator bootstrap flow", async ({
     page.getByRole("heading", { name: "No Accounts Found" }),
   ).toBeVisible();
 });
+
+test("remembers Simplified Chinese across reload, login, and logout", async ({
+  page,
+  csrfToken: _csrfToken,
+}) => {
+  await installApi(page, { bootstrapRequired: false });
+  await page.setViewportSize({ width: 393, height: 852 });
+  await page.goto("/");
+  const language = page.getByRole("combobox", {
+    name: "Language",
+    exact: true,
+  });
+  await expect(language).toHaveValue("en");
+  await language.selectOption("zh-CN");
+  await expect(page.locator("html")).toHaveAttribute("lang", "zh-CN");
+
+  await page.reload();
+  await expect(
+    page.getByRole("combobox", { name: "语言", exact: true }),
+  ).toHaveValue("zh-CN");
+  await page.getByLabel("用户名", { exact: true }).fill("admin");
+  await page
+    .getByLabel("密码", { exact: true })
+    .fill("correct-horse-battery-staple");
+  await page.getByRole("button", { name: "登录", exact: true }).click();
+  await expect(
+    page.getByRole("heading", { name: "尚未添加账号" }),
+  ).toBeVisible();
+
+  await page
+    .getByRole("combobox", { name: "语言", exact: true })
+    .selectOption("en");
+  await expect(
+    page.getByRole("heading", { name: "No Accounts Found" }),
+  ).toBeVisible();
+  await expect(page.locator("html")).toHaveAttribute("lang", "en");
+  await page.getByRole("button", { name: "Log out", exact: true }).click();
+  await expect(
+    page.getByText("Administrator sign in", { exact: true }),
+  ).toBeVisible();
+});

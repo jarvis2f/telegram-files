@@ -1,3 +1,4 @@
+import { useI18n } from "@/hooks/use-i18n";
 import React, { type KeyboardEvent, useRef, useState } from "react";
 import { Plus, X } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
@@ -17,10 +18,11 @@ interface TagsInputProps {
 export const TagsInput: React.FC<TagsInputProps> = ({
   value,
   onChange,
-  placeholder = "Enter the tag and press Enter...",
+  placeholder,
   maxTags = Infinity,
   className = "",
 }) => {
+  const { t } = useI18n();
   const [inputValue, setInputValue] = useState<string>("");
   const [isInputFocused, setIsInputFocused] = useState<boolean>(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -106,7 +108,7 @@ export const TagsInput: React.FC<TagsInputProps> = ({
                   }}
                 >
                   <X className="h-3 w-3" />
-                  <span className="sr-only">Delete {tag}</span>
+                  <span className="sr-only">{t("Delete {tag}", { tag })}</span>
                 </Button>
               </Badge>
             </motion.div>
@@ -122,7 +124,11 @@ export const TagsInput: React.FC<TagsInputProps> = ({
             onKeyDown={handleKeyDown}
             onFocus={() => setIsInputFocused(true)}
             onBlur={() => setIsInputFocused(false)}
-            placeholder={value.length === 0 ? placeholder : ""}
+            placeholder={
+              value.length === 0
+                ? (placeholder ?? t("Enter the tag and press Enter..."))
+                : ""
+            }
             className="border-0 bg-transparent p-0 text-sm shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
           />
         </div>
@@ -141,7 +147,7 @@ export const TagsInput: React.FC<TagsInputProps> = ({
               onClick={() => handleAddTag(inputValue)}
             >
               <Plus className="h-4 w-4" />
-              <span className="sr-only">Add tag</span>
+              <span className="sr-only">{t("Add tag")}</span>
             </Button>
           </motion.div>
         )}

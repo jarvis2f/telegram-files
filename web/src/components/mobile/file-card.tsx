@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { FileSharing, FileSource } from "@/components/file-provenance";
 import { Progress } from "@/components/ui/progress";
 import FileTags from "@/components/file-tags";
+import { useI18n } from "@/hooks/use-i18n";
 
 type FileCardProps = {
   index: number;
@@ -35,6 +36,7 @@ export function FileCard({
   onFileChange,
   layout,
 }: FileCardProps) {
+  const { t, locale } = useI18n();
   const { downloadProgress } = useFileSpeed(file);
   const isGalleryLayout = layout === "gallery";
   return (
@@ -64,7 +66,7 @@ export function FileCard({
           )}
         >
           {file.reactionCount > 0 && (
-            <TooltipWrapper content="Reaction Count">
+            <TooltipWrapper content={t("Reaction Count")}>
               <Badge
                 className={cn(
                   "absolute z-30 flex h-6 w-6 items-center justify-center rounded-full bg-blue-500 text-xs hover:bg-blue-600",
@@ -92,7 +94,7 @@ export function FileCard({
               <div className="mt-2 flex items-end justify-between gap-3">
                 <div className="min-w-0 space-y-1">
                   <span className="block truncate text-[11px] font-medium text-white/75">
-                    {prettyBytes(file.size)} • {file.type}
+                    {prettyBytes(file.size, { locale })} • {t(file.type)}
                   </span>
                   <div className="flex min-h-5 flex-wrap items-center gap-1.5">
                     <FileStatus file={file} className="justify-start" />
@@ -116,7 +118,7 @@ export function FileCard({
               <div className="flex items-center justify-between">
                 <div className="flex flex-col justify-start gap-0.5">
                   <span className="text-xs text-muted-foreground">
-                    {prettyBytes(file.size)} • {file.type}
+                    {prettyBytes(file.size, { locale })} • {t(file.type)}
                   </span>
                   <div className="flex min-h-5 items-center gap-2">
                     <FileSource

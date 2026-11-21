@@ -11,6 +11,7 @@ import {
 import SpoiledWrapper from "@/components/spoiled-wrapper";
 import { cn } from "@/lib/utils";
 import { getApiUrl } from "@/lib/api";
+import { useI18n } from "@/hooks/use-i18n";
 
 const ImageErrorFallback = ({
   size = "s",
@@ -78,6 +79,7 @@ export default function FilePreview({
   isGalleryLayout?: boolean;
   className?: string;
 }) {
+  const { t } = useI18n();
   const [viewportHeight, setViewportHeight] = useState(
     isFullPreview ? window.innerHeight : 288,
   );
@@ -135,7 +137,7 @@ export default function FilePreview({
           src={src}
           unoptimized={true}
           blurDataURL={`data:image/jpeg;base64,${file.thumbnail}`}
-          alt={file.fileName ?? "File Image"}
+          alt={file.fileName ?? t("File Image")}
           width={calculatedWidth}
           height={calculatedHeight}
           className={imageClasses}
