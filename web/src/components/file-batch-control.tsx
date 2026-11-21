@@ -26,6 +26,7 @@ import { toast } from "@/hooks/use-toast";
 import { BatchFileTags } from "@/components/file-tags";
 import Image from "next/image";
 import { useShareEnabled } from "@/hooks/use-share-enabled";
+import { useI18n } from "@/hooks/use-i18n";
 
 function getSeedResourceId(file: TelegramFile): string | null {
   return (
@@ -61,6 +62,7 @@ export default function FileBatchControl({
   files,
   updateField,
 }: FileBatchControlProps) {
+  const { t } = useI18n();
   const selectedFileObjects = Array.from(selectedFiles)
     .map((id) => files.find((f) => f.id === id))
     .filter(Boolean) as TelegramFile[];
@@ -119,7 +121,7 @@ export default function FileBatchControl({
     {
       url: "/files/start-download-multiple",
       label: "Download",
-      tooltip: `Download ${downloadableCounts} selected files`,
+      tooltip: t("Download {count} selected files", { count: downloadableCounts }),
       icon: <Download className="mr-2 h-4 w-4" />,
       filter: (file: TelegramFile) => file.downloadStatus === "idle",
       validCount: downloadableCounts,
@@ -128,7 +130,7 @@ export default function FileBatchControl({
     {
       url: "/files/toggle-pause-download-multiple",
       label: "Continue",
-      tooltip: `Continue ${continuableCounts} paused downloads`,
+      tooltip: t("Continue {count} paused downloads", { count: continuableCounts }),
       className: "bg-green-500 hover:bg-green-600 text-white",
       icon: <StepForward className="mr-2 h-4 w-4" />,
       filter: (file: TelegramFile) => file.downloadStatus === "paused",
@@ -139,7 +141,7 @@ export default function FileBatchControl({
     {
       url: "/files/toggle-pause-download-multiple",
       label: "Pause",
-      tooltip: `Pause ${pausableCounts} active downloads`,
+      tooltip: t("Pause {count} active downloads", { count: pausableCounts }),
       className: "bg-yellow-500 hover:bg-yellow-600 text-white",
       icon: <Pause className="mr-2 h-4 w-4" />,
       filter: (file: TelegramFile) => file.downloadStatus === "downloading",
@@ -150,7 +152,7 @@ export default function FileBatchControl({
     {
       url: "/files/cancel-download-multiple",
       label: "Cancel",
-      tooltip: `Cancel ${cancelDownloadCounts} active downloads`,
+      tooltip: t("Cancel {count} active downloads", { count: cancelDownloadCounts }),
       className: "bg-red-500 hover:bg-red-600 text-white",
       icon: <SquareX className="mr-2 h-4 w-4" />,
       filter: (file: TelegramFile) =>
@@ -162,7 +164,7 @@ export default function FileBatchControl({
     {
       url: "/files/toggle-pause-download-multiple",
       label: "Resume Seed",
-      tooltip: `Start/Resume seeding for ${seedResumableCounts} files`,
+      tooltip: t("Start/Resume seeding for {count} files", { count: seedResumableCounts }),
       className: "bg-emerald-500 hover:bg-emerald-600 text-white",
       icon: <RadioTower className="mr-2 h-4 w-4" />,
       filter: (file: TelegramFile) =>
@@ -176,7 +178,7 @@ export default function FileBatchControl({
     {
       url: "/files/cancel-download-multiple",
       label: "Stop Seed",
-      tooltip: `Stop seeding for ${seedStoppableCounts} files`,
+      tooltip: t("Stop seeding for {count} files", { count: seedStoppableCounts }),
       className: "bg-red-500 hover:bg-red-600 text-white",
       icon: <CircleStop className="mr-2 h-4 w-4" />,
       filter: (file: TelegramFile) =>
@@ -190,7 +192,7 @@ export default function FileBatchControl({
     {
       url: "/files/remove-multiple",
       label: "Delete",
-      tooltip: `Delete ${deletableCounts} completed files`,
+      tooltip: t("Delete {count} completed files", { count: deletableCounts }),
       className: "bg-red-500 hover:bg-red-600 text-white",
       icon: <FileX className="mr-2 h-4 w-4" />,
       filter: (file: TelegramFile) =>
@@ -221,8 +223,7 @@ export default function FileBatchControl({
       {selectedFiles.size > 0 && (
         <div className="flex flex-col rounded-lg bg-muted/50 p-4 transition-all duration-300 animate-in slide-in-from-bottom-2 md:flex-row md:items-center md:justify-between">
           <span className="mb-3 text-sm font-medium md:mb-0">
-            {selectedFiles.size} {selectedFiles.size === 1 ? "file" : "files"}{" "}
-            selected
+            {t(selectedFiles.size === 1 ? "{count} file selected" : "{count} files selected", { count: selectedFiles.size })}
           </span>
           <div className="flex flex-wrap gap-2">
             {loadedFiles.length > 0 && (
@@ -251,7 +252,7 @@ export default function FileBatchControl({
               variant="outline"
               onClick={() => setSelectedFiles(new Set())}
             >
-              Clear Selection
+              {t("Clear Selection")}
             </Button>
           </div>
         </div>
@@ -291,6 +292,7 @@ function ControlButton({
   files,
   fileMapper,
 }: ControlButtonProps) {
+  const { t } = useI18n();
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
 
   const selectedFileObjects = Array.from(selectedFiles)
@@ -325,8 +327,8 @@ function ControlButton({
       onSuccess: () => {
         setSelectedFiles(new Set());
         toast({
-          title: `${label} action completed`,
-          description: `Successfully processed ${validFiles.length} files.`,
+          title: t("{action} action completed", { action: t(label) }),
+          description: t("Successfully processed {count} files.", { count: validFiles.length }),
           variant: "success",
         });
       },
@@ -341,7 +343,7 @@ function ControlButton({
     if (mappedFiles.length === 0) {
       toast({
         variant: "error",
-        description: "No valid files to process.",
+        description: t("No valid files to process."),
       });
       return;
     }
@@ -377,7 +379,7 @@ function ControlButton({
           ) : (
             <>
               {icon}
-              {label} {validCount > 0 && `(${validCount})`}
+              {t(label)} {validCount > 0 && `(${validCount})`}
             </>
           )}
         </Button>
@@ -387,7 +389,7 @@ function ControlButton({
         <DialogContent className="max-w-xl sm:max-w-md">
           <DialogHeader className="space-y-2">
             <DialogTitle className="text-center text-xl font-semibold">
-              {`Confirm ${label} Action`}
+              {t("Confirm {action} Action", { action: t(label) })}
             </DialogTitle>
             <div className="flex justify-center">
               {label === "Delete" ? (
@@ -420,7 +422,7 @@ function ControlButton({
 
           <div className="pb-6 pt-2">
             <p className="mb-3 text-center text-sm text-muted-foreground">
-              Are you sure you want to {label.toLowerCase()} the selected files?
+              {t("Are you sure you want to {action} the selected files?", { action: t(label.toLowerCase()) })}
             </p>
 
             <div className="mt-4 flex flex-col gap-3">
@@ -428,7 +430,7 @@ function ControlButton({
                 <div className="overflow-hidden rounded-lg border border-green-200 dark:border-green-800">
                   <div className="border-b border-green-200 bg-green-50 px-4 py-2 dark:border-green-800 dark:bg-green-900/20">
                     <span className="text-sm font-medium text-green-800 dark:text-green-300">
-                      Files to process
+                      {t("Files to process")}
                     </span>
                   </div>
                   <div className="flex items-center bg-white p-4 dark:bg-background">
@@ -439,11 +441,10 @@ function ControlButton({
                     </div>
                     <div>
                       <p className="text-sm font-medium">
-                        {validCount} {validCount === 1 ? "file" : "files"} will
-                        be processed
+                        {t(validCount === 1 ? "{count} file will be processed" : "{count} files will be processed", { count: validCount })}
                       </p>
                       <p className="mt-0.5 text-xs text-muted-foreground">
-                        These files are in the correct state for this operation
+                        {t("These files are in the correct state for this operation")}
                       </p>
                     </div>
                   </div>
@@ -454,7 +455,7 @@ function ControlButton({
                 <div className="overflow-hidden rounded-lg border border-red-200 dark:border-red-800">
                   <div className="border-b border-red-200 bg-red-50 px-4 py-2 dark:border-red-800 dark:bg-red-900/20">
                     <span className="text-sm font-medium text-red-800 dark:text-red-300">
-                      Files that will be skipped
+                      {t("Files that will be skipped")}
                     </span>
                   </div>
                   <div className="flex items-center bg-white p-4 dark:bg-background">
@@ -465,12 +466,10 @@ function ControlButton({
                     </div>
                     <div>
                       <p className="text-sm font-medium">
-                        {invalidCount} {invalidCount === 1 ? "file" : "files"}{" "}
-                        cannot be processed
+                        {t(invalidCount === 1 ? "{count} file cannot be processed" : "{count} files cannot be processed", { count: invalidCount })}
                       </p>
                       <p className="mt-0.5 text-xs text-muted-foreground">
-                        These files are in an incompatible state for this
-                        operation
+                        {t("These files are in an incompatible state for this operation")}
                       </p>
                     </div>
                   </div>
@@ -482,7 +481,7 @@ function ControlButton({
           <DialogFooter className="gap-3 sm:justify-center">
             <DialogClose asChild>
               <Button variant="outline" className="min-w-24">
-                Cancel
+                {t("Cancel")}
               </Button>
             </DialogClose>
             <Button
@@ -497,7 +496,7 @@ function ControlButton({
                       : ""
               }`}
             >
-              {`${label}`}
+              {t(label)}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -513,6 +512,7 @@ function BatchShareButton({
   sharableFiles: TelegramFile[];
   setSelectedFiles: (files: Set<number>) => void;
 }) {
+  const { t } = useI18n();
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
@@ -552,11 +552,11 @@ function BatchShareButton({
 
     toast({
       variant: failCount > 0 ? (successCount > 0 ? "info" : "error") : "success",
-      title: "Batch share completed",
+      title: t("Batch share completed"),
       description:
         failCount > 0
-          ? `${successCount} shared, ${failCount} failed.`
-          : `Successfully shared ${successCount} files.`,
+          ? t("{count} shared, {failed} failed.", { count: successCount, failed: failCount })
+          : t("Successfully shared {count} files.", { count: successCount }),
     });
 
     setSelectedFiles(new Set());
@@ -565,7 +565,7 @@ function BatchShareButton({
   return (
     <>
       <TooltipWrapper
-        content={`Share ${sharableFiles.length} files to telegram-seed`}
+        content={t("Share {count} files to telegram-seed", { count: sharableFiles.length })}
       >
         <Button size="sm" onClick={() => setConfirmOpen(true)} disabled={submitting}>
           {submitting ? (
@@ -583,7 +583,7 @@ function BatchShareButton({
                 height={16}
                 className="mr-2 h-4 w-4 rounded-full bg-white"
               />
-              Share ({sharableFiles.length})
+              {t("Share ({count})", { count: sharableFiles.length })}
             </>
           )}
         </Button>
@@ -593,7 +593,7 @@ function BatchShareButton({
         <DialogContent className="max-w-xl sm:max-w-md">
           <DialogHeader className="space-y-2">
             <DialogTitle className="text-center text-xl font-semibold">
-              Batch Share to telegram-seed
+              {t("Batch Share to telegram-seed")}
             </DialogTitle>
             <div className="flex justify-center">
               <div className="rounded-full bg-cyan-100 p-3 dark:bg-cyan-900/30">
@@ -611,23 +611,22 @@ function BatchShareButton({
 
           <div className="pb-6 pt-2">
             <p className="mb-3 text-center text-sm text-muted-foreground">
-              {sharableFiles.length} files will be shared with auto-generated
-              metadata based on current file state.
+              {t("{count} files will be shared with auto-generated metadata based on current file state.", { count: sharableFiles.length })}
             </p>
 
             <div className="mt-4 space-y-1 rounded-lg border bg-muted/50 p-4 text-sm text-muted-foreground">
-              <p>• Title: file name or caption</p>
-              <p>• Description: file caption</p>
-              <p>• Tags: existing file tags</p>
-              <p>• Access: Owner Only</p>
-              <p>• Downloaded files will seed immediately</p>
+              <p>{t("• Title: file name or caption")}</p>
+              <p>{t("• Description: file caption")}</p>
+              <p>{t("• Tags: existing file tags")}</p>
+              <p>{t("• Access: Owner Only")}</p>
+              <p>{t("• Downloaded files will seed immediately")}</p>
             </div>
           </div>
 
           <DialogFooter className="gap-3 sm:justify-center">
             <DialogClose asChild>
               <Button variant="outline" className="min-w-24">
-                Cancel
+                {t("Cancel")}
               </Button>
             </DialogClose>
             <Button
@@ -638,7 +637,7 @@ function BatchShareButton({
               {submitting && (
                 <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
               )}
-              Share
+              {t("Share")}
             </Button>
           </DialogFooter>
         </DialogContent>

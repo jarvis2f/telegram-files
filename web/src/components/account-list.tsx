@@ -7,6 +7,7 @@ import { Spoiler } from "spoiled";
 import AccountDeleteDialog from "@/components/account-delete-dialog";
 import { AccountDialog } from "@/components/account-dialog";
 import { Button } from "@/components/ui/button";
+import { useI18n } from "@/hooks/use-i18n";
 
 interface AccountListProps {
   accounts: TelegramAccount[];
@@ -14,6 +15,8 @@ interface AccountListProps {
 }
 
 export function AccountList({ accounts, onSelectAccount }: AccountListProps) {
+  const { t } = useI18n();
+
   return (
     <div className="mx-auto grid max-w-5xl grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
       {accounts.map((account) => (
@@ -53,7 +56,7 @@ export function AccountList({ accounts, onSelectAccount }: AccountListProps) {
                             : "text-gray-500"
                       }`}
                     />
-                    {account.sleeping ? "sleeping" : account.status}
+                    {t(account.sleeping ? "sleeping" : account.status)}
                   </Badge>
                 </div>
                 {account.status === "active" && !account.sleeping && (
@@ -65,7 +68,7 @@ export function AccountList({ accounts, onSelectAccount }: AccountListProps) {
                 {account.status === "inactive" && (
                   <AccountDialog>
                     <Button variant="outline" size="sm">
-                      Activate
+                      {t("Activate")}
                     </Button>
                   </AccountDialog>
                 )}

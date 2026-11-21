@@ -32,6 +32,7 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import FileTags from "@/components/file-tags";
+import { useI18n } from "@/hooks/use-i18n";
 
 export default function FileInfo({
   file,
@@ -42,6 +43,7 @@ export default function FileInfo({
   onView: () => void;
   onFileChange?: (file: TelegramFile) => void;
 }) {
+  const { t, locale, dateLocale } = useI18n();
   const { downloadProgress } = useFileSpeed(file);
   return (
     <div className="flex flex-col min-h-0 flex-1 overflow-hidden">
@@ -98,31 +100,32 @@ export default function FileInfo({
                 <div className="space-y-2">
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Type className="h-4 w-4" />
-                    <span>Type</span>
+                    <span>{t("Type")}</span>
                   </div>
                   <Badge variant="secondary" className="text-xs">
-                    {file.type}
+                    {t(file.type)}
                   </Badge>
                 </div>
 
                 <div className="space-y-2">
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <HardDrive className="h-4 w-4" />
-                    <span>Size</span>
+                    <span>{t("Size")}</span>
                   </div>
                   <Badge variant="secondary" className="text-xs">
-                    {prettyBytes(file.size)}
+                    {prettyBytes(file.size, { locale })}
                   </Badge>
                 </div>
 
                 <div className="space-y-2">
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Calendar className="h-4 w-4" />
-                    <span>Received At</span>
+                    <span>{t("Received At")}</span>
                   </div>
                   <Badge variant="secondary" className="text-xs">
                     {formatDistanceToNow(new Date(file.date * 1000), {
                       addSuffix: true,
+                      locale: dateLocale,
                     })}
                   </Badge>
                 </div>
@@ -130,10 +133,10 @@ export default function FileInfo({
                 <div className="space-y-2">
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Download className="h-4 w-4" />
-                    <span>Downloaded Size</span>
+                    <span>{t("Downloaded Size")}</span>
                   </div>
                   <Badge variant="secondary" className="text-xs">
-                    {prettyBytes(file.downloadedSize)}
+                    {prettyBytes(file.downloadedSize, { locale })}
                   </Badge>
                 </div>
 
@@ -141,11 +144,12 @@ export default function FileInfo({
                   <div className="space-y-2">
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
                       <Clock10 className="h-4 w-4" />
-                      <span>Download At</span>
+                      <span>{t("Download At")}</span>
                     </div>
                     <Badge variant="secondary" className="text-xs">
                       {formatDistanceToNow(new Date(file.startDate), {
                         addSuffix: true,
+                      locale: dateLocale,
                       })}
                     </Badge>
                   </div>
@@ -155,11 +159,12 @@ export default function FileInfo({
                   <div className="space-y-2">
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
                       <ClockArrowDown className="h-4 w-4" />
-                      <span>Completion At</span>
+                      <span>{t("Completion At")}</span>
                     </div>
                     <Badge variant="secondary" className="text-xs">
                       {formatDistanceToNow(new Date(file.completionDate), {
                         addSuffix: true,
+                      locale: dateLocale,
                       })}
                     </Badge>
                   </div>
@@ -175,7 +180,7 @@ export default function FileInfo({
           (file.type === "video" || file.type === "photo") && (
             <Button className="w-full" onClick={onView}>
               <View className="h-4 w-4" />
-              <span>View</span>
+              <span>{t("View")}</span>
             </Button>
           )}
         <MobileFileControl file={file} />

@@ -20,6 +20,7 @@ import { useCopyToClipboard } from "@/hooks/use-copy-to-clipboard";
 import { formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";
 import useIsMobile from "@/hooks/use-is-mobile";
+import { useI18n } from "@/hooks/use-i18n";
 
 interface FileExtraProps {
   file: TelegramFile;
@@ -129,6 +130,15 @@ function FilePath({ file, ellipsis, rowHeight }: FileExtraProps) {
 }
 
 function FileTime({ file }: FileExtraProps) {
+  const { t, formatDate, dateLocale } = useI18n();
+  const dateTimeOptions: Intl.DateTimeFormatOptions = {
+    year: "numeric",
+    month: "numeric",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    second: "2-digit",
+  };
   const isMobile = useIsMobile();
   return (
     <div className="flex items-center gap-2 overflow-hidden whitespace-nowrap">
@@ -139,13 +149,14 @@ function FileTime({ file }: FileExtraProps) {
             <span className="rounded px-1 text-sm hover:bg-gray-100 dark:hover:bg-gray-800">
               {formatDistanceToNow(new Date(file.date * 1000), {
                 addSuffix: true,
+                locale: dateLocale,
               })}
             </span>
           </p>
         </TooltipTrigger>
         <TooltipContent>
           <div className="max-w-80 text-wrap rounded p-2">
-            {`Message received at ${new Date(file.date * 1000).toLocaleString()}`}
+            {t("Message received at {date}", { date: formatDate(file.date * 1000, dateTimeOptions) })}
           </div>
         </TooltipContent>
       </Tooltip>
@@ -157,13 +168,14 @@ function FileTime({ file }: FileExtraProps) {
               <span className="rounded px-1 text-sm hover:bg-gray-100 dark:hover:bg-gray-800">
                 {formatDistanceToNow(new Date(file.completionDate), {
                   addSuffix: true,
+                locale: dateLocale,
                 })}
               </span>
             </p>
           </TooltipTrigger>
           <TooltipContent>
             <div className="max-w-80 text-wrap rounded p-2">
-              {`File downloaded at ${new Date(file.completionDate).toLocaleString()}`}
+              {t("File downloaded at {date}", { date: formatDate(file.completionDate, dateTimeOptions) })}
             </div>
           </TooltipContent>
         </Tooltip>

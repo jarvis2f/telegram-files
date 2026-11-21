@@ -1,3 +1,4 @@
+import { useI18n } from "@/hooks/use-i18n";
 import React from "react";
 import useSWR from "swr";
 import { ExternalLink, Github, RefreshCw, Sparkles } from "lucide-react";
@@ -38,6 +39,7 @@ function VersionBadge({
   error?: Error;
   isLoading: boolean;
 }) {
+  const { t } = useI18n();
   return (
     <div className="rounded-md border bg-background/80 p-3 shadow-sm backdrop-blur">
       <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
@@ -45,11 +47,11 @@ function VersionBadge({
       </p>
       <div className="mt-2">
         {error ? (
-          <Badge variant="destructive">Unavailable</Badge>
+          <Badge variant="destructive">{t("Unavailable")}</Badge>
         ) : isLoading ? (
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <RefreshCw className="size-4 animate-spin" />
-            Loading
+            {t("Loading")}
           </div>
         ) : (
           <Badge variant="secondary" className="font-mono">
@@ -62,6 +64,7 @@ function VersionBadge({
 }
 
 export default function About() {
+  const { t } = useI18n();
   const { data: apiData, error: apiError } = useSWR<VersionData, Error>(
     "/version",
   );
@@ -91,14 +94,15 @@ export default function About() {
           <div className="flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
             <div className="min-w-0">
               <Badge variant="secondary" className="mb-3">
-                Self-hosted Telegram files manager
+                {t("Self-hosted Telegram files manager")}
               </Badge>
               <CardTitle className="text-2xl tracking-normal md:text-3xl">
                 Telegram Files
               </CardTitle>
               <CardDescription className="mt-2 max-w-xl text-base">
-                A self-hosted Telegram file downloader for continuous, stable,
-                and unattended downloads.
+                {t(
+                  "A self-hosted Telegram file downloader for continuous, stable, and unattended downloads.",
+                )}
               </CardDescription>
             </div>
             <div className="relative mx-auto size-28 shrink-0 md:mx-0">
@@ -115,18 +119,18 @@ export default function About() {
           <div className="grid gap-3 md:grid-cols-3">
             <div className="rounded-md border bg-background/80 p-3 shadow-sm backdrop-blur">
               <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                Author
+                {t("Author")}
               </p>
               <p className="mt-2 font-medium">{projectInfo.author}</p>
             </div>
             <VersionBadge
-              label="Current version"
+              label={t("Current version")}
               value={currentVersion}
               error={apiError}
               isLoading={!apiError && !apiData}
             />
             <VersionBadge
-              label="Latest release"
+              label={t("Latest release")}
               value={latestVersion}
               error={githubError}
               isLoading={!githubError && !githubData}
@@ -140,10 +144,12 @@ export default function About() {
                   <Sparkles className="size-4" />
                 </span>
                 <div>
-                  <p className="font-medium">New release available</p>
+                  <p className="font-medium">{t("New release available")}</p>
                   <p className="mt-1 text-sm text-muted-foreground">
-                    Version {latestVersion} is newer than your current{" "}
-                    {currentVersion} install.
+                    {t(
+                      "Version {latest} is newer than your current {current} install.",
+                      { latest: latestVersion!, current: currentVersion! },
+                    )}
                   </p>
                 </div>
               </div>
@@ -153,7 +159,7 @@ export default function About() {
                   target="_blank"
                   rel="noopener noreferrer"
                 >
-                  View release
+                  {t("View release")}
                   <ExternalLink />
                 </Link>
               </Button>
@@ -162,8 +168,9 @@ export default function About() {
             currentVersion &&
             latestVersion && (
               <div className="rounded-md border bg-background/70 p-3 text-sm text-muted-foreground shadow-sm backdrop-blur">
-                Your installation is at least as recent as the latest published
-                release.
+                {t(
+                  "Your installation is at least as recent as the latest published release.",
+                )}
               </div>
             )
           )}

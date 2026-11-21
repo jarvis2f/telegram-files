@@ -12,6 +12,7 @@ import React, { useMemo } from "react";
 import { cn } from "@/lib/utils";
 import useSWR from "swr";
 import { TooltipWrapper } from "@/components/ui/tooltip";
+import { useI18n } from "@/hooks/use-i18n";
 
 type ProxysDialogProps = {
   className?: string;
@@ -22,22 +23,23 @@ export default function ProxysDialog({
   telegramId,
   ...proxyProps
 }: ProxysDialogProps) {
+  const { t } = useI18n();
   const { data, isLoading } = useSWR<{
     success: boolean;
   }>(telegramId ? `/telegram/${telegramId}/test-network` : undefined);
 
   const triggerTooltipContent = useMemo(() => {
     if (!telegramId) {
-      return "You can add proxys for telegram connection.";
+      return t("You can add proxys for telegram connection.");
     }
     return (
       <>
-        {isLoading && "Testing network..."}
-        {!isLoading && data?.success && "Successfully connect to telegram"}
-        {!isLoading && !data?.success && "Failed to connect to telegram"}
+        {isLoading && t("Testing network...")}
+        {!isLoading && data?.success && t("Successfully connect to telegram")}
+        {!isLoading && !data?.success && t("Failed to connect to telegram")}
       </>
     );
-  }, [data, isLoading, telegramId]);
+  }, [data, isLoading, t, telegramId]);
 
   const triggerClassName = telegramId
     ? cn(
@@ -59,6 +61,7 @@ export default function ProxysDialog({
           <Button
             variant="ghost"
             size="icon"
+            aria-label={t("Proxys")}
             className={cn(
               "rounded-full bg-primary px-2 text-accent hover:bg-primary/90 hover:text-accent",
               triggerClassName,
@@ -74,7 +77,7 @@ export default function ProxysDialog({
         aria-describedby={undefined}
       >
         <VisuallyHidden>
-          <DialogTitle>Proxys</DialogTitle>
+          <DialogTitle>{t("Proxys")}</DialogTitle>
         </VisuallyHidden>
         <div className="mt-3">
           <Proxys telegramId={telegramId} {...proxyProps} />

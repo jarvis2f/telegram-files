@@ -12,6 +12,7 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { LocalStorageProvider } from "@/hooks/use-local-storage";
 import { AdminSessionProvider } from "@/hooks/use-admin-session";
 import { AdminAuthGate } from "@/components/admin-auth-gate";
+import { I18nProvider } from "@/hooks/use-i18n";
 
 export const metadata: Metadata = {
   title: "Telegram Files",
@@ -53,28 +54,30 @@ export default async function RootLayout({
             strategy="afterInteractive"
           />
         )}
-        <LocalStorageProvider>
-          <ThemeProvider
-            attribute="class"
-            defaultTheme="light"
-            disableTransitionOnChange
-          >
-            <AdminSessionProvider>
-              <AdminAuthGate>
-                <SWRProvider>
-                  <WebSocketProvider>
-                    <SettingsProvider>
-                      <TelegramAccountProvider>
-                        {children}
-                      </TelegramAccountProvider>
-                    </SettingsProvider>
-                  </WebSocketProvider>
-                </SWRProvider>
-              </AdminAuthGate>
-            </AdminSessionProvider>
-            <Toaster />
-          </ThemeProvider>
-        </LocalStorageProvider>
+        <I18nProvider>
+          <LocalStorageProvider>
+            <ThemeProvider
+              attribute="class"
+              defaultTheme="light"
+              disableTransitionOnChange
+            >
+              <AdminSessionProvider>
+                <AdminAuthGate>
+                  <SWRProvider>
+                    <WebSocketProvider>
+                      <SettingsProvider>
+                        <TelegramAccountProvider>
+                          {children}
+                        </TelegramAccountProvider>
+                      </SettingsProvider>
+                    </WebSocketProvider>
+                  </SWRProvider>
+                </AdminAuthGate>
+              </AdminSessionProvider>
+              <Toaster />
+            </ThemeProvider>
+          </LocalStorageProvider>
+        </I18nProvider>
       </body>
     </html>
   );

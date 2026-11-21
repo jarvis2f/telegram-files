@@ -2,6 +2,7 @@ import type { TelegramFile } from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { Database, Radio, Share2 } from "lucide-react";
+import { useI18n } from "@/hooks/use-i18n";
 
 const SHARE_STATUS_LABELS: Record<string, string> = {
   PUBLISH_PENDING: "Pending",
@@ -18,6 +19,7 @@ export function FileSource({
   className?: string;
   showEmpty?: boolean;
 }) {
+  const { t } = useI18n();
   if (!file.source) {
     return showEmpty ? (
       <span className="text-xs text-muted-foreground">—</span>
@@ -42,10 +44,10 @@ export function FileSource({
         )}
       />
       <span className="font-medium text-foreground">
-        {isSeed ? "Seed" : "Telegram"}
+        {isSeed ? t("Seed") : "Telegram"}
       </span>
       {file.acquiredVia === "SEED" && !isSeed && (
-        <span className="text-violet-600">· via PT</span>
+        <span className="text-violet-600">{t("· via PT")}</span>
       )}
     </div>
   );
@@ -60,6 +62,7 @@ export function FileSharing({
   className?: string;
   showEmpty?: boolean;
 }) {
+  const { t } = useI18n();
   if (!file.shareStatus || file.shareStatus === "UNSHARED") {
     return showEmpty ? (
       <span className="text-xs text-muted-foreground">—</span>
@@ -81,7 +84,7 @@ export function FileSharing({
       )}
     >
       <Share2 aria-hidden="true" className="h-3 w-3" />
-      {label}
+      {t(label)}
     </Badge>
   );
 }

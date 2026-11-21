@@ -1,6 +1,7 @@
 "use client";
 
 import { TOAST_VARIANTS, useToast } from "@/hooks/use-toast";
+import { useI18n } from "@/hooks/use-i18n";
 import {
   Toast,
   ToastClose,
@@ -14,10 +15,11 @@ import { type ElementType } from "react";
 
 export function Toaster() {
   const { toasts } = useToast();
+  const { t } = useI18n();
   const isMobile = useIsMobile();
 
   return (
-    <ToastProvider duration={isMobile ? 1000 : 5000}>
+    <ToastProvider duration={isMobile ? 1000 : 5000} label={t("Notification")}>
       {toasts.map(function ({
         variant = "default",
         id,

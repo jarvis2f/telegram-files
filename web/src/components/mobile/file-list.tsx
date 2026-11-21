@@ -10,6 +10,7 @@ import FileFilters from "@/components/file-filters";
 import { useLocalStorage } from "@/hooks/use-local-storage";
 import FileNotFount from "@/components/file-not-found";
 import { DotmTriangle2 } from "@/components/ui/dotm-triangle-2";
+import { useI18n } from "@/hooks/use-i18n";
 
 interface FileListProps {
   accountId: string;
@@ -18,6 +19,7 @@ interface FileListProps {
 }
 
 export default function FileList({ accountId, chatId, link }: FileListProps) {
+  const { t } = useI18n();
   const useFilesProps = useFiles(accountId, chatId, undefined, link);
   const [currentViewFile, setCurrentViewFile] = useState<
     TelegramFile | undefined
@@ -163,7 +165,7 @@ export default function FileList({ accountId, chatId, link }: FileListProps) {
               opacityBase={0.1}
               opacityMid={0.4}
               opacityPeak={0.95}
-              ariaLabel="Loading files"
+              ariaLabel={t("Loading files")}
             />
           </div>
         )}
@@ -190,10 +192,10 @@ export default function FileList({ accountId, chatId, link }: FileListProps) {
                       opacityBase={0.1}
                       opacityMid={0.4}
                       opacityPeak={0.95}
-                      ariaLabel="Loading more files"
+                      ariaLabel={t("Loading more files")}
                     />
                   ) : (
-                    <p className="text-muted-foreground">No more files</p>
+                    <p className="text-muted-foreground">{t("No more files")}</p>
                   )}
                 </div>
               );

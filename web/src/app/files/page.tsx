@@ -4,8 +4,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import ThemeToggleButton from "@/components/theme-toggle-button";
 import Link from "next/link";
 import { PlatformTelegramIcon } from "@/components/platform-telegram-icon";
+import { useI18n } from "@/hooks/use-i18n";
 
 export default function AccountPage() {
+  const { t } = useI18n();
   return (
     <div className="container mx-auto px-4 py-6">
       <Card className="mb-6">
@@ -15,7 +17,7 @@ export default function AccountPage() {
               <PlatformTelegramIcon className="size-6" />
             </Link>
 
-            <h3 className="text-lg font-semibold">Telegram Files Manager</h3>
+            <h3 className="text-lg font-semibold">{t("Telegram Files Manager")}</h3>
 
             <ThemeToggleButton />
           </div>

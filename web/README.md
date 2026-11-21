@@ -2,6 +2,12 @@
 
 This is a [T3 Stack](https://create.t3.gg/) project bootstrapped with `create-t3-app`.
 
+## 界面语言 / Interface language
+
+English is the default. Select **简体中文** on the sign-in screen or from the navigation and general settings. The selection is saved in the current browser and applies to both desktop and mobile views.
+
+The frontend uses `useI18n().t()` with English source text as the fallback. Add Simplified Chinese messages to the relevant `src/i18n/*.json` catalog. Use named placeholders (for example, `{count}`) for dynamic messages; keep application data such as filenames, chat names, IDs, and API values out of the catalog.
+
 ## What's next? How do I make an app with this?
 
 We try to keep this project as simple as possible, so you can start with just the scaffolding we set up for you, and add additional things later when they become necessary.

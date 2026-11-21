@@ -18,8 +18,10 @@ import { ChartColumnIncreasingIcon } from "@/components/ui/chart-column-increasi
 import { LayoutPanelTopIcon } from "@/components/ui/layout-panel-top";
 import FilePhaseStatistics from "@/components/file-phase-statistics";
 import DebugTelegramMethod from "@/components/debug-telegram-method";
+import { useI18n } from "@/hooks/use-i18n";
 
 export const SettingsDialog: React.FC = () => {
+  const { t } = useI18n();
   const [isOpen, setIsOpen] = useState(false);
   const { account, accountId } = useTelegramAccount();
 
@@ -31,7 +33,7 @@ export const SettingsDialog: React.FC = () => {
           setIsOpen(!isOpen);
         }}
       >
-        <Button variant="ghost" size="icon" aria-label="Open settings">
+        <Button variant="ghost" size="icon" aria-label={t("Open settings")}>
           <Settings className="h-4 w-4" />
         </Button>
       </DialogTrigger>
@@ -41,18 +43,18 @@ export const SettingsDialog: React.FC = () => {
         aria-describedby={undefined}
       >
         <VisuallyHidden>
-          <DialogTitle>Settings</DialogTitle>
+          <DialogTitle>{t("Settings")}</DialogTitle>
         </VisuallyHidden>
         <Tabs
           defaultValue="general"
           className="mt-3 flex h-full flex-col overflow-hidden"
         >
           <TabsList className="min-h-9 justify-start overflow-auto">
-            <TabsTrigger value="general">General</TabsTrigger>
-            <TabsTrigger value="statistics">Statistics</TabsTrigger>
-            <TabsTrigger value="proxys">Proxys</TabsTrigger>
-            <TabsTrigger value="api">API</TabsTrigger>
-            <TabsTrigger value="about">About</TabsTrigger>
+            <TabsTrigger value="general">{t("General")}</TabsTrigger>
+            <TabsTrigger value="statistics">{t("Statistics")}</TabsTrigger>
+            <TabsTrigger value="proxys">{t("Proxys")}</TabsTrigger>
+            <TabsTrigger value="api">{t("API")}</TabsTrigger>
+            <TabsTrigger value="about">{t("About")}</TabsTrigger>
           </TabsList>
           <TabsContent value="general" className="overflow-hidden">
             <SettingsForm />
@@ -64,12 +66,14 @@ export const SettingsDialog: React.FC = () => {
                   <TabsList className="bg-none!">
                     <TabsTrigger
                       value="panel"
+                      aria-label={t("Statistics overview")}
                       className="h-10 w-10 scale-75 data-[state=active]:bg-accent"
                     >
                       <LayoutPanelTopIcon />
                     </TabsTrigger>
                     <TabsTrigger
                       value="phase"
+                      aria-label={t("Statistics by phase")}
                       className="h-10 w-10 scale-75 data-[state=active]:bg-accent"
                     >
                       <ChartColumnIncreasingIcon />
@@ -85,7 +89,7 @@ export const SettingsDialog: React.FC = () => {
               ) : (
                 <div className="flex flex-1 items-center justify-center">
                   <p className="text-lg text-muted-foreground">
-                    Please select an account to view statistics
+                    {t("Please select an account to view statistics")}
                   </p>
                 </div>
               )}

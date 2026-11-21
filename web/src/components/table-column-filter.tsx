@@ -16,6 +16,7 @@ import { useState } from "react";
 import { Button } from "./ui/button";
 import { ChevronDown, Columns, Menu } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/hooks/use-i18n";
 
 export type Column = {
   id: string;
@@ -38,6 +39,7 @@ function SortableItem({
   onToggleVisibility,
   isVisible,
 }: SortableItemProps) {
+  const { t } = useI18n();
   const { attributes, isDragging, listeners, setNodeRef, transform } =
     useSortable({ id });
 
@@ -57,14 +59,14 @@ function SortableItem({
       }}
     >
       <div className="mr-1">
-        <span className="capitalize">{label}</span>
+        <span className="capitalize">{t(label)}</span>
       </div>
       <Button
         {...attributes}
         {...listeners}
         variant="ghost"
         size="sm"
-        title="Drag and drop to reorder columns"
+        title={t("Drag and drop to reorder columns")}
         className="invisible ml-auto group-hover:visible"
       >
         <Menu className="h-3 w-3" />
@@ -82,6 +84,7 @@ export default function TableColumnFilter({
   columns,
   onColumnConfigChange,
 }: TableColumnFilterProps) {
+  const { t } = useI18n();
   const [isOpen, setIsOpen] = useState(false);
 
   const handleToggleVisibility = (id: string) => {
@@ -110,7 +113,7 @@ export default function TableColumnFilter({
   return (
     <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
       <DropdownMenuTrigger className="select-none" asChild>
-        <Button variant="outline" title="Show/hide columns">
+        <Button variant="outline" title={t("Show/hide columns")}>
           <Columns className="mr-2 h-4 w-4" />
           <span className="text-xs text-muted-foreground">{`(${visibleColumnCount}/${columns.length})`}</span>
           <ChevronDown className="ml-2 h-4 w-4" />

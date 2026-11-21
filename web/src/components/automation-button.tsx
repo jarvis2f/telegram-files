@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/tooltip";
 import { type TelegramChat } from "@/lib/types";
 import UseIsMobile from "@/hooks/use-is-mobile";
+import { useI18n } from "@/hooks/use-i18n";
 
 interface AutoDownloadButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   auto?: TelegramChat["auto"];
@@ -19,6 +20,7 @@ const AutomationButton = React.forwardRef<
   HTMLButtonElement,
   AutoDownloadButtonProps
 >(({ auto, className, ...props }, ref) => {
+  const { t } = useI18n();
   const autoEnabled =
     auto &&
     (auto.preload.enabled || auto.download.enabled || auto.transfer.enabled);
@@ -38,10 +40,10 @@ const AutomationButton = React.forwardRef<
             {...props}
           >
             <span className="inline-block translate-x-1 transition-all duration-300 group-hover:translate-x-12 group-hover:opacity-0">
-              {autoEnabled ? "Running" : "Stopped"}
+              {autoEnabled ? t("Running") : t("Stopped")}
             </span>
             <div className="absolute top-0 z-10 flex h-full w-full translate-x-12 items-center justify-center gap-2 text-primary-foreground opacity-0 transition-all duration-300 group-hover:-translate-x-1 group-hover:opacity-100">
-              <span>{autoEnabled ? "Disable" : "Enable"}</span>
+              <span>{autoEnabled ? t("Disable") : t("Enable")}</span>
               <ArrowRight />
             </div>
             <div
@@ -60,8 +62,12 @@ const AutomationButton = React.forwardRef<
         </TooltipTrigger>
         <TooltipContent>
           {autoEnabled
-            ? "Automation is enabled, you can disable it by clicking the button"
-            : "Automation is disabled, you can enable it by clicking the button"}
+            ? t(
+                "Automation is enabled, you can disable it by clicking the button",
+              )
+            : t(
+                "Automation is disabled, you can enable it by clicking the button",
+              )}
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>

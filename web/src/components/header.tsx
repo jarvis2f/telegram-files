@@ -1,5 +1,7 @@
 "use client";
 
+import { useI18n } from "@/hooks/use-i18n";
+import { LanguageSwitcher } from "@/components/language-switcher";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   ChevronsLeftRightEllipsisIcon,
@@ -28,6 +30,7 @@ import { useSettings } from "@/hooks/use-settings";
 import { PlatformBindingShortcut } from "@/components/platform-binding-shortcut";
 
 export function Header() {
+  const { t } = useI18n();
   const useTelegramAccountProps = useTelegramAccount();
   const {
     connectionStatus,
@@ -46,7 +49,11 @@ export function Header() {
       <CardContent className="p-4">
         <div className="relative flex flex-col flex-wrap items-start justify-between gap-4 md:flex-row md:items-center">
           <div className="flex w-full flex-1 flex-col gap-4 md:flex-row md:items-center">
-            <Link href={"/"} className="hidden md:inline-flex">
+            <Link
+              href={"/"}
+              aria-label={t("Home")}
+              className="hidden md:inline-flex"
+            >
               <PlatformTelegramIcon className="size-6" />
             </Link>
 
@@ -63,9 +70,9 @@ export function Header() {
             )}
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             {accountDownloadSpeed !== 0 && (
-              <TooltipWrapper content="Current account download speed">
+              <TooltipWrapper content={t("Current account download speed")}>
                 <div className="flex items-center gap-2 overflow-hidden text-sm text-muted-foreground">
                   <span className="flex-1 text-nowrap">
                     {`${prettyBytes(accountDownloadSpeed, { bits: settings?.speedUnits === "bits" })}/s`}
@@ -79,8 +86,8 @@ export function Header() {
               <TooltipWrapper
                 content={
                   connectionStatus === "Open"
-                    ? "Live updates connected"
-                    : "Live updates disconnected — click to reconnect"
+                    ? t("Live updates connected")
+                    : t("Live updates disconnected — click to reconnect")
                 }
               >
                 <Badge
@@ -94,7 +101,7 @@ export function Header() {
                   tabIndex={connectionStatus !== "Open" ? 0 : undefined}
                   aria-label={
                     connectionStatus !== "Open"
-                      ? "Reconnect live updates"
+                      ? t("Reconnect live updates")
                       : undefined
                   }
                   onClick={connectionStatus !== "Open" ? reconnect : undefined}
@@ -114,19 +121,21 @@ export function Header() {
                   ) : (
                     <UnplugIcon className="mr-1 h-4 w-4" />
                   )}
-                  {connectionStatus}
+                  {t(connectionStatus)}
                 </Badge>
               </TooltipWrapper>
             )}
 
             {telegramConnectionState && telegramConnectionState !== "ready" && (
-              <TooltipWrapper content="Telegram connection state">
+              <TooltipWrapper content={t("Telegram connection state")}>
                 <Badge variant="secondary">
                   <UnplugIcon className="mr-1 h-4 w-4" />
-                  Telegram: {telegramConnectionState}
+                  Telegram: {t(telegramConnectionState)}
                 </Badge>
               </TooltipWrapper>
             )}
+
+            <LanguageSwitcher />
 
             <ThemeToggleButton />
 
@@ -138,6 +147,7 @@ export function Header() {
           <Button
             size="xs"
             variant="ghost"
+            aria-label={t("Home")}
             onClick={() => (location.href = "/")}
             className="absolute bottom-[0.3rem] right-10 md:hidden"
           >
@@ -147,6 +157,7 @@ export function Header() {
           <Button
             size="xs"
             variant="ghost"
+            aria-label={t(showMore ? "Show less" : "Show more")}
             onClick={() => setShowMore(!showMore)}
             className="absolute bottom-[0.3rem] right-0 md:hidden"
           >

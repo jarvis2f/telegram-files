@@ -13,6 +13,7 @@ import useSWRMutation from "swr/mutation";
 import { POST } from "@/lib/api";
 import { useDebounce } from "use-debounce";
 import { useToast } from "@/hooks/use-toast";
+import { useI18n } from "@/hooks/use-i18n";
 import { AutomationButton } from "@/components/automation-button";
 import { useTelegramChat } from "@/hooks/use-telegram-chat";
 import { Label } from "@/components/ui/label";
@@ -52,12 +53,14 @@ const DEFAULT_AUTO: Auto = {
 };
 
 function StatusBadge({ enabled }: { enabled: boolean }) {
+  const { t } = useI18n();
+
   return (
     <Badge
       variant={enabled ? "default" : "secondary"}
       className="shrink-0 rounded-full px-2.5 py-0.5 text-xs"
     >
-      {enabled ? "Enabled" : "Disabled"}
+      {enabled ? t("Enabled") : t("Disabled")}
     </Badge>
   );
 }
@@ -105,6 +108,7 @@ function DetailBlock({
 }
 
 export default function AutomationDialog() {
+  const { t } = useI18n();
   const accountId = useSearchParams().get("id") ?? undefined;
   const { isLoading, chat, reload } = useTelegramChat();
   const { toast } = useToast();
@@ -131,7 +135,7 @@ export default function AutomationDialog() {
       onSuccess: () => {
         toast({
           variant: "success",
-          title: "Auto settings updated!",
+          title: t("Auto settings updated!"),
         });
         void reload();
         setEditMode(false);
@@ -142,8 +146,8 @@ export default function AutomationDialog() {
       onError: (error: Error) => {
         toast({
           variant: "error",
-          title: "Failed to update auto settings",
-          description: error.message,
+          title: t("Failed to update auto settings"),
+          description: t(error.message),
         });
       },
     },
@@ -190,28 +194,32 @@ export default function AutomationDialog() {
       >
         <DialogHeader className="border-b bg-muted/30 px-5 py-4 text-left">
           <DialogTitle className="truncate text-base">
-            Update Auto Settings for {chat?.name ?? "Unknown Chat"}
+            {t("Update Auto Settings for {name}", {
+              name: chat?.name ?? t("Unknown Chat"),
+            })}
           </DialogTitle>
           <DialogDescription>
-            Configure preload, download, and transfer automation for this chat.
+            {t(
+              "Configure preload, download, and transfer automation for this chat.",
+            )}
           </DialogDescription>
         </DialogHeader>
         <div className="flex-1 overflow-auto px-5 py-4">
           {!editMode && chat?.auto ? (
             <div className="flex flex-col gap-4">
               <AutomationSummarySection
-                title="Auto Preload"
+                title={t("Auto Preload")}
                 enabled={chat.auto.preload.enabled}
                 icon={<PackageSearch />}
               >
                 {(chat.auto.state & (1 << 1)) != 0 && (
                   <p className="text-xs text-muted-foreground">
-                    All historical files are preloaded.
+                    {t("All historical files are preloaded.")}
                   </p>
                 )}
               </AutomationSummarySection>
               <AutomationSummarySection
-                title="Auto Download"
+                title={t("Auto Download")}
                 enabled={chat.auto.download.enabled}
                 icon={<Download />}
               >
@@ -219,26 +227,28 @@ export default function AutomationDialog() {
                   <>
                     {(chat.auto.state & (1 << 2)) != 0 && (
                       <p className="text-xs text-muted-foreground">
-                        All historical files are started to be downloaded.
+                        {t(
+                          "All historical files are started to be downloaded.",
+                        )}
                       </p>
                     )}
                     <div className="flex flex-col gap-3">
                       <DetailBlock
-                        label="Query Keyword"
+                        label={t("Query Keyword")}
                         value={
                           chat.auto.download.rule.query ||
-                          "No keyword specified"
+                          t("No keyword specified")
                         }
                       />
                       <DetailBlock
-                        label="Filter Expression"
+                        label={t("Filter Expression")}
                         value={
                           chat.auto.download.rule.filterExpr ||
-                          "No filter expression specified"
+                          t("No filter expression specified")
                         }
                       />
 
-                      <DetailBlock label="File Types">
+                      <DetailBlock label={t("File Types")}>
                         <div className="mt-2 flex flex-wrap gap-2">
                           {chat.auto.download.rule.fileTypes.length > 0 ? (
                             chat.auto.download.rule.fileTypes.map((type) => (
@@ -247,12 +257,12 @@ export default function AutomationDialog() {
                                 variant="secondary"
                                 className="capitalize"
                               >
-                                {type}
+                                {t(type)}
                               </Badge>
                             ))
                           ) : (
                             <span className="text-sm text-muted-foreground">
-                              No file types selected
+                              {t("No file types selected")}
                             </span>
                           )}
                         </div>
@@ -260,7 +270,7 @@ export default function AutomationDialog() {
 
                       <div className="flex items-center justify-between rounded-md border bg-muted/30 p-3">
                         <span className="text-xs font-medium text-muted-foreground">
-                          Download History
+                          {t("Download History")}
                         </span>
                         <StatusBadge
                           enabled={chat.auto.download.rule.downloadHistory}
@@ -269,7 +279,7 @@ export default function AutomationDialog() {
 
                       <div className="flex items-center justify-between rounded-md border bg-muted/30 p-3">
                         <span className="text-xs font-medium text-muted-foreground">
-                          Download Comment Files
+                          {t("Download Comment Files")}
                         </span>
                         <StatusBadge
                           enabled={chat.auto.download.rule.downloadCommentFiles}
@@ -281,7 +291,7 @@ export default function AutomationDialog() {
               </AutomationSummarySection>
 
               <AutomationSummarySection
-                title="Auto Transfer"
+                title={t("Auto Transfer")}
                 enabled={chat.auto.transfer.enabled}
                 icon={<FolderSync />}
               >
@@ -289,24 +299,24 @@ export default function AutomationDialog() {
                   <>
                     {(chat.auto.state & (1 << 4)) != 0 && (
                       <p className="text-xs text-muted-foreground">
-                        All historical download files are transferred.
+                        {t("All historical download files are transferred.")}
                       </p>
                     )}
                     <div className="flex flex-col gap-3">
                       <DetailBlock
-                        label="Destination Folder"
+                        label={t("Destination Folder")}
                         value={
                           chat.auto.transfer.rule.destination ||
-                          "No destination specified"
+                          t("No destination specified")
                         }
                       />
                       <div className="flex flex-col gap-3 rounded-md border bg-muted/30 p-3">
                         <div className="flex items-center justify-between">
                           <span className="text-xs font-medium text-muted-foreground">
-                            Transfer Policy
+                            {t("Transfer Policy")}
                           </span>
                           <Badge variant="outline" className="font-normal">
-                            {chat.auto.transfer.rule.transferPolicy}
+                            {t(chat.auto.transfer.rule.transferPolicy)}
                           </Badge>
                         </div>
                         {chat.auto.transfer.rule.transferPolicy ===
@@ -318,15 +328,15 @@ export default function AutomationDialog() {
                       </div>
                       <div className="flex items-center justify-between rounded-md border bg-muted/30 p-3">
                         <span className="text-xs font-medium text-muted-foreground">
-                          Duplication Policy
+                          {t("Duplication Policy")}
                         </span>
                         <Badge variant="outline" className="font-normal">
-                          {chat.auto.transfer.rule.duplicationPolicy}
+                          {t(chat.auto.transfer.rule.duplicationPolicy)}
                         </Badge>
                       </div>
                       <div className="flex items-center justify-between rounded-md border bg-muted/30 p-3">
                         <span className="text-xs font-medium text-muted-foreground">
-                          Transfer History
+                          {t("Transfer History")}
                         </span>
                         <StatusBadge
                           enabled={chat.auto.transfer.rule.transferHistory}
@@ -344,7 +354,7 @@ export default function AutomationDialog() {
         <DialogFooter className="gap-2 border-t bg-background px-5 py-4">
           {!editMode && chat?.auto ? (
             <Button variant="outline" onClick={() => setEditMode(true)}>
-              Edit
+              {t("Edit")}
             </Button>
           ) : (
             <>
@@ -353,7 +363,7 @@ export default function AutomationDialog() {
                 onClick={() => setOpen(false)}
                 disabled={debounceIsAutoMutating}
               >
-                Cancel
+                {t("Cancel")}
               </Button>
               <Button
                 onClick={() => {
@@ -363,17 +373,18 @@ export default function AutomationDialog() {
                   ) {
                     toast({
                       variant: "warning",
-                      title: "Invalid destination folder",
-                      description:
+                      title: t("Invalid destination folder"),
+                      description: t(
                         "Please enter a valid destination folder path",
+                      ),
                     });
                     return;
                   }
                   if (!mutationKey) {
                     toast({
                       variant: "warning",
-                      title: "Account or chat is still loading",
-                      description: "Please wait a moment and try again.",
+                      title: t("Account or chat is still loading"),
+                      description: t("Please wait a moment and try again."),
                     });
                     return;
                   }
@@ -381,7 +392,7 @@ export default function AutomationDialog() {
                 }}
                 disabled={debounceIsAutoMutating || !mutationKey}
               >
-                {debounceIsAutoMutating ? "Submitting..." : "Submit"}
+                {debounceIsAutoMutating ? t("Submitting...") : t("Submit")}
               </Button>
             </>
           )}

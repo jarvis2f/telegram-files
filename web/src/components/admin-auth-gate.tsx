@@ -14,8 +14,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAdminSession } from "@/hooks/use-admin-session";
 import { DotmTriangle2 } from "@/components/ui/dotm-triangle-2";
+import { LanguageSwitcher } from "@/components/language-switcher";
+import { useI18n } from "@/hooks/use-i18n";
 
 export function AdminAuthGate({ children }: { children: ReactNode }) {
+  const { t } = useI18n();
   const { status, session, sessionExpired, login, bootstrap } =
     useAdminSession();
   const [username, setUsername] = useState("");
@@ -35,7 +38,7 @@ export function AdminAuthGate({ children }: { children: ReactNode }) {
             opacityBase={0.1}
             opacityMid={0.4}
             opacityPeak={0.95}
-            ariaLabel="Checking administrator session"
+            ariaLabel={t("Checking administrator session")}
           />
         </div>
       </main>
@@ -73,10 +76,13 @@ export function AdminAuthGate({ children }: { children: ReactNode }) {
     <main className="grid min-h-screen place-items-center bg-muted/30 px-4">
       <Card className="w-full max-w-md">
         <CardHeader>
+          <div className="flex justify-end">
+            <LanguageSwitcher />
+          </div>
           <div className="flex justify-center pb-2">
             <Image
               src="/favicon.svg"
-              alt="Telegram Files logo"
+              alt={t("Telegram Files logo")}
               width={72}
               height={72}
               priority
@@ -84,14 +90,14 @@ export function AdminAuthGate({ children }: { children: ReactNode }) {
           </div>
           <CardTitle className="text-center">
             {bootstrapMode
-              ? "Create the first administrator"
-              : "Administrator sign in"}
+              ? t("Create the first administrator")
+              : t("Administrator sign in")}
           </CardTitle>
           {bootstrapMode && (
             <CardDescription className="text-center">
-              Use the one-time code printed by the local API process. The
-              first administrator can be created from loopback or the same
-              private LAN.
+              {t(
+                "Use the one-time code printed by the local API process. The first administrator can be created from loopback or the same private LAN.",
+              )}
             </CardDescription>
           )}
         </CardHeader>
@@ -102,12 +108,14 @@ export function AdminAuthGate({ children }: { children: ReactNode }) {
                 role="alert"
                 className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900"
               >
-                Your session expired or was revoked. Sign in again.
+                {t("Your session expired or was revoked. Sign in again.")}
               </p>
             )}
             {bootstrapMode && (
               <div className="space-y-2">
-                <Label htmlFor="bootstrap-token">One-time bootstrap code</Label>
+                <Label htmlFor="bootstrap-token">
+                  {t("One-time bootstrap code")}
+                </Label>
                 <Input
                   id="bootstrap-token"
                   name="bootstrapToken"
@@ -119,7 +127,7 @@ export function AdminAuthGate({ children }: { children: ReactNode }) {
               </div>
             )}
             <div className="space-y-2">
-              <Label htmlFor="admin-username">Username</Label>
+              <Label htmlFor="admin-username">{t("Username")}</Label>
               <Input
                 id="admin-username"
                 name="username"
@@ -132,7 +140,7 @@ export function AdminAuthGate({ children }: { children: ReactNode }) {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="admin-password">Password</Label>
+              <Label htmlFor="admin-password">{t("Password")}</Label>
               <Input
                 id="admin-password"
                 name="password"
@@ -149,15 +157,15 @@ export function AdminAuthGate({ children }: { children: ReactNode }) {
             </div>
             {error && (
               <p role="alert" className="text-sm text-destructive">
-                {error}
+                {t(error)}
               </p>
             )}
             <Button className="w-full" type="submit" disabled={busy}>
               {busy
-                ? "Please wait…"
+                ? t("Please wait…")
                 : bootstrapMode
-                  ? "Create administrator"
-                  : "Sign in"}
+                  ? t("Create administrator")
+                  : t("Sign in")}
             </Button>
           </form>
         </CardContent>
